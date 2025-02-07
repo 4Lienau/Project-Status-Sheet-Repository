@@ -3,10 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { projectService } from "@/lib/services/project";
 
 interface ProjectData {
   title: string;
   budget: {
+    total: string;
     actuals: string;
     forecast: string;
   };
@@ -34,6 +36,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
   const [formData, setFormData] = React.useState<ProjectData>({
     title: "",
     budget: {
+      total: "",
       actuals: "",
       forecast: "",
     },
@@ -71,6 +74,21 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
     }
   };
 
+  const formatCurrency = (value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      return numValue
+        .toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+        .replace("$", "");
+    }
+    return value;
+  };
+
   return (
     <Card className="p-6 bg-white">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -86,10 +104,40 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Budget Actuals</Label>
+              <Label>Total Budget</Label>
               <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="$0.00"
+                value={formData.budget.total}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    budget: { ...formData.budget, total: e.target.value },
+                  })
+                }
+                onBlur={(e) =>
+                  setFormData({
+                    ...formData,
+                    budget: {
+                      ...formData.budget,
+                      total: formatCurrency(e.target.value),
+                    },
+                  })
+                }
+                required
+              />
+            </div>
+            <div>
+              <Label>Actuals</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="$0.00"
                 value={formData.budget.actuals}
                 onChange={(e) =>
                   setFormData({
@@ -97,17 +145,39 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
                     budget: { ...formData.budget, actuals: e.target.value },
                   })
                 }
+                onBlur={(e) =>
+                  setFormData({
+                    ...formData,
+                    budget: {
+                      ...formData.budget,
+                      actuals: formatCurrency(e.target.value),
+                    },
+                  })
+                }
                 required
               />
             </div>
             <div>
-              <Label>Budget Forecast</Label>
+              <Label>Forecast</Label>
               <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="$0.00"
                 value={formData.budget.forecast}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
                     budget: { ...formData.budget, forecast: e.target.value },
+                  })
+                }
+                onBlur={(e) =>
+                  setFormData({
+                    ...formData,
+                    budget: {
+                      ...formData.budget,
+                      forecast: formatCurrency(e.target.value),
+                    },
                   })
                 }
                 required
@@ -123,7 +193,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
               onChange={(e) =>
                 setFormData({ ...formData, charterLink: e.target.value })
               }
-              required
               placeholder="https://..."
             />
           </div>
