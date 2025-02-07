@@ -48,9 +48,27 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
     considerations: [""],
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    const projectData = {
+      title: formData.title,
+      budget_actuals: parseFloat(formData.budget.actuals),
+      budget_forecast: parseFloat(formData.budget.forecast),
+      charter_link: formData.charterLink,
+      sponsors: formData.sponsors,
+      business_leads: formData.businessLeads,
+      project_manager: formData.projectManager,
+      milestones: formData.milestones,
+      accomplishments: formData.accomplishments,
+      next_period_activities: formData.nextPeriodActivities,
+      risks: formData.risks,
+      considerations: formData.considerations,
+    };
+
+    const project = await projectService.createProject(projectData);
+    if (project) {
+      onSubmit(formData);
+    }
   };
 
   return (
