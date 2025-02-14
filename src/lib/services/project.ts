@@ -20,6 +20,99 @@ export interface ProjectWithRelations extends Project {
 }
 
 export const projectService = {
+  async updateProject(
+    id: string,
+    data: {
+      title: string;
+      budget_actuals: number;
+      budget_forecast: number;
+      charter_link: string;
+      sponsors: string;
+      business_leads: string;
+      project_manager: string;
+      milestones: Array<{
+        date: string;
+        milestone: string;
+        owner: string;
+        completion: number;
+      }>;
+      accomplishments: string[];
+      next_period_activities: string[];
+      risks: string[];
+      considerations: string[];
+    },
+  ): Promise<ProjectWithRelations | null> {
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .update({
+        title: data.title,
+        budget_actuals: data.budget_actuals,
+        budget_forecast: data.budget_forecast,
+        charter_link: data.charter_link,
+        sponsors: data.sponsors,
+        business_leads: data.business_leads,
+        project_manager: data.project_manager,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (projectError || !project) return null;
+
+    // Delete existing related records
+    await Promise.all([
+      supabase.from("milestones").delete().eq("project_id", id),
+      supabase.from("accomplishments").delete().eq("project_id", id),
+      supabase.from("next_period_activities").delete().eq("project_id", id),
+      supabase.from("risks").delete().eq("project_id", id),
+      supabase.from("considerations").delete().eq("project_id", id),
+    ]);
+
+    // Insert new records
+    await Promise.all([
+      supabase.from("milestones").insert(
+        data.milestones.map((m) => ({
+          project_id: id,
+          date: m.date,
+          milestone: m.milestone,
+          owner: m.owner,
+          completion: m.completion,
+        })),
+      ),
+      supabase.from("accomplishments").insert(
+        data.accomplishments.map((a) => ({
+          project_id: id,
+          description: a,
+        })),
+      ),
+      supabase.from("next_period_activities").insert(
+        data.next_period_activities.map((a) => ({
+          project_id: id,
+          description: a,
+        })),
+      ),
+      supabase.from("risks").insert(
+        data.risks.map((r) => ({
+          project_id: id,
+          description: r,
+        })),
+      ),
+      supabase.from("considerations").insert(
+        data.considerations.map((c) => ({
+          project_id: id,
+          description: c,
+        })),
+      ),
+    ]);
+
+    return this.getProject(id);
+  },
+
+  async deleteProject(id: string): Promise<boolean> {
+    const { error } = await supabase.from("projects").delete().eq("id", id);
+
+    return !error;
+  },
   async createProject(data: {
     title: string;
     budget_actuals: number;

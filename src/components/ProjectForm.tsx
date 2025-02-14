@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Save } from "lucide-react";
 import { projectService } from "@/lib/services/project";
 
 interface ProjectData {
@@ -29,64 +30,52 @@ interface ProjectData {
 }
 
 interface ProjectFormProps {
+  initialData?: ProjectData;
   onSubmit: (data: ProjectData) => void;
 }
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
-  const [formData, setFormData] = React.useState<ProjectData>({
-    title: "",
-    budget: {
-      total: "",
-      actuals: "",
-      forecast: "",
+const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
+  const formatCurrency = (value: string) => {
+    // Remove any non-numeric characters except decimal point
+    const cleanValue = value.replace(/[^0-9.]/g, "");
+    const numValue = parseFloat(cleanValue);
+
+    if (!isNaN(numValue)) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+        .format(numValue)
+        .replace("$", "");
+    }
+    return "0.00";
+  };
+
+  const [formData, setFormData] = React.useState<ProjectData>(
+    initialData || {
+      title: "",
+      budget: {
+        total: formatCurrency("0"),
+        actuals: formatCurrency("0"),
+        forecast: formatCurrency("0"),
+      },
+      charterLink: "",
+      sponsors: "",
+      businessLeads: "",
+      projectManager: "",
+      accomplishments: [""],
+      nextPeriodActivities: [""],
+      milestones: [{ date: "", milestone: "", owner: "", completion: 0 }],
+      risks: [""],
+      considerations: [""],
     },
-    charterLink: "",
-    sponsors: "",
-    businessLeads: "",
-    projectManager: "",
-    accomplishments: [""],
-    nextPeriodActivities: [""],
-    milestones: [{ date: "", milestone: "", owner: "", completion: 0 }],
-    risks: [""],
-    considerations: [""],
-  });
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const projectData = {
-      title: formData.title,
-      budget_actuals: parseFloat(formData.budget.actuals),
-      budget_forecast: parseFloat(formData.budget.forecast),
-      charter_link: formData.charterLink,
-      sponsors: formData.sponsors,
-      business_leads: formData.businessLeads,
-      project_manager: formData.projectManager,
-      milestones: formData.milestones,
-      accomplishments: formData.accomplishments,
-      next_period_activities: formData.nextPeriodActivities,
-      risks: formData.risks,
-      considerations: formData.considerations,
-    };
-
-    const project = await projectService.createProject(projectData);
-    if (project) {
-      onSubmit(formData);
-    }
-  };
-
-  const formatCurrency = (value: string) => {
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue)) {
-      return numValue
-        .toLocaleString("en-US", {
-          style: "currency",
-          currency: "USD",
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })
-        .replace("$", "");
-    }
-    return value;
+    onSubmit(formData);
   };
 
   return (
@@ -108,10 +97,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
             <div>
               <Label>Total Budget</Label>
               <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="$0.00"
+                type="text"
+                placeholder="0.00"
                 value={formData.budget.total}
                 onChange={(e) =>
                   setFormData({
@@ -128,16 +115,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
                     },
                   })
                 }
-                required
               />
             </div>
             <div>
               <Label>Actuals</Label>
               <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="$0.00"
+                type="text"
+                placeholder="0.00"
                 value={formData.budget.actuals}
                 onChange={(e) =>
                   setFormData({
@@ -154,16 +138,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
                     },
                   })
                 }
-                required
               />
             </div>
             <div>
               <Label>Forecast</Label>
               <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="$0.00"
+                type="text"
+                placeholder="0.00"
                 value={formData.budget.forecast}
                 onChange={(e) =>
                   setFormData({
@@ -180,7 +161,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
                     },
                   })
                 }
-                required
               />
             </div>
           </div>
@@ -420,8 +400,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
           </div>
         </div>
 
-        <Button type="submit" className="w-full">
-          Generate Status Sheet
+        <Button
+          type="submit"
+          className="w-full flex items-center justify-center gap-2"
+        >
+          <Save className="h-4 w-4" />
+          {initialData ? "Save Changes" : "Create Project"}
         </Button>
       </form>
     </Card>

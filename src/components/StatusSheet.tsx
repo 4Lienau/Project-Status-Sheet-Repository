@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 
 interface StatusSheetProps {
-  data: {
+  data?: {
     title: string;
     budget: {
       actuals: string;
@@ -29,10 +29,16 @@ interface StatusSheetProps {
 }
 
 const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
-  const healthPercentage = Math.round(
-    data.milestones.reduce((acc, curr) => acc + curr.completion, 0) /
-      data.milestones.length,
-  );
+  if (!data) {
+    return null;
+  }
+
+  const healthPercentage = data.milestones?.length
+    ? Math.round(
+        data.milestones.reduce((acc, curr) => acc + curr.completion, 0) /
+          data.milestones.length,
+      )
+    : 0;
 
   return (
     <Card className="p-6 bg-white w-full">
@@ -60,15 +66,17 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                 {data.budget.forecast}
               </p>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={data.charterLink}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View Charter <ExternalLink className="ml-2 h-4 w-4" />
-              </a>
-            </Button>
+            {data.charterLink && (
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={data.charterLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View Charter <ExternalLink className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -92,84 +100,94 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
         </div>
 
         {/* Milestones */}
-        <div>
-          <h2 className="text-lg font-semibold mb-2">
-            High Level Project Schedule
-          </h2>
-          <div className="border rounded-lg p-4">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="text-left">Date</th>
-                  <th className="text-left">Milestone</th>
-                  <th className="text-left">Owner</th>
-                  <th className="text-left">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.milestones.map((milestone, index) => (
-                  <tr key={index} className="border-t">
-                    <td className="py-2">{milestone.date}</td>
-                    <td>{milestone.milestone}</td>
-                    <td>{milestone.owner}</td>
-                    <td>
-                      <Progress
-                        value={milestone.completion}
-                        className="w-20 h-2"
-                      />
-                    </td>
+        {data.milestones?.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">
+              High Level Project Schedule
+            </h2>
+            <div className="border rounded-lg p-4">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th className="text-left">Date</th>
+                    <th className="text-left">Milestone</th>
+                    <th className="text-left">Owner</th>
+                    <th className="text-left">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.milestones.map((milestone, index) => (
+                    <tr key={index} className="border-t">
+                      <td className="py-2">{milestone.date}</td>
+                      <td>{milestone.milestone}</td>
+                      <td>{milestone.owner}</td>
+                      <td>
+                        <Progress
+                          value={milestone.completion}
+                          className="w-20 h-2"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Accomplishments */}
-        <div>
-          <h2 className="text-lg font-semibold mb-2">
-            Accomplishments To Date
-          </h2>
-          <ul className="list-disc pl-5 space-y-1">
-            {data.accomplishments.map((accomplishment, index) => (
-              <li key={index}>{accomplishment}</li>
-            ))}
-          </ul>
-        </div>
+        {data.accomplishments?.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">
+              Accomplishments To Date
+            </h2>
+            <ul className="list-disc pl-5 space-y-1">
+              {data.accomplishments.map((accomplishment, index) => (
+                <li key={index}>{accomplishment}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Next Steps */}
-        <div>
-          <h2 className="text-lg font-semibold mb-2">
-            Next Period's Key Activities
-          </h2>
-          <ul className="list-disc pl-5 space-y-1">
-            {data.nextPeriodActivities.map((activity, index) => (
-              <li key={index}>{activity}</li>
-            ))}
-          </ul>
-        </div>
+        {data.nextPeriodActivities?.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">
+              Next Period's Key Activities
+            </h2>
+            <ul className="list-disc pl-5 space-y-1">
+              {data.nextPeriodActivities.map((activity, index) => (
+                <li key={index}>{activity}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Risks */}
-        <div>
-          <h2 className="text-lg font-semibold mb-2">Risks and Issues</h2>
-          <ul className="list-disc pl-5 space-y-1">
-            {data.risks.map((risk, index) => (
-              <li key={index}>{risk}</li>
-            ))}
-          </ul>
-        </div>
+        {data.risks?.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Risks and Issues</h2>
+            <ul className="list-disc pl-5 space-y-1">
+              {data.risks.map((risk, index) => (
+                <li key={index}>{risk}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Considerations */}
-        <div>
-          <h2 className="text-lg font-semibold mb-2">
-            Questions / Items for Consideration
-          </h2>
-          <ul className="list-disc pl-5 space-y-1">
-            {data.considerations.map((consideration, index) => (
-              <li key={index}>{consideration}</li>
-            ))}
-          </ul>
-        </div>
+        {data.considerations?.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">
+              Questions / Items for Consideration
+            </h2>
+            <ul className="list-disc pl-5 space-y-1">
+              {data.considerations.map((consideration, index) => (
+                <li key={index}>{consideration}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Card>
   );
