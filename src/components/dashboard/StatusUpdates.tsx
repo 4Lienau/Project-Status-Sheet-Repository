@@ -64,7 +64,7 @@ const StatusUpdates = ({
   considerations = defaultConsiderations,
 }: StatusUpdatesProps) => {
   return (
-    <div className="w-full bg-white p-6 rounded-lg shadow-sm">
+    <div className="w-full bg-card p-6 rounded-lg shadow-sm">
       <Tabs defaultValue="accomplishments" className="w-full">
         <div className="flex justify-between items-center mb-4">
           <TabsList>

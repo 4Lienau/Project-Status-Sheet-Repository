@@ -70,7 +70,7 @@ const MilestoneTimeline = ({
   milestones = defaultMilestones,
 }: MilestoneTimelineProps) => {
   return (
-    <Card className="p-6 bg-white w-full">
+    <Card className="p-6 bg-card w-full">
       <h2 className="text-xl font-semibold mb-6">Project Milestones</h2>
       <div className="space-y-6">
         {milestones.map((milestone, index) => (

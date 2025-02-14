@@ -55,7 +55,7 @@ const TeamAssignments: React.FC<TeamAssignmentsProps> = ({
   members = defaultMembers,
 }) => {
   return (
-    <Card className="p-6 bg-white">
+    <Card className="p-6 bg-card">
       <h2 className="text-xl font-semibold mb-4">Team Assignments</h2>
       <div className="space-y-4">
         {members.map((member) => (

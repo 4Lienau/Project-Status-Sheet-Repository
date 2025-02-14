@@ -41,7 +41,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
     : 0;
 
   return (
-    <Card className="p-6 bg-white w-full">
+    <Card className="p-6 bg-card w-full">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start border-b pb-4">

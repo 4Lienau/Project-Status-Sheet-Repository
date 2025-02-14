@@ -33,7 +33,7 @@ const BudgetTracker = ({ data = defaultBudgetData }: BudgetTrackerProps) => {
   };
 
   return (
-    <Card className="p-6 bg-white w-[400px]">
+    <Card className="p-6 bg-card w-[400px]">
       <div className="space-y-6">
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Budget Tracker</h2>

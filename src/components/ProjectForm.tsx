@@ -79,7 +79,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   };
 
   return (
-    <Card className="p-6 bg-white">
+    <Card className="p-6 bg-card">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-4">
           <div>

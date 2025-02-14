@@ -37,7 +37,7 @@ const Home = () => {
 
   return (
     <Layout>
-      <div className="p-6 bg-muted/10">
+      <div className="p-6 bg-background">
         <div className="max-w-7xl mx-auto space-y-6">
           {mode === "list" && (
             <ProjectList
