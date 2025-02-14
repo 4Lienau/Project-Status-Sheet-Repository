@@ -22,7 +22,13 @@ const Home = () => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <Layout>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-lg text-muted-foreground">Loading...</div>
+        </div>
+      </Layout>
+    );
   }
 
   if (!user) {
@@ -31,7 +37,7 @@ const Home = () => {
 
   return (
     <Layout>
-      <div className="p-6">
+      <div className="p-6 bg-muted/10">
         <div className="max-w-7xl mx-auto space-y-6">
           {mode === "list" && (
             <ProjectList
