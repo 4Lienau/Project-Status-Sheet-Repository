@@ -24,6 +24,7 @@ interface ProjectData {
     milestone: string;
     owner: string;
     completion: number;
+    status: "green" | "yellow" | "red";
   }>;
   risks: string[];
   considerations: string[];
@@ -67,7 +68,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       projectManager: "",
       accomplishments: [""],
       nextPeriodActivities: [""],
-      milestones: [{ date: "", milestone: "", owner: "", completion: 0 }],
+      milestones: [
+        { date: "", milestone: "", owner: "", completion: 0, status: "green" },
+      ],
       risks: [""],
       considerations: [""],
     },
@@ -243,18 +246,37 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     setFormData({ ...formData, milestones: newMilestones });
                   }}
                 />
-                <Input
-                  placeholder="Completion %"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={milestone.completion}
-                  onChange={(e) => {
-                    const newMilestones = [...formData.milestones];
-                    newMilestones[index].completion = Number(e.target.value);
-                    setFormData({ ...formData, milestones: newMilestones });
-                  }}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Completion %"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={milestone.completion}
+                    onChange={(e) => {
+                      const newMilestones = [...formData.milestones];
+                      newMilestones[index].completion = Number(e.target.value);
+                      setFormData({ ...formData, milestones: newMilestones });
+                    }}
+                    className="w-24"
+                  />
+                  <select
+                    value={milestone.status}
+                    onChange={(e) => {
+                      const newMilestones = [...formData.milestones];
+                      newMilestones[index].status = e.target.value as
+                        | "green"
+                        | "yellow"
+                        | "red";
+                      setFormData({ ...formData, milestones: newMilestones });
+                    }}
+                    className="flex h-10 w-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="green">On Track</option>
+                    <option value="yellow">At Risk</option>
+                    <option value="red">Behind</option>
+                  </select>
+                </div>
               </div>
             ))}
             <Button
@@ -265,7 +287,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                   ...formData,
                   milestones: [
                     ...formData.milestones,
-                    { date: "", milestone: "", owner: "", completion: 0 },
+                    {
+                      date: "",
+                      milestone: "",
+                      owner: "",
+                      completion: 0,
+                      status: "green",
+                    },
                   ],
                 })
               }

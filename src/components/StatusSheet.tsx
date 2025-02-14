@@ -22,6 +22,7 @@ interface StatusSheetProps {
       milestone: string;
       owner: string;
       completion: number;
+      status: "green" | "yellow" | "red";
     }>;
     risks: string[];
     considerations: string[];
@@ -122,10 +123,17 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                       <td>{milestone.milestone}</td>
                       <td>{milestone.owner}</td>
                       <td>
-                        <Progress
-                          value={milestone.completion}
-                          className="w-20 h-2"
-                        />
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={milestone.completion}
+                            className={`w-20 h-2 ${milestone.status === "green" ? "bg-green-200" : milestone.status === "yellow" ? "bg-yellow-200" : "bg-red-200"}`}
+                          />
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${milestone.status === "green" ? "bg-green-100 text-green-800" : milestone.status === "yellow" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
+                          >
+                            {milestone.completion}%
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))}
