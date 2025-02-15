@@ -24,6 +24,9 @@ export const projectService = {
     id: string,
     data: {
       title: string;
+      description?: string;
+      status?: "active" | "on_hold" | "completed" | "cancelled";
+      budget_total: number;
       budget_actuals: number;
       budget_forecast: number;
       charter_link: string;
@@ -47,6 +50,9 @@ export const projectService = {
       .from("projects")
       .update({
         title: data.title,
+        description: data.description,
+        status: data.status,
+        budget_total: data.budget_total,
         budget_actuals: data.budget_actuals,
         budget_forecast: data.budget_forecast,
         charter_link: data.charter_link,
@@ -118,6 +124,9 @@ export const projectService = {
 
   async createProject(data: {
     title: string;
+    description?: string;
+    status?: "active" | "on_hold" | "completed" | "cancelled";
+    budget_total: number;
     budget_actuals: number;
     budget_forecast: number;
     charter_link: string;
@@ -140,6 +149,9 @@ export const projectService = {
       .from("projects")
       .insert({
         title: data.title,
+        description: data.description,
+        status: data.status,
+        budget_total: data.budget_total,
         budget_actuals: data.budget_actuals,
         budget_forecast: data.budget_forecast,
         charter_link: data.charter_link,

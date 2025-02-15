@@ -47,7 +47,27 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
             className="p-6 cursor-pointer hover:bg-card/80 transition-colors bg-card border border-border"
             onClick={() => onSelectProject(project)}
           >
-            <h3 className="text-lg font-semibold mb-2">{project.title}</h3>
+            <div className="flex justify-between items-start mb-2">
+              <h3 className="text-lg font-semibold">{project.title}</h3>
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  {
+                    active: "bg-green-100 text-green-800",
+                    on_hold: "bg-yellow-100 text-yellow-800",
+                    completed: "bg-blue-100 text-blue-800",
+                    cancelled: "bg-red-100 text-red-800",
+                  }[project.status || "active"]
+                }`}
+              >
+                {project.status?.replace("_", " ").charAt(0).toUpperCase() +
+                  project.status?.slice(1).replace("_", " ") || "Active"}
+              </span>
+            </div>
+            {project.description && (
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                {project.description}
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               Project Manager: {project.project_manager}
             </p>

@@ -25,7 +25,13 @@ interface ProjectDashboardProps {
   onBack: () => void;
 }
 
-const ProjectDashboard = ({ project, onBack }: ProjectDashboardProps) => {
+type ProjectState = ProjectDashboardProps["project"];
+
+const ProjectDashboard = ({
+  project: initialProject,
+  onBack,
+}: ProjectDashboardProps) => {
+  const [project, setProject] = React.useState<ProjectState>(initialProject);
   const { toast } = useToast();
   const [isEditing, setIsEditing] = React.useState(false);
 
@@ -40,7 +46,12 @@ const ProjectDashboard = ({ project, onBack }: ProjectDashboardProps) => {
 
   const formattedData = {
     title: project?.title || "",
+    description: project?.description || "",
+    status: project?.status || "active",
     budget: {
+      total: project?.budget_total
+        ? formatCurrency(project.budget_total)
+        : "0.00",
       actuals: project?.budget_actuals
         ? formatCurrency(project.budget_actuals)
         : "0.00",
@@ -117,6 +128,11 @@ const ProjectDashboard = ({ project, onBack }: ProjectDashboardProps) => {
                 project.id,
                 {
                   title: data.title,
+                  description: data.description || null,
+                  status: data.status || "active",
+                  budget_total: parseFloat(
+                    data.budget.total.replace(/[^0-9.-]+/g, ""),
+                  ),
                   budget_actuals: parseFloat(
                     data.budget.actuals.replace(/[^0-9.-]+/g, ""),
                   ),
@@ -150,6 +166,7 @@ const ProjectDashboard = ({ project, onBack }: ProjectDashboardProps) => {
               );
 
               if (updatedProject) {
+                setProject(updatedProject);
                 toast({
                   title: "Success",
                   description: "Project updated successfully",

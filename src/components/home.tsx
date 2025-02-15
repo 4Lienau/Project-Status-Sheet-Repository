@@ -51,6 +51,11 @@ const Home = () => {
               onSubmit={async (data) => {
                 const projectData = {
                   title: data.title,
+                  description: data.description,
+                  status: data.status,
+                  budget_total: parseFloat(
+                    data.budget.total.replace(/,/g, "") || "0",
+                  ),
                   budget_actuals: parseFloat(
                     data.budget.actuals.replace(/,/g, "") || "0",
                   ),

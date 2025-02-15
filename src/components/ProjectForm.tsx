@@ -8,6 +8,8 @@ import { projectService } from "@/lib/services/project";
 
 interface ProjectData {
   title: string;
+  description: string;
+  status: "active" | "on_hold" | "completed" | "cancelled";
   budget: {
     total: string;
     actuals: string;
@@ -57,6 +59,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   const [formData, setFormData] = React.useState<ProjectData>(
     initialData || {
       title: "",
+      description: "",
+      status: "active",
       budget: {
         total: formatCurrency("0"),
         actuals: formatCurrency("0"),
@@ -85,15 +89,48 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     <Card className="p-6 bg-card">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-4">
-          <div>
-            <Label>Project Title</Label>
-            <Input
-              value={formData.title}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-              required
-            />
+          <div className="space-y-4">
+            <div>
+              <Label>Project Title</Label>
+              <Input
+                value={formData.title}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div>
+              <Label>Project Description</Label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Enter a brief description of the project"
+              />
+            </div>
+
+            <div>
+              <Label>Project Status</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    status: e.target.value as typeof formData.status,
+                  })
+                }
+              >
+                <option value="active">Active</option>
+                <option value="on_hold">On Hold</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
