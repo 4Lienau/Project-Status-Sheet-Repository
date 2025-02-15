@@ -1,8 +1,4 @@
 import React from "react";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, AlertTriangle } from "lucide-react";
 
 interface StatusSheetProps {
   data?: {
@@ -33,294 +29,210 @@ interface StatusSheetProps {
 }
 
 const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
-  if (!data) {
-    return null;
-  }
+  if (!data) return null;
 
-  const calculateProjectHealth = (milestones: typeof data.milestones) => {
-    if (!milestones?.length) return { percentage: 0, status: "green" as const };
-
-    // Calculate overall completion percentage
-    const percentage = Math.round(
-      milestones.reduce((acc, curr) => acc + curr.completion, 0) /
-        milestones.length,
-    );
-
-    // Check for critical conditions
-    const today = new Date();
-    const hasRedMilestones = milestones.some(
-      (m) => m.status === "red" && m.completion > 0,
-    );
-    const hasOverdueMilestones = milestones.some((m) => {
-      const dueDate = new Date(m.date);
-      return dueDate < today && m.completion < 100;
-    });
-
-    if (hasRedMilestones || hasOverdueMilestones) {
-      return { percentage, status: "red" as const };
-    }
-
-    // Check for warning conditions
-    const hasYellowMilestones = milestones.some(
-      (m) => m.status === "yellow" && m.completion > 0,
-    );
-
-    if (hasYellowMilestones) {
-      return { percentage, status: "yellow" as const };
-    }
-
-    // If we get here, project is on track
-    return { percentage, status: "green" as const };
-  };
-
-  const { percentage: healthPercentage, status: healthStatus } =
-    calculateProjectHealth(data.milestones);
-
-  const budgetTotal = parseFloat(data.budget.total.replace(/,/g, ""));
-  const budgetActuals = parseFloat(data.budget.actuals.replace(/,/g, ""));
-  const budgetForecast = parseFloat(data.budget.forecast.replace(/,/g, ""));
-
-  const isOverBudget =
-    budgetActuals > budgetTotal || budgetForecast > budgetTotal;
-  const overageAmount = Math.max(
-    budgetActuals - budgetTotal,
-    budgetForecast - budgetTotal,
+  // Calculate overall completion percentage
+  const overallCompletion = Math.round(
+    data.milestones.reduce((acc, m) => acc + m.completion, 0) /
+      Math.max(data.milestones.length, 1),
   );
 
+  // Determine overall status color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-blue-500";
+      case "on_hold":
+        return "bg-yellow-500";
+      case "cancelled":
+        return "bg-red-500";
+      default:
+        return "bg-green-500";
+    }
+  };
+
+  // Get milestone status styling
+  const getMilestoneStatus = (completion: number, status: string) => {
+    if (completion === 100) return "bg-blue-100 text-blue-800";
+    switch (status) {
+      case "green":
+        return "bg-green-100 text-green-800";
+      case "yellow":
+        return "bg-yellow-100 text-yellow-800";
+      case "red":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
   return (
-    <Card className="p-6 bg-card w-full">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-start border-b pb-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">{data.title}</h1>
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  {
-                    active: "bg-green-100 text-green-800",
-                    on_hold: "bg-yellow-100 text-yellow-800",
-                    completed: "bg-blue-100 text-blue-800",
-                    cancelled: "bg-red-100 text-red-800",
-                  }[data.status || "active"]
-                }`}
-              >
-                {(data.status || "active")
-                  .replace("_", " ")
-                  .charAt(0)
-                  .toUpperCase() +
-                  (data.status || "active").slice(1).replace("_", " ")}
-              </span>
-            </div>
-            {data.description && (
-              <p className="text-muted-foreground">{data.description}</p>
-            )}
-            <div className="mt-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">Health:</span>
-                <Progress
-                  value={healthPercentage}
-                  className={`w-32 h-2 ${healthStatus === "green" ? "bg-green-200" : healthStatus === "yellow" ? "bg-yellow-200" : "bg-red-200"}`}
-                />
-                <span
-                  className={`text-sm px-2 py-1 rounded ${healthStatus === "green" ? "bg-green-100 text-green-800" : healthStatus === "yellow" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
+    <div className="p-8 bg-white">
+      {/* Title and Description */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold">{data.title}</h1>
+        <h2 className="text-xl">{data.description}</h2>
+      </div>
+
+      <div className="grid grid-cols-[1fr,1fr] gap-12">
+        {/* Left Column */}
+        <div className="flex-1">
+          {/* Overall Status */}
+          <div className="flex gap-8 mb-8">
+            <div>
+              <div className="font-bold mb-1">Overall Status</div>
+              <div className="flex items-start gap-2">
+                <div
+                  className={`w-16 h-16 flex items-center justify-center text-white text-3xl font-bold ${getStatusColor(data.status || "active")}`}
                 >
-                  {healthPercentage}%
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="text-right space-y-2">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <p>
-                  <span className="font-semibold">Total Budget:</span> $
-                  {data.budget.total}
-                </p>
-                {isOverBudget && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-md">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-red-700">
-                        Over Budget
-                      </span>
-                      <span className="text-xs text-red-600">
-                        +${overageAmount.toLocaleString()}
-                      </span>
-                    </div>
+                  {overallCompletion}%
+                </div>
+                <div>
+                  <div>
+                    Health:{" "}
+                    {data.status?.replace("_", " ").charAt(0).toUpperCase() +
+                      data.status?.slice(1).replace("_", " ") || "Active"}
                   </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Forecast</span>
-                  <span className="font-medium">${data.budget.forecast}</span>
-                </div>
-                <div className="relative pt-1">
-                  <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
-                    <div
-                      style={{
-                        width: `${Math.min(
-                          (budgetForecast / budgetTotal) * 100,
-                          100,
-                        )}%`,
-                      }}
-                      className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${budgetForecast > budgetTotal ? "bg-red-500" : "bg-green-500"}`}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Actuals</span>
-                  <span className="font-medium">${data.budget.actuals}</span>
-                </div>
-                <div className="relative pt-1">
-                  <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
-                    <div
-                      style={{
-                        width: `${Math.min(
-                          (budgetActuals / budgetTotal) * 100,
-                          100,
-                        )}%`,
-                      }}
-                      className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${budgetActuals > budgetTotal ? "bg-red-500" : "bg-blue-500"}`}
-                    />
+                  <div className="text-cyan-500">
+                    Next Steps:{" "}
+                    {data.status === "completed"
+                      ? "Project Complete"
+                      : data.status === "on_hold"
+                        ? "Project on Hold"
+                        : data.status === "cancelled"
+                          ? "Project Cancelled"
+                          : "In Progress"}
                   </div>
                 </div>
               </div>
             </div>
-            {data.charterLink && (
-              <Button variant="outline" size="sm" asChild>
-                <a
-                  href={data.charterLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View Charter <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
-            )}
-          </div>
-        </div>
 
-        {/* Project Info */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p>
-              <span className="font-semibold">Sponsors:</span> {data.sponsors}
-            </p>
-            <p>
-              <span className="font-semibold">Business Lead(s):</span>{" "}
-              {data.businessLeads}
-            </p>
-          </div>
-          <div>
-            <p>
-              <span className="font-semibold">Project Manager:</span>{" "}
-              {data.projectManager}
-            </p>
-          </div>
-        </div>
-
-        {/* Milestones */}
-        {data.milestones?.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold mb-2 text-blue-800">
-              High Level Project Schedule
-            </h2>
-            <div className="border rounded-lg p-4">
-              <table className="w-full">
-                <thead>
-                  <tr>
-                    <th className="text-left text-blue-800">Date</th>
-                    <th className="text-left text-blue-800">Milestone</th>
-                    <th className="text-left text-blue-800">Owner</th>
-                    <th className="text-left text-blue-800">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.milestones.map((milestone, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="py-2">{milestone.date}</td>
-                      <td>{milestone.milestone}</td>
-                      <td>{milestone.owner}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={milestone.completion}
-                            className={`w-20 h-2 ${milestone.status === "green" ? "bg-green-200" : milestone.status === "yellow" ? "bg-yellow-200" : "bg-red-200"}`}
-                          />
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${milestone.status === "green" ? "bg-green-100 text-green-800" : milestone.status === "yellow" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
-                          >
-                            {milestone.completion}%
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-2 gap-x-12 gap-y-4 ml-8">
+              <div>
+                <div className="font-bold mb-1">Sponsors</div>
+                <div>{data.sponsors}</div>
+              </div>
+              <div>
+                <div className="font-bold mb-1">PM</div>
+                <div>{data.projectManager}</div>
+              </div>
+              <div>
+                <div className="font-bold mb-1">Business Lead(s)</div>
+                <div>{data.businessLeads}</div>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Accomplishments */}
-        {data.accomplishments?.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold mb-2 text-blue-800">
-              Accomplishments To Date
-            </h2>
+          {/* Budget Section */}
+          <div className="mb-8">
+            <div className="grid grid-cols-3 gap-12">
+              <div>
+                <div className="font-bold mb-1">Budget</div>
+                <div>${data.budget.total}</div>
+              </div>
+              <div>
+                <div className="font-bold mb-1">Actuals</div>
+                <div>${data.budget.actuals}</div>
+              </div>
+              <div>
+                <div className="font-bold mb-1">Forecast</div>
+                <div>${data.budget.forecast}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Charter */}
+          <div className="mb-8">
+            <div className="font-bold mb-1">Charter</div>
+            <a
+              href={data.charterLink}
+              className="text-blue-600 hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {data.charterLink.split("/").pop()}
+            </a>
+          </div>
+
+          {/* Accomplishments */}
+          <div className="mb-6">
+            <h3 className="text-lg font-bold mb-2">Accomplishments To Date</h3>
             <ul className="list-disc pl-5 space-y-1">
-              {data.accomplishments.map((accomplishment, index) => (
-                <li key={index}>{accomplishment}</li>
+              {data.accomplishments.map((item, index) => (
+                <li key={index}>{item}</li>
               ))}
             </ul>
           </div>
-        )}
 
-        {/* Next Steps */}
-        {data.nextPeriodActivities?.length > 0 && (
+          {/* Next Period's Activities */}
           <div>
-            <h2 className="text-lg font-semibold mb-2 text-blue-800">
+            <h3 className="text-lg font-bold mb-2">
               Next Period's Key Activities
-            </h2>
+            </h3>
             <ul className="list-disc pl-5 space-y-1">
-              {data.nextPeriodActivities.map((activity, index) => (
-                <li key={index}>{activity}</li>
+              {data.nextPeriodActivities.map((item, index) => (
+                <li key={index}>{item}</li>
               ))}
             </ul>
           </div>
-        )}
+        </div>
 
-        {/* Risks */}
-        {data.risks?.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold mb-2 text-blue-800">
-              Risks and Issues
-            </h2>
+        {/* Right Column */}
+        <div className="flex-1">
+          <h2 className="text-xl font-bold mb-4">
+            High Level Project Schedule
+          </h2>
+          <table className="w-full">
+            <thead>
+              <tr className="text-left border-b">
+                <th className="py-2 pr-4 w-24 font-bold">Status</th>
+                <th className="py-2 pr-4 w-24 font-bold">Date</th>
+                <th className="py-2 pr-4 font-bold">Milestone</th>
+                <th className="py-2 pr-4 font-bold">Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.milestones.map((milestone, index) => (
+                <tr key={index} className="border-b border-gray-100">
+                  <td className="py-2 pr-4">
+                    <div
+                      className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion, milestone.status)}`}
+                    >
+                      {milestone.completion}%
+                    </div>
+                  </td>
+                  <td className="py-2 pr-4">{milestone.date}</td>
+                  <td className="py-2 pr-4">{milestone.milestone}</td>
+                  <td className="py-2 pr-4">{milestone.owner}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Risks and Issues */}
+          <div className="mb-6">
+            <h3 className="text-lg font-bold mb-2">Risks and Issues</h3>
             <ul className="list-disc pl-5 space-y-1">
               {data.risks.map((risk, index) => (
                 <li key={index}>{risk}</li>
               ))}
             </ul>
           </div>
-        )}
 
-        {/* Considerations */}
-        {data.considerations?.length > 0 && (
+          {/* Considerations */}
           <div>
-            <h2 className="text-lg font-semibold mb-2 text-blue-800">
+            <h3 className="text-lg font-bold mb-2">
               Questions / Items for Consideration
-            </h2>
+            </h3>
             <ul className="list-disc pl-5 space-y-1">
-              {data.considerations.map((consideration, index) => (
-                <li key={index}>{consideration}</li>
+              {data.considerations.map((item, index) => (
+                <li key={index}>{item}</li>
               ))}
             </ul>
           </div>
-        )}
+        </div>
       </div>
-    </Card>
+    </div>
   );
 };
 

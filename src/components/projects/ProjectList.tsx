@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { projectService } from "@/lib/services/project";
 import type { Project } from "@/lib/services/project";
 
@@ -11,6 +12,7 @@ interface ProjectListProps {
 }
 
 const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -79,7 +81,7 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
                   {project.description}
                 </p>
               )}
-              <p className="text-sm text-blue-800">
+              <p className="text-sm text-blue-800 mb-4">
                 Project Manager: {project.project_manager}
               </p>
             </div>

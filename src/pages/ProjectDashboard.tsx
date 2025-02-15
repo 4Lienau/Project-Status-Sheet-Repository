@@ -1,12 +1,13 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Edit, ArrowLeft, Trash2, Save } from "lucide-react";
+import { Edit, ArrowLeft, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { projectService } from "@/lib/services/project";
 import StatusSheet from "@/components/StatusSheet";
 import ProjectForm from "@/components/ProjectForm";
 import type { Project } from "@/lib/services/project";
+import { useNavigate } from "react-router-dom";
 
 interface ProjectDashboardProps {
   project: Project & {
@@ -34,6 +35,7 @@ const ProjectDashboard = ({
   const [project, setProject] = React.useState<ProjectState>(initialProject);
   const { toast } = useToast();
   const [isEditing, setIsEditing] = React.useState(false);
+  const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
     return value
@@ -82,14 +84,23 @@ const ProjectDashboard = ({
         >
           <ArrowLeft className="h-4 w-4" /> Back to Projects
         </Button>
-        <Button
-          onClick={() => setIsEditing(!isEditing)}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <Edit className="h-4 w-4" />
-          {isEditing ? "View Status" : "Edit Project"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => navigate(`/status-sheet/${project.id}`)}
+            variant="outline"
+            className="flex items-center gap-2 text-blue-800 hover:text-blue-900"
+          >
+            Create Status Sheet
+          </Button>
+          <Button
+            onClick={() => setIsEditing(!isEditing)}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            {isEditing ? "View Status" : "Edit Project"}
+          </Button>
+        </div>
       </div>
 
       <div className="flex justify-end space-x-2 mb-4">
