@@ -190,7 +190,7 @@ const ProjectDashboard = ({
               disabled={currentVersionIndex !== -1}
             >
               <Edit className="h-4 w-4" />
-              {isEditing ? "View Status" : "Edit Project"}
+              {isEditing ? "View Status Sheet" : "Edit Project"}
             </Button>
           </div>
         </div>
