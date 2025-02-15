@@ -91,7 +91,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
         <div className="space-y-4">
           <div className="space-y-4">
             <div>
-              <Label>Project Title</Label>
+              <Label className="text-blue-800">Project Title</Label>
               <Input
                 value={formData.title}
                 onChange={(e) =>
@@ -102,7 +102,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </div>
 
             <div>
-              <Label>Project Description</Label>
+              <Label className="text-blue-800">Project Description</Label>
               <textarea
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={formData.description}
@@ -114,7 +114,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </div>
 
             <div>
-              <Label>Project Status</Label>
+              <Label className="text-blue-800">Project Status</Label>
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 value={formData.status}
@@ -135,7 +135,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Total Budget</Label>
+              <Label className="text-blue-800">Total Budget</Label>
               <Input
                 type="text"
                 placeholder="0.00"
@@ -158,7 +158,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               />
             </div>
             <div>
-              <Label>Actuals</Label>
+              <Label className="text-blue-800">Actuals</Label>
               <Input
                 type="text"
                 placeholder="0.00"
@@ -181,7 +181,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               />
             </div>
             <div>
-              <Label>Forecast</Label>
+              <Label className="text-blue-800">Forecast</Label>
               <Input
                 type="text"
                 placeholder="0.00"
@@ -206,7 +206,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
 
           <div>
-            <Label>Project Charter Link</Label>
+            <Label className="text-blue-800">Project Charter Link</Label>
             <Input
               type="url"
               value={formData.charterLink}
@@ -218,7 +218,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
 
           <div>
-            <Label>Sponsors</Label>
+            <Label className="text-blue-800">Sponsors</Label>
             <Input
               value={formData.sponsors}
               onChange={(e) =>
@@ -229,7 +229,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
 
           <div>
-            <Label>Business Lead(s)</Label>
+            <Label className="text-blue-800">Business Lead(s)</Label>
             <Input
               value={formData.businessLeads}
               onChange={(e) =>
@@ -240,7 +240,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
 
           <div>
-            <Label>Project Manager</Label>
+            <Label className="text-blue-800">Project Manager</Label>
             <Input
               value={formData.projectManager}
               onChange={(e) =>
@@ -252,7 +252,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
           {/* Milestones */}
           <div className="space-y-2">
-            <Label>Milestones</Label>
+            <Label className="text-blue-800 text-lg">Milestones</Label>
             {formData.milestones.map((milestone, index) => (
               <div key={index} className="grid grid-cols-4 gap-2">
                 <Input
@@ -341,7 +341,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
           {/* Accomplishments */}
           <div className="space-y-2">
-            <Label>Accomplishments</Label>
+            <Label className="text-blue-800 text-lg">Accomplishments</Label>
             {formData.accomplishments.map((accomplishment, index) => (
               <div key={index} className="flex gap-2">
                 <Input
@@ -373,7 +373,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
           {/* Next Period's Activities */}
           <div className="space-y-2">
-            <Label>Next Period's Activities</Label>
+            <Label className="text-blue-800 text-lg">
+              Next Period's Activities
+            </Label>
             {formData.nextPeriodActivities.map((activity, index) => (
               <div key={index} className="flex gap-2">
                 <Input
@@ -405,7 +407,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
           {/* Risks */}
           <div className="space-y-2">
-            <Label>Risks and Issues</Label>
+            <Label className="text-blue-800 text-lg">Risks and Issues</Label>
             {formData.risks.map((risk, index) => (
               <div key={index} className="flex gap-2">
                 <Input
@@ -434,7 +436,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
           {/* Considerations */}
           <div className="space-y-2">
-            <Label>Questions / Items for Consideration</Label>
+            <Label className="text-blue-800 text-lg">
+              Questions / Items for Consideration
+            </Label>
             {formData.considerations.map((consideration, index) => (
               <div key={index} className="flex gap-2">
                 <Input

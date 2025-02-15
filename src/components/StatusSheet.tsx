@@ -224,17 +224,17 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
         {/* Milestones */}
         {data.milestones?.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-2">
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">
               High Level Project Schedule
             </h2>
             <div className="border rounded-lg p-4">
               <table className="w-full">
                 <thead>
                   <tr>
-                    <th className="text-left">Date</th>
-                    <th className="text-left">Milestone</th>
-                    <th className="text-left">Owner</th>
-                    <th className="text-left">Status</th>
+                    <th className="text-left text-blue-800">Date</th>
+                    <th className="text-left text-blue-800">Milestone</th>
+                    <th className="text-left text-blue-800">Owner</th>
+                    <th className="text-left text-blue-800">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -267,7 +267,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
         {/* Accomplishments */}
         {data.accomplishments?.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-2">
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">
               Accomplishments To Date
             </h2>
             <ul className="list-disc pl-5 space-y-1">
@@ -281,7 +281,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
         {/* Next Steps */}
         {data.nextPeriodActivities?.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-2">
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">
               Next Period's Key Activities
             </h2>
             <ul className="list-disc pl-5 space-y-1">
@@ -295,7 +295,9 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
         {/* Risks */}
         {data.risks?.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-2">Risks and Issues</h2>
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">
+              Risks and Issues
+            </h2>
             <ul className="list-disc pl-5 space-y-1">
               {data.risks.map((risk, index) => (
                 <li key={index}>{risk}</li>
@@ -307,7 +309,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
         {/* Considerations */}
         {data.considerations?.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-2">
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">
               Questions / Items for Consideration
             </h2>
             <ul className="list-disc pl-5 space-y-1">
