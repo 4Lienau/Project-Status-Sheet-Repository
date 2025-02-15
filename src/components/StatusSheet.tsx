@@ -51,6 +51,27 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
     }
   };
 
+  // Get budget status and color
+  const getBudgetStatus = (
+    actuals: number,
+    total: number,
+    forecast: number,
+  ) => {
+    if (actuals > total) return "Over Budget";
+    if (forecast > total) return "At Risk";
+    return "On Budget";
+  };
+
+  const getBudgetStatusColor = (
+    actuals: number,
+    total: number,
+    forecast: number,
+  ) => {
+    if (actuals > total) return "text-red-600 font-medium";
+    if (forecast > total) return "text-yellow-600 font-medium";
+    return "text-green-600 font-medium";
+  };
+
   // Get milestone status styling
   const getMilestoneStatus = (completion: number, status: string) => {
     if (completion === 100) return "bg-blue-100 text-blue-800";
@@ -67,22 +88,22 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
   };
 
   return (
-    <div className="bg-white">
+    <div id="status-sheet" className="bg-white">
       {/* Title and Description */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 mb-2">
-        <h1 className="text-2xl font-bold">{data.title}</h1>
-        <h2 className="text-xl">{data.description}</h2>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-50 p-3 mb-2">
+        <h1 className="text-2xl font-bold text-white">{data.title}</h1>
+        <h2 className="text-xl text-blue-50">{data.description}</h2>
       </div>
 
       <div className="px-3">
         {/* Overall Status Section */}
-        <div className="border-2 border-gray-200 p-3 mb-2">
-          <div className="flex gap-8">
-            <div>
+        <div className="border-2 border-gray-300 p-3 mb-2">
+          <div className="flex items-start">
+            <div className="flex-none">
               <div className="font-bold mb-1">Overall Status</div>
               <div className="flex items-start gap-2">
                 <div
-                  className={`w-16 h-16 flex items-center justify-center text-white text-3xl font-bold ${getStatusColor(data.status || "active")}`}
+                  className={`w-14 h-14 flex items-center justify-center text-white text-2xl font-bold border-2 border-gray-400 ${getStatusColor(data.status || "active")}`}
                 >
                   {overallCompletion}%
                 </div>
@@ -105,58 +126,74 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-12 gap-y-2 ml-8">
-              <div>
+            <div className="flex-1 flex items-start justify-end ml-24 gap-4">
+              <div className="flex-1">
                 <div className="font-bold mb-1">Sponsors</div>
                 <div>{data.sponsors}</div>
               </div>
-              <div>
-                <div className="font-bold mb-1">PM</div>
-                <div>{data.projectManager}</div>
-              </div>
-              <div>
+              <div className="flex-1 border-l-2 border-gray-300 pl-4">
                 <div className="font-bold mb-1">Business Lead(s)</div>
                 <div>{data.businessLeads}</div>
               </div>
+              <div className="flex-1 border-l-2 border-gray-300 pl-4">
+                <div className="font-bold mb-1">PM</div>
+                <div>{data.projectManager}</div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Budget Section */}
-        <div className="border-2 border-gray-200 p-3 mb-2">
-          <div className="grid grid-cols-3 gap-24">
-            <div>
-              <div className="font-bold mb-1">Budget</div>
-              <div>${data.budget.total}</div>
+        {/* Budget and Charter Section */}
+        <div className="border-2 border-gray-300 p-3 mb-2">
+          <div className="flex items-center">
+            <div className="flex-1 grid grid-cols-4 gap-8">
+              <div>
+                <div className="font-bold mb-1">Budget</div>
+                <div>${data.budget.total}</div>
+              </div>
+              <div className="border-l-2 border-gray-300 pl-4">
+                <div className="font-bold mb-1">Actuals</div>
+                <div>${data.budget.actuals}</div>
+              </div>
+              <div className="border-l-2 border-gray-300 pl-4">
+                <div className="font-bold mb-1">Forecast</div>
+                <div>${data.budget.forecast}</div>
+              </div>
+              <div className="border-l-2 border-gray-300 pl-4">
+                <div className="font-bold mb-1">Budget Status</div>
+                <div
+                  className={`${getBudgetStatusColor(
+                    parseFloat(data.budget.actuals.replace(/,/g, "")),
+                    parseFloat(data.budget.total.replace(/,/g, "")),
+                    parseFloat(data.budget.forecast.replace(/,/g, "")),
+                  )}`}
+                >
+                  {getBudgetStatus(
+                    parseFloat(data.budget.actuals.replace(/,/g, "")),
+                    parseFloat(data.budget.total.replace(/,/g, "")),
+                    parseFloat(data.budget.forecast.replace(/,/g, "")),
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="font-bold mb-1">Actuals</div>
-              <div>${data.budget.actuals}</div>
-            </div>
-            <div>
-              <div className="font-bold mb-1">Forecast</div>
-              <div>${data.budget.forecast}</div>
+            <div className="border-l-2 border-gray-300 pl-4 ml-8">
+              <div className="font-bold mb-1">Charter</div>
+              <a
+                href={data.charterLink}
+                className="text-blue-600 hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {data.charterLink.split("/").pop()}
+              </a>
             </div>
           </div>
-        </div>
-
-        {/* Charter Section */}
-        <div className="border-2 border-gray-200 p-3 mb-2">
-          <div className="font-bold mb-1">Charter</div>
-          <a
-            href={data.charterLink}
-            className="text-blue-600 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {data.charterLink.split("/").pop()}
-          </a>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
             {/* Accomplishments Section */}
-            <div className="border-2 border-gray-200 p-3 mb-2">
+            <div className="border-2 border-gray-300 p-3 mb-2">
               <h3 className="text-lg font-bold mb-2">
                 Accomplishments To Date
               </h3>
@@ -168,7 +205,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
             </div>
 
             {/* Next Period's Activities Section */}
-            <div className="border-2 border-gray-200 p-3 mb-2">
+            <div className="border-2 border-gray-300 p-3 mb-2">
               <h3 className="text-lg font-bold mb-2">
                 Next Period's Key Activities
               </h3>
@@ -180,7 +217,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
             </div>
 
             {/* Considerations Section */}
-            <div className="border-2 border-gray-200 p-3">
+            <div className="border-2 border-gray-300 p-3">
               <h3 className="text-lg font-bold mb-2">
                 Questions / Items for Consideration
               </h3>
@@ -194,13 +231,13 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
 
           <div>
             {/* Project Schedule Section */}
-            <div className="border-2 border-gray-200 p-3 mb-2">
+            <div className="border-2 border-gray-300 p-3 mb-2">
               <h2 className="text-lg font-bold mb-2">
                 High Level Project Schedule
               </h2>
               <table className="w-full">
                 <thead>
-                  <tr className="text-left border-b">
+                  <tr className="text-left border-b border-gray-300">
                     <th className="py-1 pr-4 w-24 font-bold">Status</th>
                     <th className="py-1 pr-4 w-32 font-bold whitespace-nowrap">
                       Date
@@ -211,7 +248,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                 </thead>
                 <tbody>
                   {data.milestones.map((milestone, index) => (
-                    <tr key={index} className="border-b border-gray-100">
+                    <tr key={index} className="border-b border-gray-300">
                       <td className="py-1 pr-4">
                         <div
                           className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion, milestone.status)}`}
@@ -231,7 +268,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
             </div>
 
             {/* Risks Section */}
-            <div className="border-2 border-gray-200 p-3">
+            <div className="border-2 border-gray-300 p-3">
               <h3 className="text-lg font-bold mb-2">Risks and Issues</h3>
               <ul className="list-disc pl-5 space-y-1">
                 {data.risks.map((risk, index) => (
@@ -239,6 +276,26 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                 ))}
               </ul>
             </div>
+          </div>
+        </div>
+
+        {/* Status Legend */}
+        <div className="flex items-center justify-start gap-4 mt-4 px-2">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-100"></div>
+            <span className="text-sm">Completed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-100"></div>
+            <span className="text-sm">On Schedule</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-100"></div>
+            <span className="text-sm">Risk</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-100"></div>
+            <span className="text-sm">High Risk</span>
           </div>
         </div>
       </div>

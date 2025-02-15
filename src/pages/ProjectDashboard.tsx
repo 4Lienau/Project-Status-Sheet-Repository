@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Edit, ArrowLeft, Trash2 } from "lucide-react";
+import html2canvas from "html2canvas";
+import { Edit, ArrowLeft, Trash2, Download } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { projectService } from "@/lib/services/project";
@@ -86,11 +87,23 @@ const ProjectDashboard = ({
         </Button>
         <div className="flex gap-2">
           <Button
-            onClick={() => navigate(`/status-sheet/${project.id}`)}
+            onClick={async () => {
+              const element = document.getElementById("status-sheet");
+              if (!element) return;
+
+              const canvas = await html2canvas(element);
+
+              // Create download link
+              const link = document.createElement("a");
+              link.download = `${project.title}_${new Date().toISOString().split("T")[0]}.jpg`;
+              link.href = canvas.toDataURL("image/jpeg", 0.9);
+              link.click();
+            }}
             variant="outline"
             className="flex items-center gap-2 text-blue-800 hover:text-blue-900"
           >
-            Create Status Sheet
+            <Download className="h-4 w-4 mr-2" />
+            Export as JPG
           </Button>
           <Button
             onClick={() => setIsEditing(!isEditing)}

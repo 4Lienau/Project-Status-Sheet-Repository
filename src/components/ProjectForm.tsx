@@ -88,6 +88,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   return (
     <Card className="p-6 bg-card">
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex justify-end">
+          <Button type="submit" className="flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            {initialData ? "Save Changes" : "Create Project"}
+          </Button>
+        </div>
         <div className="space-y-4">
           <div className="space-y-4">
             <div>
@@ -469,13 +475,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
         </div>
 
-        <Button
-          type="submit"
-          className="w-full flex items-center justify-center gap-2"
-        >
-          <Save className="h-4 w-4" />
-          {initialData ? "Save Changes" : "Create Project"}
-        </Button>
+        <div className="flex justify-end">
+          <Button type="submit" className="flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            {initialData ? "Save Changes" : "Create Project"}
+          </Button>
+        </div>
       </form>
     </Card>
   );

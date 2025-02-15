@@ -23,7 +23,7 @@ const Navbar = () => {
         <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="text-xl font-bold bg-gradient-to-r from-purple-500 to-teal-500 text-transparent bg-clip-text">
-              Status Sheet
+              ReWa Project Status Sheets Repository
             </span>
           </div>
 
