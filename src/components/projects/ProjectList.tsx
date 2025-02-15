@@ -46,8 +46,8 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
         {projects.map((project) => (
           <Card
             key={project.id}
-            className="group p-6 cursor-pointer bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
             onClick={() => onSelectProject(project)}
+            className="group p-6 cursor-pointer bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
             style={{
               background:
                 "linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card)))",

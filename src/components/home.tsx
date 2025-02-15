@@ -86,6 +86,7 @@ const Home = () => {
             <ProjectDashboard
               project={projectData}
               onBack={() => setMode("list")}
+              initialEditMode={true}
             />
           )}
         </div>

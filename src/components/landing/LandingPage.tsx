@@ -10,7 +10,7 @@ const LandingPage = () => {
         <Card className="w-full max-w-md p-8 space-y-8">
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold tracking-tight">
-              ReWa Project Status Sheets Repository
+              ReWa Project Status Sheet Repository
             </h1>
             <p className="text-lg text-muted-foreground">
               Welcome! Sign in to manage your project status sheets and track

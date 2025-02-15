@@ -1,10 +1,21 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import html2canvas from "html2canvas";
-import { Edit, ArrowLeft, Trash2, Download } from "lucide-react";
+import {
+  Edit,
+  ArrowLeft,
+  Trash2,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { projectService } from "@/lib/services/project";
+import {
+  projectVersionsService,
+  type ProjectVersion,
+} from "@/lib/services/projectVersions";
 import StatusSheet from "@/components/StatusSheet";
 import ProjectForm from "@/components/ProjectForm";
 import type { Project } from "@/lib/services/project";
@@ -32,11 +43,28 @@ type ProjectState = ProjectDashboardProps["project"];
 const ProjectDashboard = ({
   project: initialProject,
   onBack,
-}: ProjectDashboardProps) => {
-  const [project, setProject] = React.useState<ProjectState>(initialProject);
+  initialEditMode = false,
+}: ProjectDashboardProps & { initialEditMode?: boolean }) => {
+  const [currentProject, setCurrentProject] =
+    React.useState<ProjectState>(initialProject);
+  const [latestProject, setLatestProject] =
+    React.useState<ProjectState>(initialProject);
   const { toast } = useToast();
-  const [isEditing, setIsEditing] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(initialEditMode);
+  const [versions, setVersions] = React.useState<ProjectVersion[]>([]);
+  const [currentVersionIndex, setCurrentVersionIndex] = React.useState(-1);
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const loadVersions = async () => {
+      const versions = await projectVersionsService.getVersions(
+        initialProject.id,
+      );
+      setVersions(versions);
+      setCurrentVersionIndex(-1); // -1 means current version
+    };
+    loadVersions();
+  }, [initialProject.id]);
 
   const formatCurrency = (value: number) => {
     return value
@@ -48,30 +76,32 @@ const ProjectDashboard = ({
   };
 
   const formattedData = {
-    title: project?.title || "",
-    description: project?.description || "",
-    status: project?.status || "active",
+    title: currentProject?.title || "",
+    description: currentProject?.description || "",
+    status: currentProject?.status || "active",
     budget: {
-      total: project?.budget_total
-        ? formatCurrency(project.budget_total)
+      total: currentProject?.budget_total
+        ? formatCurrency(currentProject.budget_total)
         : "0.00",
-      actuals: project?.budget_actuals
-        ? formatCurrency(project.budget_actuals)
+      actuals: currentProject?.budget_actuals
+        ? formatCurrency(currentProject.budget_actuals)
         : "0.00",
-      forecast: project?.budget_forecast
-        ? formatCurrency(project.budget_forecast)
+      forecast: currentProject?.budget_forecast
+        ? formatCurrency(currentProject.budget_forecast)
         : "0.00",
     },
-    charterLink: project?.charter_link || "",
-    sponsors: project?.sponsors || "",
-    businessLeads: project?.business_leads || "",
-    projectManager: project?.project_manager || "",
-    milestones: project?.milestones || [],
-    accomplishments: project?.accomplishments?.map((a) => a.description) || [],
+    charterLink: currentProject?.charter_link || "",
+    sponsors: currentProject?.sponsors || "",
+    businessLeads: currentProject?.business_leads || "",
+    projectManager: currentProject?.project_manager || "",
+    milestones: currentProject?.milestones || [],
+    accomplishments:
+      currentProject?.accomplishments?.map((a) => a.description) || [],
     nextPeriodActivities:
-      project?.next_period_activities?.map((a) => a.description) || [],
-    risks: project?.risks?.map((r) => r.description) || [],
-    considerations: project?.considerations?.map((c) => c.description) || [],
+      currentProject?.next_period_activities?.map((a) => a.description) || [],
+    risks: currentProject?.risks?.map((r) => r.description) || [],
+    considerations:
+      currentProject?.considerations?.map((c) => c.description) || [],
   };
 
   return (
@@ -95,7 +125,7 @@ const ProjectDashboard = ({
 
               // Create download link
               const link = document.createElement("a");
-              link.download = `${project.title}_${new Date().toISOString().split("T")[0]}.jpg`;
+              link.download = `${currentProject.title}_${new Date().toISOString().split("T")[0]}.jpg`;
               link.href = canvas.toDataURL("image/jpeg", 0.9);
               link.click();
             }}
@@ -105,14 +135,64 @@ const ProjectDashboard = ({
             <Download className="h-4 w-4 mr-2" />
             Export as JPG
           </Button>
-          <Button
-            onClick={() => setIsEditing(!isEditing)}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Edit className="h-4 w-4" />
-            {isEditing ? "View Status" : "Edit Project"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {!isEditing && versions.length > 0 && (
+              <div className="flex items-center gap-1 mr-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={currentVersionIndex === versions.length - 1}
+                  onClick={() => {
+                    if (currentVersionIndex < versions.length - 1) {
+                      setCurrentVersionIndex(currentVersionIndex + 1);
+                      setCurrentProject(versions[currentVersionIndex + 1].data);
+                    }
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                  {currentVersionIndex === -1
+                    ? "Current"
+                    : `Version ${versions.length - currentVersionIndex}/${versions.length}`}
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={currentVersionIndex === -1}
+                  onClick={() => {
+                    if (currentVersionIndex > -1) {
+                      setCurrentVersionIndex(currentVersionIndex - 1);
+                      if (currentVersionIndex === 0) {
+                        setCurrentProject(latestProject);
+                      } else {
+                        setCurrentProject(
+                          versions[currentVersionIndex - 1].data,
+                        );
+                      }
+                    }
+                  }}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            <Button
+              onClick={() => {
+                setIsEditing(!isEditing);
+                if (isEditing) {
+                  setCurrentVersionIndex(-1);
+                  setCurrentProject(latestProject);
+                }
+              }}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={currentVersionIndex !== -1}
+            >
+              <Edit className="h-4 w-4" />
+              {isEditing ? "View Status" : "Edit Project"}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -121,7 +201,7 @@ const ProjectDashboard = ({
           <Button
             onClick={async () => {
               try {
-                await projectService.deleteProject(project.id);
+                await projectService.deleteProject(currentProject.id);
                 toast({
                   title: "Project deleted",
                   description: "The project has been successfully deleted.",
@@ -149,7 +229,7 @@ const ProjectDashboard = ({
           onSubmit={async (data) => {
             try {
               const updatedProject = await projectService.updateProject(
-                project.id,
+                currentProject.id,
                 {
                   title: data.title,
                   description: data.description || null,
@@ -190,12 +270,27 @@ const ProjectDashboard = ({
               );
 
               if (updatedProject) {
-                setProject(updatedProject);
+                // Create a new version
+                await projectVersionsService.createVersion(
+                  currentProject.id,
+                  updatedProject,
+                );
+
+                setCurrentProject(updatedProject);
+                setLatestProject(updatedProject);
                 toast({
-                  title: "Success",
-                  description: "Project updated successfully",
+                  title: "Changes saved",
+                  description: "Your changes have been saved successfully",
+                  className: "bg-green-50 border-green-200",
                 });
-                setIsEditing(false);
+                // Stay in edit mode
+
+                // Refresh versions
+                const versions = await projectVersionsService.getVersions(
+                  currentProject.id,
+                );
+                setVersions(versions);
+                setCurrentVersionIndex(-1);
               }
             } catch (error) {
               toast({
