@@ -35,6 +35,7 @@ export const projectService = {
         milestone: string;
         owner: string;
         completion: number;
+        status: "green" | "yellow" | "red";
       }>;
       accomplishments: string[];
       next_period_activities: string[];
@@ -77,6 +78,7 @@ export const projectService = {
           milestone: m.milestone,
           owner: m.owner,
           completion: m.completion,
+          status: m.status,
         })),
       ),
       supabase.from("accomplishments").insert(
@@ -113,6 +115,7 @@ export const projectService = {
 
     return !error;
   },
+
   async createProject(data: {
     title: string;
     budget_actuals: number;
@@ -126,6 +129,7 @@ export const projectService = {
       milestone: string;
       owner: string;
       completion: number;
+      status: "green" | "yellow" | "red";
     }>;
     accomplishments: string[];
     next_period_activities: string[];
@@ -156,6 +160,7 @@ export const projectService = {
         milestone: m.milestone,
         owner: m.owner,
         completion: m.completion,
+        status: m.status,
       })),
     );
 

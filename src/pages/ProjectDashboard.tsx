@@ -15,6 +15,7 @@ interface ProjectDashboardProps {
       milestone: string;
       owner: string;
       completion: number;
+      status: "green" | "yellow" | "red";
     }>;
     accomplishments?: Array<{ description: string }>;
     next_period_activities?: Array<{ description: string }>;
@@ -126,9 +127,15 @@ const ProjectDashboard = ({ project, onBack }: ProjectDashboardProps) => {
                   sponsors: data.sponsors,
                   business_leads: data.businessLeads,
                   project_manager: data.projectManager,
-                  milestones: data.milestones.filter(
-                    (m) => m.milestone.trim() !== "",
-                  ),
+                  milestones: data.milestones
+                    .filter((m) => m.milestone.trim() !== "")
+                    .map((m) => ({
+                      date: m.date,
+                      milestone: m.milestone,
+                      owner: m.owner,
+                      completion: m.completion,
+                      status: m.status,
+                    })),
                   accomplishments: data.accomplishments.filter(
                     (a) => a.trim() !== "",
                   ),

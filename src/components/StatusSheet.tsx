@@ -34,12 +34,44 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
     return null;
   }
 
-  const healthPercentage = data.milestones?.length
-    ? Math.round(
-        data.milestones.reduce((acc, curr) => acc + curr.completion, 0) /
-          data.milestones.length,
-      )
-    : 0;
+  const calculateProjectHealth = (milestones: typeof data.milestones) => {
+    if (!milestones?.length) return { percentage: 0, status: "green" as const };
+
+    // Calculate overall completion percentage
+    const percentage = Math.round(
+      milestones.reduce((acc, curr) => acc + curr.completion, 0) /
+        milestones.length,
+    );
+
+    // Check for critical conditions
+    const today = new Date();
+    const hasRedMilestones = milestones.some(
+      (m) => m.status === "red" && m.completion > 0,
+    );
+    const hasOverdueMilestones = milestones.some((m) => {
+      const dueDate = new Date(m.date);
+      return dueDate < today && m.completion < 100;
+    });
+
+    if (hasRedMilestones || hasOverdueMilestones) {
+      return { percentage, status: "red" as const };
+    }
+
+    // Check for warning conditions
+    const hasYellowMilestones = milestones.some(
+      (m) => m.status === "yellow" && m.completion > 0,
+    );
+
+    if (hasYellowMilestones) {
+      return { percentage, status: "yellow" as const };
+    }
+
+    // If we get here, project is on track
+    return { percentage, status: "green" as const };
+  };
+
+  const { percentage: healthPercentage, status: healthStatus } =
+    calculateProjectHealth(data.milestones);
 
   return (
     <Card className="p-6 bg-card w-full">
@@ -51,8 +83,15 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
             <div className="mt-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">Health:</span>
-                <Progress value={healthPercentage} className="w-32 h-2" />
-                <span className="text-sm">{healthPercentage}%</span>
+                <Progress
+                  value={healthPercentage}
+                  className={`w-32 h-2 ${healthStatus === "green" ? "bg-green-200" : healthStatus === "yellow" ? "bg-yellow-200" : "bg-red-200"}`}
+                />
+                <span
+                  className={`text-sm px-2 py-1 rounded ${healthStatus === "green" ? "bg-green-100 text-green-800" : healthStatus === "yellow" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
+                >
+                  {healthPercentage}%
+                </span>
               </div>
             </div>
           </div>
