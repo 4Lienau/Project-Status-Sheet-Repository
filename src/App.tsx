@@ -4,6 +4,7 @@ import Home from "./components/home";
 import StatusSheetView from "./pages/StatusSheetView";
 import ProfilePage from "./pages/ProfilePage";
 import AuthCallback from "./pages/AuthCallback";
+import LoginPage from "./pages/LoginPage";
 import routes from "tempo-routes";
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
       <>
         <Routes>
           <Route path="/*" element={<Home />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/status-sheet/:id" element={<StatusSheetView />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />

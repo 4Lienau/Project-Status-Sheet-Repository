@@ -1,7 +1,9 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import Layout from "./layout/Layout";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import LandingPage from "./landing/LandingPage";
+import WelcomePage from "./welcome/WelcomePage";
 import ProjectList from "./projects/ProjectList";
 import ProjectForm from "./ProjectForm";
 import StatusSheet from "./StatusSheet";
@@ -12,10 +14,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 
 const Home = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"list" | "form" | "preview">("list");
   const [projectData, setProjectData] = useState(null);
+  const [hasSeenWelcome, setHasSeenWelcome] = React.useState(() => {
+    return localStorage.getItem("hasSeenWelcome") === "true";
+  });
 
   const handleSelectProject = async (project: Project) => {
     const fullProject = await projectService.getProject(project.id);
@@ -36,7 +42,15 @@ const Home = () => {
   }
 
   if (!user) {
-    return <LandingPage />;
+    return (
+      <Layout>
+        <WelcomePage
+          onGetStarted={() => {
+            navigate("/login");
+          }}
+        />
+      </Layout>
+    );
   }
 
   return (
