@@ -1,24 +1,55 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, FileSpreadsheet, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { useNavigate } from "react-router-dom";
 import { projectService } from "@/lib/services/project";
-import type { Project } from "@/lib/services/project";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
+import type { ProjectWithRelations } from "@/lib/services/project";
+import { exportProjectsToExcel } from "@/lib/services/excelExport";
 
 interface ProjectListProps {
-  onSelectProject: (project: Project) => void;
+  onSelectProject: (project: ProjectWithRelations) => void;
   onCreateNew: () => void;
 }
 
 const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<{ full_name: string | null }>({
+    full_name: null,
+  });
+
+  useEffect(() => {
+    if (user?.id) {
+      supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setProfile(data);
+          }
+        });
+    }
+  }, [user?.id]);
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadProjects = async () => {
-      const projects = await projectService.getAllProjects();
+      const projectPromises = (await projectService.getAllProjects()).map((p) =>
+        projectService.getProject(p.id),
+      );
+      const projects = (await Promise.all(projectPromises)).filter(
+        (p): p is ProjectWithRelations => p !== null,
+      );
       setProjects(projects);
       setLoading(false);
     };
@@ -33,7 +64,45 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-semibold">Your Projects</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold">Your Projects</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                setExporting(true);
+                await new Promise((resolve) => setTimeout(resolve, 100)); // Let UI update
+                const username =
+                  profile.full_name || user?.email?.split("@")[0] || "user";
+                await exportProjectsToExcel(projects, username);
+                toast({
+                  title: "Export Successful",
+                  description:
+                    "The Excel file has been generated and downloaded.",
+                  className: "bg-green-50 border-green-200",
+                });
+              } catch (error) {
+                toast({
+                  title: "Export Failed",
+                  description: "There was an error generating the Excel file.",
+                  variant: "destructive",
+                });
+              } finally {
+                setExporting(false);
+              }
+            }}
+            disabled={projects.length === 0 || exporting}
+            className="flex items-center gap-2"
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-4 w-4" />
+            )}
+            {exporting ? "Generating..." : "Export to Excel"}
+          </Button>
+        </div>
         <Button
           onClick={onCreateNew}
           className="bg-purple-500 hover:bg-purple-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
@@ -94,6 +163,7 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
           </div>
         )}
       </div>
+      <Toaster />
     </div>
   );
 };
