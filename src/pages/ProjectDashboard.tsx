@@ -8,6 +8,7 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  Copy,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -20,6 +21,24 @@ import StatusSheet from "@/components/StatusSheet";
 import ProjectForm from "@/components/ProjectForm";
 import type { Project } from "@/lib/services/project";
 import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 
 interface ProjectDashboardProps {
   project: Project & {
@@ -53,6 +72,10 @@ const ProjectDashboard = ({
   const [isEditing, setIsEditing] = React.useState(initialEditMode);
   const [versions, setVersions] = React.useState<ProjectVersion[]>([]);
   const [currentVersionIndex, setCurrentVersionIndex] = React.useState(-1);
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] =
+    React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [newProjectTitle, setNewProjectTitle] = React.useState("");
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -62,6 +85,8 @@ const ProjectDashboard = ({
       );
       setVersions(versions);
       setCurrentVersionIndex(-1); // -1 means current version
+      setCurrentProject(initialProject);
+      setLatestProject(initialProject);
     };
     loadVersions();
   }, [initialProject.id]);
@@ -115,7 +140,64 @@ const ProjectDashboard = ({
         >
           <ArrowLeft className="h-4 w-4" /> Back to Projects
         </Button>
-        <div className="flex gap-2">
+
+        {/* Version controls */}
+        {versions.length > 0 && !isEditing && (
+          <div className="flex items-center gap-2 bg-muted/30 px-3 py-1.5 rounded-md">
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={currentVersionIndex === versions.length - 1}
+              onClick={() => {
+                if (currentVersionIndex < versions.length - 1) {
+                  const nextIndex = currentVersionIndex + 1;
+                  setCurrentVersionIndex(nextIndex);
+                  setCurrentProject(versions[nextIndex].data);
+                }
+              }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-sm text-muted-foreground space-y-1 min-w-[120px] text-center">
+              <div>
+                {currentVersionIndex === -1
+                  ? "Current Version"
+                  : `Version ${versions.length - currentVersionIndex}/${versions.length}`}
+              </div>
+              {currentVersionIndex !== -1 && versions[currentVersionIndex] && (
+                <div className="text-xs opacity-70">
+                  {new Date(
+                    versions[currentVersionIndex].created_at,
+                  ).toLocaleDateString()}{" "}
+                  {new Date(
+                    versions[currentVersionIndex].created_at,
+                  ).toLocaleTimeString()}
+                </div>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={currentVersionIndex === -1}
+              onClick={() => {
+                if (currentVersionIndex > -1) {
+                  const prevIndex = currentVersionIndex - 1;
+                  setCurrentVersionIndex(prevIndex);
+                  if (prevIndex === -1) {
+                    setCurrentProject(latestProject);
+                  } else {
+                    setCurrentProject(versions[prevIndex].data);
+                  }
+                }
+              }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-4">
           <Button
             onClick={async () => {
               const element = document.getElementById("status-sheet");
@@ -132,95 +214,48 @@ const ProjectDashboard = ({
             variant="outline"
             className="flex items-center gap-2 text-blue-800 hover:text-blue-900"
           >
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="h-4 w-4" />
             Export as JPG
           </Button>
-          <div className="flex items-center gap-2">
-            {!isEditing && versions.length > 0 && (
-              <div className="flex items-center gap-1 mr-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={currentVersionIndex === versions.length - 1}
-                  onClick={() => {
-                    if (currentVersionIndex < versions.length - 1) {
-                      setCurrentVersionIndex(currentVersionIndex + 1);
-                      setCurrentProject(versions[currentVersionIndex + 1].data);
-                    }
-                  }}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                  {currentVersionIndex === -1
-                    ? "Current"
-                    : `Version ${versions.length - currentVersionIndex}/${versions.length}`}
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={currentVersionIndex === -1}
-                  onClick={() => {
-                    if (currentVersionIndex > -1) {
-                      setCurrentVersionIndex(currentVersionIndex - 1);
-                      if (currentVersionIndex === 0) {
-                        setCurrentProject(latestProject);
-                      } else {
-                        setCurrentProject(
-                          versions[currentVersionIndex - 1].data,
-                        );
-                      }
-                    }
-                  }}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            <Button
-              onClick={() => {
-                setIsEditing(!isEditing);
-                if (isEditing) {
-                  setCurrentVersionIndex(-1);
-                  setCurrentProject(latestProject);
-                }
-              }}
-              variant="outline"
-              className="flex items-center gap-2"
-              disabled={currentVersionIndex !== -1}
-            >
-              <Edit className="h-4 w-4" />
-              {isEditing ? "View Status Sheet" : "Edit Project"}
-            </Button>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex justify-end space-x-2 mb-4">
-        {isEditing ? (
           <Button
-            onClick={async () => {
-              try {
-                await projectService.deleteProject(currentProject.id);
-                toast({
-                  title: "Project deleted",
-                  description: "The project has been successfully deleted.",
-                });
-                onBack();
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: "Failed to delete project",
-                  variant: "destructive",
-                });
+            onClick={() => {
+              if (isEditing) {
+                setIsEditing(false);
+              } else {
+                setIsEditing(true);
               }
             }}
-            variant="destructive"
+            variant="outline"
             className="flex items-center gap-2"
+            disabled={currentVersionIndex !== -1}
           >
-            <Trash2 className="h-4 w-4" /> Delete Project
+            <Edit className="h-4 w-4" />
+            {isEditing ? "View Status Sheet" : "Edit Project"}
           </Button>
-        ) : null}
+
+          {isEditing && (
+            <>
+              <Button
+                onClick={() => {
+                  setNewProjectTitle(`${currentProject.title} (Copy)`);
+                  setIsDuplicateDialogOpen(true);
+                }}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Copy className="h-4 w-4" /> Duplicate Project
+              </Button>
+              <Button
+                onClick={() => setIsDeleteDialogOpen(true)}
+                variant="destructive"
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" /> Delete Project
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {isEditing ? (
@@ -304,6 +339,138 @@ const ProjectDashboard = ({
       ) : (
         <StatusSheet data={formattedData} />
       )}
+
+      <Dialog
+        open={isDuplicateDialogOpen}
+        onOpenChange={setIsDuplicateDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate Project</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={newProjectTitle}
+              onChange={(e) => setNewProjectTitle(e.target.value)}
+              placeholder="Enter new project title"
+              className="w-full"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDuplicateDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!newProjectTitle.trim()) {
+                  toast({
+                    title: "Error",
+                    description: "Please enter a project title",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
+                try {
+                  const newProject = await projectService.createProject({
+                    title: newProjectTitle,
+                    description: currentProject.description,
+                    status: currentProject.status,
+                    budget_total: currentProject.budget_total,
+                    budget_actuals: currentProject.budget_actuals,
+                    budget_forecast: currentProject.budget_forecast,
+                    charter_link: currentProject.charter_link,
+                    sponsors: currentProject.sponsors,
+                    business_leads: currentProject.business_leads,
+                    project_manager: currentProject.project_manager,
+                    milestones:
+                      currentProject.milestones?.map((m) => ({
+                        date: m.date,
+                        milestone: m.milestone,
+                        owner: m.owner,
+                        completion: m.completion,
+                        status: m.status,
+                      })) || [],
+                    accomplishments:
+                      currentProject.accomplishments?.map(
+                        (a) => a.description,
+                      ) || [],
+                    next_period_activities:
+                      currentProject.next_period_activities?.map(
+                        (a) => a.description,
+                      ) || [],
+                    risks:
+                      currentProject.risks?.map((r) => r.description) || [],
+                    considerations:
+                      currentProject.considerations?.map(
+                        (c) => c.description,
+                      ) || [],
+                  });
+
+                  if (newProject) {
+                    toast({
+                      title: "Project duplicated",
+                      description:
+                        "The project has been successfully duplicated.",
+                    });
+                    setIsDuplicateDialogOpen(false);
+                    navigate(`/status-sheet/${newProject.id}`);
+                  }
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to duplicate project",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Duplicate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              project and all its data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                try {
+                  await projectService.deleteProject(currentProject.id);
+                  toast({
+                    title: "Project deleted",
+                    description: "The project has been successfully deleted.",
+                  });
+                  onBack();
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to delete project",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Toaster />
     </div>
   );

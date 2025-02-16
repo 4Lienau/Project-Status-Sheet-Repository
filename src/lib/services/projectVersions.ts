@@ -45,7 +45,7 @@ export const projectVersionsService = {
       .select("id")
       .eq("project_id", projectId)
       .order("version_number", { ascending: false })
-      .range(5, 999999);
+      .range(8, 999999);
 
     if (oldVersions && oldVersions.length > 0) {
       await supabase
@@ -66,7 +66,7 @@ export const projectVersionsService = {
       .select("*")
       .eq("project_id", projectId)
       .order("version_number", { ascending: false })
-      .limit(5);
+      .limit(8);
 
     return data || [];
   },

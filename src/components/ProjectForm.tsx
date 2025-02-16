@@ -4,21 +4,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Save } from "lucide-react";
-import { projectService } from "@/lib/services/project";
 
 interface ProjectData {
   title: string;
-  description: string;
-  status: "active" | "on_hold" | "completed" | "cancelled";
+  description?: string;
+  status?: "active" | "on_hold" | "completed" | "cancelled";
   budget: {
     total: string;
     actuals: string;
     forecast: string;
   };
-  charterLink: string;
-  sponsors: string;
-  businessLeads: string;
-  projectManager: string;
+  charterLink?: string;
+  sponsors?: string;
+  businessLeads?: string;
+  projectManager?: string;
   accomplishments: string[];
   nextPeriodActivities: string[];
   milestones: Array<{
@@ -80,30 +79,52 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     },
   );
 
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (isSubmitting) return;
+
+    if (!formData.title.trim()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Card className="p-6 bg-card">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="flex justify-end">
-          <Button type="submit" className="flex items-center gap-2">
+          <Button
+            type="submit"
+            className="flex items-center gap-2"
+            disabled={isSubmitting}
+          >
             <Save className="h-4 w-4" />
-            {initialData ? "Save Changes" : "Create Project"}
+            {isSubmitting
+              ? "Saving..."
+              : initialData
+                ? "Save Changes"
+                : "Create Project"}
           </Button>
         </div>
         <div className="space-y-4">
           <div className="space-y-4">
             <div>
-              <Label className="text-blue-800">Project Title</Label>
+              <Label className="text-blue-800">Project Title *</Label>
               <Input
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
                 }
                 required
+                placeholder="Enter project title"
               />
             </div>
 
@@ -230,7 +251,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               onChange={(e) =>
                 setFormData({ ...formData, sponsors: e.target.value })
               }
-              required
+              placeholder="Enter sponsors"
             />
           </div>
 
@@ -241,7 +262,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               onChange={(e) =>
                 setFormData({ ...formData, businessLeads: e.target.value })
               }
-              required
+              placeholder="Enter business leads"
             />
           </div>
 
@@ -252,7 +273,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               onChange={(e) =>
                 setFormData({ ...formData, projectManager: e.target.value })
               }
-              required
+              placeholder="Enter project manager"
             />
           </div>
 
@@ -360,6 +381,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                       accomplishments: newAccomplishments,
                     });
                   }}
+                  placeholder="Enter accomplishment"
                 />
               </div>
             ))}
@@ -394,6 +416,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                       nextPeriodActivities: newActivities,
                     });
                   }}
+                  placeholder="Enter activity"
                 />
               </div>
             ))}
@@ -423,6 +446,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     newRisks[index] = e.target.value;
                     setFormData({ ...formData, risks: newRisks });
                   }}
+                  placeholder="Enter risk or issue"
                 />
               </div>
             ))}
@@ -457,6 +481,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                       considerations: newConsiderations,
                     });
                   }}
+                  placeholder="Enter consideration"
                 />
               </div>
             ))}
@@ -476,9 +501,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
         </div>
 
         <div className="flex justify-end">
-          <Button type="submit" className="flex items-center gap-2">
+          <Button
+            type="submit"
+            className="flex items-center gap-2"
+            disabled={isSubmitting}
+          >
             <Save className="h-4 w-4" />
-            {initialData ? "Save Changes" : "Create Project"}
+            {isSubmitting
+              ? "Saving..."
+              : initialData
+                ? "Save Changes"
+                : "Create Project"}
           </Button>
         </div>
       </form>

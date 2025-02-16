@@ -55,6 +55,30 @@ const AuthForm = () => {
     setLoading(false);
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) throw error;
+      if (!data.url) throw new Error("No URL returned from Supabase");
+    } catch (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  };
+
   return (
     <Tabs defaultValue="signin" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
@@ -67,21 +91,7 @@ const AuthForm = () => {
           type="button"
           className="w-full flex items-center justify-center gap-2"
           variant="outline"
-          onClick={() => {
-            setLoading(true);
-            setError(null);
-            supabase.auth
-              .signInWithOAuth({
-                provider: "google",
-                options: {
-                  redirectTo: `${window.location.origin}/auth/callback`,
-                },
-              })
-              .catch((error) => {
-                setError(error.message);
-                setLoading(false);
-              });
-          }}
+          onClick={handleGoogleSignIn}
           disabled={loading}
         >
           <Chrome className="h-4 w-4" />
@@ -140,21 +150,7 @@ const AuthForm = () => {
           type="button"
           className="w-full flex items-center justify-center gap-2"
           variant="outline"
-          onClick={() => {
-            setLoading(true);
-            setError(null);
-            supabase.auth
-              .signInWithOAuth({
-                provider: "google",
-                options: {
-                  redirectTo: `${window.location.origin}/auth/callback`,
-                },
-              })
-              .catch((error) => {
-                setError(error.message);
-                setLoading(false);
-              });
-          }}
+          onClick={handleGoogleSignIn}
           disabled={loading}
         >
           <Chrome className="h-4 w-4" />
