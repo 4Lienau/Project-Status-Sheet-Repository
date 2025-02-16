@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, FileSpreadsheet, Loader2 } from "lucide-react";
+import ProjectListSkeleton from "./ProjectListSkeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { useNavigate } from "react-router-dom";
@@ -58,7 +59,23 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
   }, []);
 
   if (loading) {
-    return <div>Loading projects...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-semibold">Your Projects</h2>
+            <Button variant="outline" size="sm" disabled>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Export to Excel
+            </Button>
+          </div>
+          <Button disabled>
+            <Plus className="w-4 h-4 mr-2" /> New Project
+          </Button>
+        </div>
+        <ProjectListSkeleton />
+      </div>
+    );
   }
 
   return (
