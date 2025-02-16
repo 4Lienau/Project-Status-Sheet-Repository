@@ -1,34 +1,44 @@
-# Status Sheet - Project Management Dashboard
+# Project Status Dashboard
 
 ## Overview
-Status Sheet is a modern project management dashboard that enables teams to track project progress, milestones, and key metrics in real-time. Built with React, TypeScript, and Supabase, it provides a comprehensive solution for project status tracking and team collaboration.
+A modern project management dashboard that enables teams to track project progress, milestones, and key metrics in real-time. Built with React, TypeScript, and Supabase, it provides a comprehensive solution for project status tracking and team collaboration.
 
 ## Features
+
+### Authentication & User Management
+- **Multiple Sign-in Options**
+  - Email/password authentication
+  - Google OAuth integration
+  - Secure session management
+  - User profile customization
 
 ### Project Dashboard
 - **Project Health Tracking**
   - Visual health indicators with percentage-based status bars
-  - Color-coded status indicators (green, yellow, red)
-  - Real-time project health calculations based on milestone completion
+  - Color-coded status indicators (blue, green, yellow, red)
+  - Real-time project health calculations
+  - Version history tracking
 
 ### Budget Management
-- **Budget Tracking**
-  - Actual vs. forecast spending visualization
+- **Comprehensive Budget Tracking**
+  - Total budget overview
+  - Actual vs. forecast visualization
   - Real-time budget utilization metrics
-  - Remaining budget calculations
+  - Automatic status indicators for budget health
 
 ### Milestone Management
 - **Interactive Timeline**
   - Visual milestone progress tracking
   - Completion percentage indicators
   - Owner assignment and tracking
-  - Status indicators (completed, on schedule, at risk, high risk)
+  - Color-coded status system
 
 ### Team Collaboration
 - **Team Management**
-  - Role-based team assignments
-  - Team member status tracking
-  - Project sponsor and business lead designation
+  - Project sponsor designation
+  - Business lead assignment
+  - Project manager tracking
+  - Role-based access control
 
 ### Status Updates
 - **Progress Tracking**
@@ -36,6 +46,13 @@ Status Sheet is a modern project management dashboard that enables teams to trac
   - Next period activity planning
   - Risk and issue tracking
   - Consideration items management
+
+### Export & Sharing
+- **Report Generation**
+  - Export to JPG functionality
+  - Shareable project URLs
+  - Version comparison
+  - Project duplication
 
 ## Technical Stack
 
@@ -46,17 +63,14 @@ Status Sheet is a modern project management dashboard that enables teams to trac
 - TailwindCSS
 - Shadcn/ui Components
 - Lucide Icons
+- React Router v6
 
-### Backend
+### Backend & Services
 - Supabase
-  - Authentication
+  - Authentication (Email & OAuth)
   - Real-time Database
   - Row Level Security
-
-### Authentication
-- Email/Password authentication
-- Protected routes
-- Secure session management
+  - Real-time Updates
 
 ## Getting Started
 
@@ -69,7 +83,7 @@ Status Sheet is a modern project management dashboard that enables teams to trac
 1. Clone the repository
 ```bash
 git clone <repository-url>
-cd status-sheet
+cd project-status-dashboard
 ```
 
 2. Install dependencies
@@ -81,7 +95,7 @@ npm install
 ```bash
 cp .env.example .env
 ```
-Add your Supabase credentials to the .env file:
+Add your Supabase credentials:
 ```
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
@@ -92,23 +106,17 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 npm run dev
 ```
 
-### Database Setup
-The application requires the following Supabase tables:
-- projects
-- milestones
-- accomplishments
-- next_period_activities
-- risks
-- considerations
+### Database Schema
+The application uses the following Supabase tables:
+- projects (main project information)
+- milestones (project timeline events)
+- accomplishments (completed items)
+- next_period_activities (upcoming work)
+- risks (project risks and issues)
+- considerations (items for review)
+- project_versions (version history)
 
-Refer to the database schema in `src/types/supabase.ts` for detailed table structures.
-
-## Features in Development
-- [ ] Export to PDF/Excel
-- [ ] Advanced filtering and search
-- [ ] Custom dashboard layouts
-- [ ] Integration with external project management tools
-- [ ] Advanced analytics and reporting
+Refer to `src/types/supabase.ts` for detailed table structures.
 
 ## Contributing
 Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
