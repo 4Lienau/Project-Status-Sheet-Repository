@@ -90,7 +90,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
   return (
     <div id="status-sheet" className="bg-white dark:bg-white">
       {/* Title and Description */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-50 p-3 mb-2">
+      <div className="bg-gradient-to-r from-blue-650 via-blue-600 to-blue-450 p-3 mb-2">
         <h1 className="text-2xl font-bold text-white dark:text-white">
           {data.title}
         </h1>
