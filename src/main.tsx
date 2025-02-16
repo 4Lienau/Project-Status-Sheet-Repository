@@ -11,7 +11,7 @@ TempoDevtools.init();
 const basename = import.meta.env.BASE_URL;
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
+  <React.StrictMode className="bg-[#d74141]">
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
       <BrowserRouter basename={basename}>
         <App />

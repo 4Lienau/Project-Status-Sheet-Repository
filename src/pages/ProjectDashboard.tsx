@@ -199,26 +199,6 @@ const ProjectDashboard = ({
         {/* Action buttons */}
         <div className="flex items-center gap-4">
           <Button
-            onClick={async () => {
-              const element = document.getElementById("status-sheet");
-              if (!element) return;
-
-              const canvas = await html2canvas(element);
-
-              // Create download link
-              const link = document.createElement("a");
-              link.download = `${currentProject.title}_${new Date().toISOString().split("T")[0]}.jpg`;
-              link.href = canvas.toDataURL("image/jpeg", 0.9);
-              link.click();
-            }}
-            variant="outline"
-            className="flex items-center gap-2 text-blue-800 hover:text-blue-900"
-          >
-            <Download className="h-4 w-4" />
-            Export as JPG
-          </Button>
-
-          <Button
             onClick={() => {
               if (isEditing) {
                 setIsEditing(false);
