@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { logEnvironment, logAuthEvent } from "@/lib/debug";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chrome } from "lucide-react";
@@ -8,6 +9,10 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 
 const AuthForm = () => {
+  useEffect(() => {
+    logEnvironment();
+  }, []);
+
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,10 +65,12 @@ const AuthForm = () => {
       setLoading(true);
       setError(null);
 
+      logAuthEvent("Starting Google Sign In");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo:
+            "https://bold-lumiere4-bc8j8.dev.tempolabs.ai/auth/callback",
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -73,7 +80,11 @@ const AuthForm = () => {
 
       if (error) throw error;
       if (!data.url) throw new Error("No URL returned from Supabase");
+
+      logAuthEvent("Got OAuth URL", data.url);
+      window.location.href = data.url;
     } catch (error) {
+      logAuthEvent("OAuth Error", error);
       setError(error.message);
       setLoading(false);
     }

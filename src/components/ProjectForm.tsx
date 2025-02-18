@@ -3,7 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Save } from "lucide-react";
+import { Save, Wand2, Loader2 } from "lucide-react";
+import { SuggestedMilestones } from "./SuggestedMilestones";
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 interface ProjectData {
   title: string;
@@ -80,6 +83,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   );
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [showSuggestedMilestones, setShowSuggestedMilestones] =
+    React.useState(false);
+  const [suggestedMilestones, setSuggestedMilestones] = React.useState([]);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +137,119 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </div>
 
             <div>
-              <Label className="text-blue-800">Project Description</Label>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-blue-800">Project Description</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={async () => {
+                    if (!formData.title.trim()) {
+                      toast({
+                        title: "Error",
+                        description: "Please enter a project title first",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setIsGenerating(true);
+                    try {
+                      const response = await fetch(
+                        "https://api.openai.com/v1/chat/completions",
+                        {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+                          },
+                          body: JSON.stringify({
+                            model: "gpt-3.5-turbo",
+                            messages: [
+                              {
+                                role: "system",
+                                content: `You are a professional project manager. Generate a project description and key milestones based on the project title. Return ONLY a JSON object with the following structure, no other text:
+{
+  "description": "A concise but detailed project description focusing on purpose, goals, and expected outcomes",
+  "milestones": [
+    {
+      "date": "YYYY-MM-DD",
+      "milestone": "Milestone description",
+      "owner": "Role title",
+      "completion": 0,
+      "status": "green"
+    }
+  ]
+}
+
+Ensure dates are realistic starting from current date. Status should be one of: green, yellow, red.`,
+                              },
+                              {
+                                role: "user",
+                                content: formData.title,
+                              },
+                            ],
+                            max_tokens: 1000,
+                            temperature: 0.7,
+                          }),
+                        },
+                      );
+
+                      if (!response.ok)
+                        throw new Error("Failed to generate content");
+
+                      const data = await response.json();
+                      let result;
+                      try {
+                        const content = data.choices[0].message.content;
+                        // Try to parse the response as JSON
+                        result = JSON.parse(content.trim());
+
+                        // Validate the response structure
+                        if (
+                          !result.description ||
+                          !Array.isArray(result.milestones)
+                        ) {
+                          throw new Error("Invalid response structure");
+                        }
+                      } catch (parseError) {
+                        console.error("JSON Parse Error:", parseError);
+                        throw new Error("Failed to parse AI response");
+                      }
+
+                      setFormData({
+                        ...formData,
+                        description: result.description,
+                      });
+                      setSuggestedMilestones(result.milestones);
+                      setShowSuggestedMilestones(true);
+
+                      toast({
+                        title: "Success",
+                        description: "Generated project content",
+                        className: "bg-green-50 border-green-200",
+                      });
+                    } catch (error) {
+                      console.error(error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to generate content",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsGenerating(false);
+                    }
+                  }}
+                  disabled={isSubmitting || isGenerating}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4" />
+                  )}
+                  {isGenerating ? "Generating..." : "Generate Content"}
+                </Button>
+              </div>
               <textarea
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={formData.description}
@@ -280,6 +400,25 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           {/* Milestones */}
           <div className="space-y-2">
             <Label className="text-blue-800 text-lg">Milestones</Label>
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              <div className="text-sm font-medium text-muted-foreground">
+                Date
+              </div>
+              <div className="text-sm font-medium text-muted-foreground">
+                Milestone
+              </div>
+              <div className="text-sm font-medium text-muted-foreground">
+                Owner
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Percent
+                </div>
+                <div className="text-sm font-medium text-muted-foreground">
+                  Status
+                </div>
+              </div>
+            </div>
             {formData.milestones.map((milestone, index) => (
               <div key={index} className="grid grid-cols-4 gap-2">
                 <Input
@@ -515,6 +654,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </Button>
         </div>
       </form>
+
+      <SuggestedMilestones
+        isOpen={showSuggestedMilestones}
+        onClose={() => setShowSuggestedMilestones(false)}
+        suggestedMilestones={suggestedMilestones}
+        onApply={(selected) => {
+          setFormData({
+            ...formData,
+            milestones: [...formData.milestones, ...selected],
+          });
+        }}
+      />
+      <Toaster />
     </Card>
   );
 };

@@ -6,27 +6,36 @@ const AuthCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for the auth callback
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "SIGNED_IN" && session) {
+    console.log("Auth callback mounted, current URL:", window.location.href);
+
+    const handleCallback = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+        console.log("Got session:", session?.user?.email, error);
+
+        if (error) {
+          console.error("Auth error:", error);
+          navigate("/login");
+          return;
+        }
+
+        if (session) {
+          console.log("Session found, navigating home");
           navigate("/");
-        } else if (event === "SIGNED_OUT") {
+        } else {
+          console.log("No session found, navigating to login");
           navigate("/login");
         }
-      },
-    );
-
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/");
+      } catch (error) {
+        console.error("Error in auth callback:", error);
+        navigate("/login");
       }
-    });
-
-    return () => {
-      authListener?.subscription.unsubscribe();
     };
+
+    handleCallback();
   }, [navigate]);
 
   return (

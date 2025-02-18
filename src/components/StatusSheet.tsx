@@ -57,8 +57,8 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
     total: number,
     forecast: number,
   ) => {
+    if (actuals + forecast > total) return "At Risk";
     if (actuals > total) return "Over Budget";
-    if (forecast > total) return "At Risk";
     return "On Budget";
   };
 
@@ -67,8 +67,8 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
     total: number,
     forecast: number,
   ) => {
+    if (actuals + forecast > total) return "text-yellow-600 font-medium";
     if (actuals > total) return "text-red-600 font-medium";
-    if (forecast > total) return "text-yellow-600 font-medium";
     return "text-green-600 font-medium";
   };
 
