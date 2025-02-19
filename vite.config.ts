@@ -32,4 +32,13 @@ export default defineConfig({
     // @ts-ignore
     allowedHosts: true,
   },
+  build: {
+    outDir: "dist",
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
 });
