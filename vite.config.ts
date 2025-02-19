@@ -12,6 +12,8 @@ if (process.env.TEMPO === "true") {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Force production mode when building
+  mode: process.env.NODE_ENV === "production" ? "production" : "development",
   base: "/",
   optimizeDeps: {
     entries: ["src/main.tsx", "src/tempobook/**/*"],

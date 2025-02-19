@@ -8,12 +8,10 @@ import { ThemeProvider } from "./components/providers/ThemeProvider";
 import { TempoDevtools } from "tempo-devtools";
 TempoDevtools.init();
 
-const basename = import.meta.env.BASE_URL;
-
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode className="bg-[#d74141]">
+  <React.StrictMode>
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
-      <BrowserRouter basename={basename}>
+      <BrowserRouter>
         <App />
       </BrowserRouter>
     </ThemeProvider>

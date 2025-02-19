@@ -9,14 +9,21 @@ import routes from "tempo-routes";
 
 function App() {
   return (
-    <Suspense fallback={<p>Loading...</p>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          Loading...
+        </div>
+      }
+    >
       <>
         <Routes>
-          <Route path="/*" element={<Home />} />
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/status-sheet/:id" element={<StatusSheetView />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="*" element={<Home />} />
         </Routes>
         {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
       </>
