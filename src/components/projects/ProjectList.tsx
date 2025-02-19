@@ -120,7 +120,12 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
                 await new Promise((resolve) => setTimeout(resolve, 100)); // Let UI update
                 const username =
                   profile.full_name || user?.email?.split("@")[0] || "user";
-                await exportProjectsToExcel(projects, username);
+                const filteredProjects = projects.filter(
+                  (project) =>
+                    selectedManager === "all" ||
+                    project.project_manager === selectedManager,
+                );
+                await exportProjectsToExcel(filteredProjects, username);
                 toast({
                   title: "Export Successful",
                   description:
