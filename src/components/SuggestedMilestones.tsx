@@ -89,13 +89,39 @@ export const SuggestedMilestones: React.FC<SuggestedMilestonesProps> = ({
             ))}
           </div>
         </ScrollArea>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleApply}>
-            Add Selected Milestones ({selectedMilestones.size})
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setSelectedMilestones(
+                  new Set(suggestedMilestones.map((_, i) => i)),
+                )
+              }
+              className="flex-1 sm:flex-none"
+            >
+              Select All
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setSelectedMilestones(new Set())}
+              className="flex-1 sm:flex-none"
+            >
+              Deselect All
+            </Button>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 sm:flex-none"
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleApply} className="flex-1 sm:flex-none">
+              Add Selected ({selectedMilestones.size})
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
