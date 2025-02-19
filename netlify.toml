@@ -6,6 +6,10 @@
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
 
+[context.production.environment]
+  VITE_SUPABASE_URL = "https://wxmsedqqbqhdpzpoaefm.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bXNlZHFxYnFoZHB6cG9hZWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg5NTA4ODcsImV4cCI6MjA1NDUyNjg4N30.t-sOQyYDUQ-9wnyitBP0WNRMPF0HZKVX6XiCH1NtqXM"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
