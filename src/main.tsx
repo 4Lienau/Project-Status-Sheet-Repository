@@ -17,7 +17,7 @@ console.log("Environment check:", {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ThemeProvider defaultTheme="system" storageKey="ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="ui-theme">
       <BrowserRouter>
         <App />
       </BrowserRouter>

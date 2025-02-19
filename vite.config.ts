@@ -42,6 +42,8 @@ export default defineConfig({
   server: {
     // @ts-ignore
     allowedHosts: true,
+    host: true, // Add this to allow connections from all hosts
+    port: 5173, // Explicitly set the port
   },
   build: {
     outDir: "dist",
