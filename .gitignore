@@ -13,6 +13,10 @@ dist
 dist-ssr
 *.local
 
+# Tempo files
+**/tempobook/dynamic/
+**/tempobook/storyboards/
+
 # Environment files
 .env
 .env.local
