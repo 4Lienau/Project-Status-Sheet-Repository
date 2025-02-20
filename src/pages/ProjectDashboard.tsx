@@ -19,7 +19,7 @@ import {
 } from "@/lib/services/projectVersions";
 import StatusSheet from "@/components/StatusSheet";
 import ProjectForm from "@/components/ProjectForm";
-import type { ProjectWithRelations } from "@/lib/services/project";
+import type { Project } from "@/lib/services/project";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -41,12 +41,23 @@ import {
 import { Input } from "@/components/ui/input";
 
 interface ProjectDashboardProps {
-  project: ProjectWithRelations;
+  project: Project & {
+    milestones?: Array<{
+      date: string;
+      milestone: string;
+      owner: string;
+      completion: number;
+      status: "green" | "yellow" | "red";
+    }>;
+    accomplishments?: Array<{ description: string }>;
+    next_period_activities?: Array<{ description: string }>;
+    risks?: Array<{ description: string }>;
+    considerations?: Array<{ description: string }>;
+  };
   onBack: () => void;
-  initialEditMode?: boolean;
 }
 
-type ProjectState = ProjectWithRelations;
+type ProjectState = ProjectDashboardProps["project"];
 
 const ProjectDashboard = ({
   project: initialProject,

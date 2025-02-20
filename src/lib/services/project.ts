@@ -2,85 +2,22 @@ import { supabase } from "../supabase";
 import { Database } from "@/types/supabase";
 
 export type Project = Database["public"]["Tables"]["projects"]["Row"];
+export type Milestone = Database["public"]["Tables"]["milestones"]["Row"];
+export type Accomplishment =
+  Database["public"]["Tables"]["accomplishments"]["Row"];
+export type NextPeriodActivity =
+  Database["public"]["Tables"]["next_period_activities"]["Row"];
+export type Risk = Database["public"]["Tables"]["risks"]["Row"];
+export type Consideration =
+  Database["public"]["Tables"]["considerations"]["Row"];
 
-export interface Milestone {
-  id: string;
-  project_id: string | null;
-  date: string;
-  milestone: string;
-  owner: string;
-  completion: number;
-  status: "green" | "yellow" | "red";
-  created_at?: string | null;
-  updated_at?: string | null;
+export interface ProjectWithRelations extends Project {
+  milestones: Milestone[];
+  accomplishments: Accomplishment[];
+  next_period_activities: NextPeriodActivity[];
+  risks: Risk[];
+  considerations: Consideration[];
 }
-
-export interface Accomplishment {
-  id: string;
-  project_id: string | null;
-  description: string;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export interface NextPeriodActivity {
-  id: string;
-  project_id: string | null;
-  description: string;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export interface Risk {
-  id: string;
-  project_id: string | null;
-  description: string;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export interface Consideration {
-  id: string;
-  project_id: string | null;
-  description: string;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export interface ProjectWithRelations {
-  id: string;
-  title: string;
-  description: string | null;
-  value_statement: string | null;
-  status: "active" | "on_hold" | "completed" | "cancelled" | "draft" | null;
-  priority: "low" | "medium" | "high" | null;
-  budget_total: number;
-  budget_actuals: number;
-  budget_forecast: number;
-  charter_link: string;
-  sponsors: string;
-  business_leads: string;
-  project_manager: string;
-  created_at: string | null;
-  updated_at: string | null;
-  milestones: Array<{
-    date: string;
-    milestone: string;
-    owner: string;
-    completion: number;
-    status: "green" | "yellow" | "red";
-  }>;
-  accomplishments: Array<{ description: string }>;
-  next_period_activities: Array<{ description: string }>;
-  risks: Array<{ description: string }>;
-  considerations: Array<{ description: string }>;
-}
-
-export type CreateProjectInput = Omit<
-  ProjectWithRelations,
-  "id" | "created_at" | "updated_at"
->;
-export type UpdateProjectInput = Partial<CreateProjectInput> & { id: string };
 
 export const projectService = {
   async updateProject(
@@ -90,7 +27,6 @@ export const projectService = {
       description?: string;
       valueStatement?: string;
       status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
-      priority?: "low" | "medium" | "high";
       budget_total: number;
       budget_actuals: number;
       budget_forecast: number;
@@ -118,7 +54,6 @@ export const projectService = {
         description: data.description,
         value_statement: data.valueStatement,
         status: data.status,
-        priority: data.priority,
         budget_total: data.budget_total,
         budget_actuals: data.budget_actuals,
         budget_forecast: data.budget_forecast,
@@ -194,7 +129,6 @@ export const projectService = {
     description?: string;
     valueStatement?: string;
     status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
-    priority?: "low" | "medium" | "high";
     budget_total: number;
     budget_actuals: number;
     budget_forecast: number;
@@ -221,7 +155,6 @@ export const projectService = {
         description: data.description,
         value_statement: data.valueStatement,
         status: data.status,
-        priority: data.priority,
         budget_total: data.budget_total,
         budget_actuals: data.budget_actuals,
         budget_forecast: data.budget_forecast,

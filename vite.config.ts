@@ -2,9 +2,6 @@ import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import { tempo } from "tempo-devtools/dist/vite";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const conditionalPlugins: [string, Record<string, any>][] = [];
 

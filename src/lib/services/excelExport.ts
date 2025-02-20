@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import type { ProjectWithRelations } from "./project";
+import { ProjectWithRelations } from "./project";
 
 export const exportProjectsToExcel = async (
   projects: ProjectWithRelations[],
@@ -16,7 +16,6 @@ export const exportProjectsToExcel = async (
     { header: "Description", key: "description", width: 80 },
     { header: "Value Statement", key: "value_statement", width: 80 },
     { header: "Status", key: "status", width: 15 },
-    { header: "Priority", key: "priority", width: 15 },
     { header: "Overall Complete", key: "overall_complete", width: 15 },
     { header: "Total Budget", key: "budget_total", width: 15 },
     { header: "Actuals", key: "budget_actuals", width: 15 },
@@ -36,22 +35,18 @@ export const exportProjectsToExcel = async (
 
   // Add data and apply formatting
   projects.forEach((project) => {
-    const overallComplete =
-      project.milestones.length > 0
-        ? Math.round(
-            project.milestones.reduce((acc, m) => acc + m.completion, 0) /
-              project.milestones.length,
-          )
-        : 0;
+    const overallComplete = project.milestones?.length
+      ? Math.round(
+          project.milestones.reduce((acc, m) => acc + m.completion, 0) /
+            project.milestones.length,
+        )
+      : 0;
 
-    // No type needed, let TypeScript infer it;
-
-    const rowData = {
+    const row = overviewSheet.addRow({
       title: project.title,
       description: project.description || "",
       value_statement: project.value_statement || "",
       status: (project.status || "active").toUpperCase(),
-      priority: project.priority?.toUpperCase() || "MEDIUM",
       overall_complete: overallComplete,
       budget_total: project.budget_total,
       budget_actuals: project.budget_actuals,
@@ -61,30 +56,25 @@ export const exportProjectsToExcel = async (
       sponsors: project.sponsors,
       business_leads: project.business_leads,
       project_manager: project.project_manager,
-      created_at: project.created_at
-        ? new Date(project.created_at).toLocaleDateString()
-        : "",
-      updated_at: project.updated_at
-        ? new Date(project.updated_at).toLocaleDateString()
-        : "",
-      milestone_count: project.milestones.length,
-      risk_count: project.risks.length,
-    };
-
-    const row = overviewSheet.addRow(rowData);
+      created_at: new Date(project.created_at || "").toLocaleDateString(),
+      updated_at: new Date(project.updated_at || "").toLocaleDateString(),
+      milestone_count: project.milestones?.length || 0,
+      risk_count: project.risks?.length || 0,
+    });
 
     // Style all cells in the row
     row.eachCell((cell, colNumber) => {
+      // Default vertical middle alignment
       cell.alignment = { vertical: "middle" };
 
       // Format percentage column (Overall Complete)
-      if (colNumber === 6) {
+      if (colNumber === 5) {
         cell.numFmt = '0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      // Format budget columns (7, 8, 9, 10)
-      if (colNumber >= 7 && colNumber <= 10) {
+      // Format budget columns (6, 7, 8, 9)
+      if (colNumber >= 6 && colNumber <= 9) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
@@ -101,12 +91,12 @@ export const exportProjectsToExcel = async (
       }
 
       // Center milestone and risk counts
-      if (colNumber === 17 || colNumber === 18) {
+      if (colNumber === 16 || colNumber === 17) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Make charter link clickable
-      if (colNumber === 11 && cell.value) {
+      if (colNumber === 10 && cell.value) {
         const url = cell.value.toString();
         cell.value = { text: url, hyperlink: url };
         cell.font = { color: { argb: "FF0000FF" }, underline: true };
@@ -181,49 +171,6 @@ export const exportProjectsToExcel = async (
     ],
   });
 
-  // Add conditional formatting for priority column
-  overviewSheet.addConditionalFormatting({
-    ref: `E2:E${projects.length + 1}`,
-    rules: [
-      {
-        type: "containsText",
-        operator: "containsText",
-        text: "HIGH",
-        style: {
-          fill: {
-            type: "pattern",
-            pattern: "solid",
-            bgColor: { argb: "FFFCE4D6" },
-          },
-        },
-      },
-      {
-        type: "containsText",
-        operator: "containsText",
-        text: "MEDIUM",
-        style: {
-          fill: {
-            type: "pattern",
-            pattern: "solid",
-            bgColor: { argb: "FFFFF2CC" },
-          },
-        },
-      },
-      {
-        type: "containsText",
-        operator: "containsText",
-        text: "LOW",
-        style: {
-          fill: {
-            type: "pattern",
-            pattern: "solid",
-            bgColor: { argb: "FFE2F0D9" },
-          },
-        },
-      },
-    ],
-  });
-
   // Add table formatting
   overviewSheet.addTable({
     name: "ProjectsOverview",
@@ -235,40 +182,30 @@ export const exportProjectsToExcel = async (
       showRowStripes: true,
     },
     columns: overviewColumns.map((col) => ({ name: col.header })),
-    rows: projects.map((project) => {
-      const overallComplete =
-        project.milestones.length > 0
-          ? Math.round(
-              project.milestones.reduce((acc, m) => acc + m.completion, 0) /
-                project.milestones.length,
-            )
-          : 0;
-
-      return [
-        project.title,
-        project.description || "",
-        project.value_statement || "",
-        (project.status || "active").toUpperCase(),
-        project.priority?.toUpperCase() || "MEDIUM",
-        overallComplete,
-        project.budget_total,
-        project.budget_actuals,
-        project.budget_forecast,
-        project.budget_total - project.budget_forecast,
-        project.charter_link,
-        project.sponsors,
-        project.business_leads,
-        project.project_manager,
-        project.created_at
-          ? new Date(project.created_at).toLocaleDateString()
-          : "",
-        project.updated_at
-          ? new Date(project.updated_at).toLocaleDateString()
-          : "",
-        project.milestones.length,
-        project.risks.length,
-      ];
-    }),
+    rows: projects.map((project) => [
+      project.title,
+      project.description || "",
+      project.value_statement || "",
+      (project.status || "active").toUpperCase(),
+      project.milestones?.length
+        ? Math.round(
+            project.milestones.reduce((acc, m) => acc + m.completion, 0) /
+              project.milestones.length,
+          )
+        : 0,
+      project.budget_total,
+      project.budget_actuals,
+      project.budget_forecast,
+      project.budget_total - project.budget_forecast,
+      project.charter_link,
+      project.sponsors,
+      project.business_leads,
+      project.project_manager,
+      new Date(project.created_at || "").toLocaleDateString(),
+      new Date(project.updated_at || "").toLocaleDateString(),
+      project.milestones?.length || 0,
+      project.risks?.length || 0,
+    ]),
   });
 
   // Milestones Sheet
@@ -287,7 +224,7 @@ export const exportProjectsToExcel = async (
   // Add milestones data
   const allMilestones = [];
   projects.forEach((project) => {
-    project.milestones.forEach((milestone) => {
+    project.milestones?.forEach((milestone) => {
       allMilestones.push({
         project: project.title,
         date: milestone.date,
@@ -386,7 +323,6 @@ export const exportProjectsToExcel = async (
   const budgetColumns = [
     { header: "Project", key: "project", width: 30 },
     { header: "Status", key: "status", width: 15 },
-    { header: "Priority", key: "priority", width: 15 },
     { header: "Total Budget", key: "budget_total", width: 20 },
     { header: "Actuals", key: "budget_actuals", width: 20 },
     { header: "Forecast", key: "budget_forecast", width: 20 },
@@ -410,7 +346,6 @@ export const exportProjectsToExcel = async (
     const row = budgetSheet.addRow({
       project: project.title,
       status: (project.status || "active").toUpperCase(),
-      priority: project.priority?.toUpperCase() || "MEDIUM",
       budget_total: project.budget_total,
       budget_actuals: project.budget_actuals,
       budget_forecast: project.budget_forecast,
@@ -423,19 +358,19 @@ export const exportProjectsToExcel = async (
       cell.alignment = { vertical: "middle" };
 
       // Format currency columns
-      if (colNumber >= 4 && colNumber <= 7) {
+      if (colNumber >= 3 && colNumber <= 6) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
 
       // Format percentage columns
-      if (colNumber === 8 || colNumber === 9) {
+      if (colNumber === 7 || colNumber === 8) {
         cell.numFmt = '0.0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Add conditional formatting for variance
-      if (colNumber === 7) {
+      if (colNumber === 6) {
         if (cell.value < 0) {
           cell.font = { color: { argb: "FFFF0000" } }; // Red for negative variance
         } else if (cell.value > 0) {
@@ -512,49 +447,6 @@ export const exportProjectsToExcel = async (
     ],
   });
 
-  // Add conditional formatting for priority column
-  budgetSheet.addConditionalFormatting({
-    ref: `C2:C${projects.length + 1}`,
-    rules: [
-      {
-        type: "containsText",
-        operator: "containsText",
-        text: "HIGH",
-        style: {
-          fill: {
-            type: "pattern",
-            pattern: "solid",
-            bgColor: { argb: "FFFCE4D6" },
-          },
-        },
-      },
-      {
-        type: "containsText",
-        operator: "containsText",
-        text: "MEDIUM",
-        style: {
-          fill: {
-            type: "pattern",
-            pattern: "solid",
-            bgColor: { argb: "FFFFF2CC" },
-          },
-        },
-      },
-      {
-        type: "containsText",
-        operator: "containsText",
-        text: "LOW",
-        style: {
-          fill: {
-            type: "pattern",
-            pattern: "solid",
-            bgColor: { argb: "FFE2F0D9" },
-          },
-        },
-      },
-    ],
-  });
-
   // Add table formatting to budget details
   budgetSheet.addTable({
     name: "BudgetDetailsTable",
@@ -577,7 +469,6 @@ export const exportProjectsToExcel = async (
       return [
         project.title,
         (project.status || "active").toUpperCase(),
-        project.priority?.toUpperCase() || "MEDIUM",
         project.budget_total,
         project.budget_actuals,
         project.budget_forecast,
@@ -596,7 +487,9 @@ export const exportProjectsToExcel = async (
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `Projects_${username || "export"}_${new Date().toISOString().split("T")[0]}.xlsx`;
+  link.download = `Projects_${username || "export"}_${
+    new Date().toISOString().split("T")[0]
+  }.xlsx`;
   link.click();
   window.URL.revokeObjectURL(url);
 };

@@ -8,10 +8,7 @@ import ProjectList from "./projects/ProjectList";
 import ProjectForm from "./ProjectForm";
 import StatusSheet from "./StatusSheet";
 import ProjectDashboard from "@/pages/ProjectDashboard";
-import {
-  projectService,
-  type ProjectWithRelations,
-} from "@/lib/services/project";
+import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
@@ -21,14 +18,12 @@ const Home = () => {
   const { toast } = useToast();
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"list" | "form" | "preview">("list");
-  const [projectData, setProjectData] = useState<ProjectWithRelations | null>(
-    null,
-  );
+  const [projectData, setProjectData] = useState(null);
   const [hasSeenWelcome, setHasSeenWelcome] = React.useState(() => {
     return localStorage.getItem("hasSeenWelcome") === "true";
   });
 
-  const handleSelectProject = async (project: ProjectWithRelations) => {
+  const handleSelectProject = async (project: Project) => {
     const fullProject = await projectService.getProject(project.id);
     if (fullProject) {
       setProjectData(fullProject);

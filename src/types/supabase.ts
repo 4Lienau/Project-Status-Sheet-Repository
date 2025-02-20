@@ -153,25 +153,14 @@ export type Database = {
         Row: {
           budget_actuals: number;
           budget_forecast: number;
-          budget_total: number;
           business_leads: string;
           charter_link: string;
           created_at: string | null;
-          description: string | null;
           id: string;
-          priority: "low" | "medium" | "high" | null;
           project_manager: string;
           sponsors: string;
-          status:
-            | "active"
-            | "on_hold"
-            | "completed"
-            | "cancelled"
-            | "draft"
-            | null;
           title: string;
           updated_at: string | null;
-          value_statement: string | null;
         };
         Insert: {
           budget_actuals: number;
