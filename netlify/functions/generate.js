@@ -1,10 +1,18 @@
 const OpenAI = require("openai");
 
 const openai = new OpenAI({
-  apiKey: process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY,
 });
 
-const handler = async (event) => {
+const { builder } = require("@netlify/functions");
+
+async function handler(event, context) {
+  console.log("OpenAI API Key present:", !!process.env.OPENAI_API_KEY);
+  console.log(
+    "VITE OpenAI API Key present:",
+    !!process.env.VITE_OPENAI_API_KEY,
+  );
+
   // CORS headers
   const headers = {
     "Access-Control-Allow-Origin": "*",
@@ -32,6 +40,7 @@ const handler = async (event) => {
     console.log("OpenAI API Key present:", !!openai.apiKey);
 
     const { messages } = JSON.parse(event.body);
+    console.log("Parsed messages:", messages);
 
     if (!messages?.length) {
       return {
@@ -49,7 +58,10 @@ const handler = async (event) => {
       max_tokens: 1000,
     });
 
+    console.log("OpenAI response received:", completion);
+
     if (!completion.choices?.[0]?.message?.content) {
+      console.error("Invalid OpenAI response:", completion);
       return {
         statusCode: 500,
         headers,
@@ -72,6 +84,8 @@ const handler = async (event) => {
     };
   } catch (error) {
     console.error("Error:", error);
+    console.error("Error stack:", error.stack);
+
     if (error.response) {
       console.error("OpenAI API Error:", {
         status: error.response.status,
@@ -88,6 +102,6 @@ const handler = async (event) => {
       }),
     };
   }
-};
+}
 
-exports.handler = handler;
+exports.handler = builder(handler);
