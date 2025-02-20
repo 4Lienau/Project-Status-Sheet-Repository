@@ -7,9 +7,24 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 
 exports.handler = async function (event, context) {
+  // Handle CORS
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+      },
+    };
+  }
+
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify({ error: "Method not allowed" }),
     };
   }
@@ -27,13 +42,24 @@ exports.handler = async function (event, context) {
 
     return {
       statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(completion.data),
     };
   } catch (error) {
     console.error("Error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Failed to generate content" }),
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        error: "Failed to generate content",
+        details: error.message,
+      }),
     };
   }
 };
