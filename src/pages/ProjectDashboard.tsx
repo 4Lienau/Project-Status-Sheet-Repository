@@ -41,7 +41,7 @@ import {
 import { Input } from "@/components/ui/input";
 
 interface ProjectDashboardProps {
-  project: Project & {
+  project: ProjectWithRelations & {
     milestones?: Array<{
       date: string;
       milestone: string;

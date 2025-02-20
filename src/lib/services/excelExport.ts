@@ -2,7 +2,18 @@ import ExcelJS from "exceljs";
 import { ProjectWithRelations } from "./project";
 
 export const exportProjectsToExcel = async (
-  projects: ProjectWithRelations[],
+  projects: Array<
+    ProjectWithRelations & {
+      milestones?: Array<{
+        date: string;
+        milestone: string;
+        owner: string;
+        completion: number;
+        status: "green" | "yellow" | "red";
+      }>;
+      risks?: Array<{ description: string }>;
+    }
+  >,
   username?: string,
 ) => {
   const workbook = new ExcelJS.Workbook();

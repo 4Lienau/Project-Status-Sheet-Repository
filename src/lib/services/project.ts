@@ -11,7 +11,22 @@ export type Risk = Database["public"]["Tables"]["risks"]["Row"];
 export type Consideration =
   Database["public"]["Tables"]["considerations"]["Row"];
 
-export interface ProjectWithRelations extends Project {
+export interface ProjectWithRelations {
+  id: string;
+  title: string;
+  description?: string | null;
+  value_statement?: string | null;
+  status?: "active" | "on_hold" | "completed" | "cancelled" | "draft" | null;
+  budget_total: number;
+  budget_actuals: number;
+  budget_forecast: number;
+  charter_link: string;
+  sponsors: string;
+  business_leads: string;
+  project_manager: string;
+  priority?: "low" | "medium" | "high" | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
   description?: string;
   value_statement?: string;
