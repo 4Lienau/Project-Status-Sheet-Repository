@@ -35,7 +35,7 @@ export const exportProjectsToExcel = async (
 
   // Add data and apply formatting
   projects.forEach((project) => {
-    const overallComplete = project.milestones?.length
+    const overallComplete = project.milestones.length
       ? Math.round(
           project.milestones.reduce((acc, m) => acc + m.completion, 0) /
             project.milestones.length,
@@ -58,8 +58,8 @@ export const exportProjectsToExcel = async (
       project_manager: project.project_manager,
       created_at: new Date(project.created_at || "").toLocaleDateString(),
       updated_at: new Date(project.updated_at || "").toLocaleDateString(),
-      milestone_count: project.milestones?.length || 0,
-      risk_count: project.risks?.length || 0,
+      milestone_count: project.milestones.length,
+      risk_count: project.risks.length,
     });
 
     // Style all cells in the row

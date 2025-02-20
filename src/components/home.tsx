@@ -8,7 +8,10 @@ import ProjectList from "./projects/ProjectList";
 import ProjectForm from "./ProjectForm";
 import StatusSheet from "./StatusSheet";
 import ProjectDashboard from "@/pages/ProjectDashboard";
-import { projectService, type Project } from "@/lib/services/project";
+import {
+  projectService,
+  type ProjectWithRelations,
+} from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
@@ -25,7 +28,7 @@ const Home = () => {
     return localStorage.getItem("hasSeenWelcome") === "true";
   });
 
-  const handleSelectProject = async (project: Project) => {
+  const handleSelectProject = async (project: ProjectWithRelations) => {
     const fullProject = await projectService.getProject(project.id);
     if (fullProject) {
       setProjectData(fullProject);

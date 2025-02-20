@@ -46,7 +46,7 @@ interface ProjectDashboardProps {
   initialEditMode?: boolean;
 }
 
-type ProjectState = ProjectDashboardProps["project"];
+type ProjectState = ProjectWithRelations;
 
 const ProjectDashboard = ({
   project: initialProject,
