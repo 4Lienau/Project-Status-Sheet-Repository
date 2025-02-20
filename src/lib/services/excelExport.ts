@@ -595,9 +595,7 @@ export const exportProjectsToExcel = async (
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `Projects_${username || "export"}_${
-    new Date().toISOString().split("T")[0]
-  }.xlsx`;
+  link.download = `Projects_${username || "export"}_${new Date().toISOString().split("T")[0]}.xlsx`;
   link.click();
   window.URL.revokeObjectURL(url);
 };
