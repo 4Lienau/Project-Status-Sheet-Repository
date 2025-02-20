@@ -1,7 +1,61 @@
-// Previous imports remain the same...
+import React, { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
-const ProjectForm = ({ initialData, onSubmit }: ProjectFormProps) => {
-  // ... other code remains the same until the AI generation part
+export interface ProjectFormProps {
+  initialData?: {
+    title: string;
+    description?: string;
+    valueStatement?: string;
+    status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
+    budget: {
+      total: string;
+      actuals: string;
+      forecast: string;
+    };
+    charterLink: string;
+    sponsors: string;
+    businessLeads: string;
+    projectManager: string;
+    milestones: Array<{
+      date: string;
+      milestone: string;
+      owner: string;
+      completion: number;
+      status: "green" | "yellow" | "red";
+    }>;
+    accomplishments: string[];
+    nextPeriodActivities: string[];
+    risks: string[];
+    considerations: string[];
+  };
+  onSubmit: (data: ProjectFormProps["initialData"]) => void;
+}
+
+const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [formData, setFormData] = useState(
+    initialData || {
+      title: "",
+      description: "",
+      valueStatement: "",
+      status: "active" as const,
+      budget: {
+        total: "0",
+        actuals: "0",
+        forecast: "0",
+      },
+      charterLink: "",
+      sponsors: "",
+      businessLeads: "",
+      projectManager: "",
+      milestones: [],
+      accomplishments: [],
+      nextPeriodActivities: [],
+      risks: [],
+      considerations: [],
+    },
+  );
 
   const generateContent = async (prompt: string, systemPrompt: string) => {
     try {
@@ -34,7 +88,6 @@ const ProjectForm = ({ initialData, onSubmit }: ProjectFormProps) => {
     }
   };
 
-  // Update the click handlers to use the new generateContent function
   const handleGenerateDescription = async () => {
     if (!formData.title.trim()) {
       toast({
@@ -81,9 +134,12 @@ const ProjectForm = ({ initialData, onSubmit }: ProjectFormProps) => {
     }
   };
 
-  // Similar updates for value statement and milestone generation...
-
-  // Rest of the component remains the same...
+  return (
+    <div>
+      {/* Form implementation */}
+      <div>Form implementation goes here</div>
+    </div>
+  );
 };
 
 export default ProjectForm;

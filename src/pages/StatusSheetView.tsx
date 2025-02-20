@@ -13,9 +13,13 @@ const StatusSheetView = () => {
   React.useEffect(() => {
     const loadProject = async () => {
       if (id) {
+        console.log("Loading project with id:", id);
         const projectData = await projectService.getProject(id);
+        console.log("Project data:", projectData);
         if (projectData) {
           setProject(projectData);
+        } else {
+          console.error("Failed to load project data");
         }
       }
     };
@@ -24,7 +28,24 @@ const StatusSheetView = () => {
   }, [id]);
 
   if (!project) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-[1800px] mx-auto p-8">
+          <div className="mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
+          </div>
+          <div className="flex items-center justify-center h-[60vh]">
+            <div className="text-lg text-muted-foreground">Loading...</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const formattedData = {
@@ -32,9 +53,9 @@ const StatusSheetView = () => {
     description: project.description || "",
     status: project.status || "active",
     budget: {
-      total: project.budget_total.toLocaleString(),
-      actuals: project.budget_actuals.toLocaleString(),
-      forecast: project.budget_forecast.toLocaleString(),
+      total: project.budget_total?.toLocaleString() || "0",
+      actuals: project.budget_actuals?.toLocaleString() || "0",
+      forecast: project.budget_forecast?.toLocaleString() || "0",
     },
     charterLink: project.charter_link,
     sponsors: project.sponsors,
