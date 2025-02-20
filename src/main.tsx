@@ -5,8 +5,11 @@ import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "./components/providers/ThemeProvider";
 
+// Import and initialize Tempo Devtools
 import { TempoDevtools } from "tempo-devtools";
-TempoDevtools.init();
+if (import.meta.env.VITE_TEMPO === "true") {
+  TempoDevtools.init();
+}
 
 // Debug environment variables
 console.log("Environment check:", {

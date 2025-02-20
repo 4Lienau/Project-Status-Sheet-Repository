@@ -3,14 +3,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import { tempo } from "tempo-devtools/dist/vite";
 
-const conditionalPlugins: [string, Record<string, any>][] = [];
-
-// @ts-ignore
+// Add this block of code
+const conditionalPlugins = [];
 if (process.env.TEMPO === "true") {
-  conditionalPlugins.push(["tempo-devtools/swc", {}]);
+  conditionalPlugins.push("tempo-devtools/dist/babel-plugin");
 }
 
-// https://vitejs.dev/config/
 // https://vitejs.dev/config/
 export default defineConfig({
   define: {
@@ -29,7 +27,9 @@ export default defineConfig({
   },
   plugins: [
     react({
-      plugins: conditionalPlugins,
+      babel: {
+        plugins: [...conditionalPlugins],
+      },
     }),
     tempo(),
   ],
@@ -41,7 +41,7 @@ export default defineConfig({
   },
   server: {
     // @ts-ignore
-    allowedHosts: true,
+    allowedHosts: process.env.TEMPO === "true" ? true : undefined,
     host: true, // Add this to allow connections from all hosts
     port: 5173, // Explicitly set the port
   },
