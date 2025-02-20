@@ -16,6 +16,7 @@ export const exportProjectsToExcel = async (
     { header: "Description", key: "description", width: 80 },
     { header: "Value Statement", key: "value_statement", width: 80 },
     { header: "Status", key: "status", width: 15 },
+    { header: "Priority", key: "priority", width: 15 },
     { header: "Overall Complete", key: "overall_complete", width: 15 },
     { header: "Total Budget", key: "budget_total", width: 15 },
     { header: "Actuals", key: "budget_actuals", width: 15 },
@@ -48,6 +49,7 @@ export const exportProjectsToExcel = async (
       description: project.description || "",
       value_statement: project.value_statement || "",
       status: (project.status || "active").toUpperCase(),
+      priority: (project.priority || "medium").toUpperCase(),
       overall_complete: overallComplete,
       budget_total: project.budget_total,
       budget_actuals: project.budget_actuals,
@@ -75,13 +77,13 @@ export const exportProjectsToExcel = async (
       cell.alignment = { vertical: "middle" };
 
       // Format percentage column (Overall Complete)
-      if (colNumber === 5) {
+      if (colNumber === 6) {
         cell.numFmt = '0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      // Format budget columns (6, 7, 8, 9)
-      if (colNumber >= 6 && colNumber <= 9) {
+      // Format budget columns (7, 8, 9, 10)
+      if (colNumber >= 7 && colNumber <= 10) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
@@ -98,12 +100,12 @@ export const exportProjectsToExcel = async (
       }
 
       // Center milestone and risk counts
-      if (colNumber === 16 || colNumber === 17) {
+      if (colNumber === 17 || colNumber === 18) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Make charter link clickable
-      if (colNumber === 10 && cell.value) {
+      if (colNumber === 11 && cell.value) {
         const url = cell.value.toString();
         cell.value = { text: url, hyperlink: url };
         cell.font = { color: { argb: "FF0000FF" }, underline: true };
@@ -178,6 +180,49 @@ export const exportProjectsToExcel = async (
     ],
   });
 
+  // Add conditional formatting for priority column
+  overviewSheet.addConditionalFormatting({
+    ref: `E2:E${projects.length + 1}`,
+    rules: [
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "HIGH",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFFCE4D6" },
+          },
+        },
+      },
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "MEDIUM",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFFFF2CC" },
+          },
+        },
+      },
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "LOW",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFE2F0D9" },
+          },
+        },
+      },
+    ],
+  });
+
   // Add table formatting
   overviewSheet.addTable({
     name: "ProjectsOverview",
@@ -203,6 +248,7 @@ export const exportProjectsToExcel = async (
         project.description || "",
         project.value_statement || "",
         (project.status || "active").toUpperCase(),
+        (project.priority || "medium").toUpperCase(),
         overallComplete,
         project.budget_total,
         project.budget_actuals,
@@ -339,6 +385,7 @@ export const exportProjectsToExcel = async (
   const budgetColumns = [
     { header: "Project", key: "project", width: 30 },
     { header: "Status", key: "status", width: 15 },
+    { header: "Priority", key: "priority", width: 15 },
     { header: "Total Budget", key: "budget_total", width: 20 },
     { header: "Actuals", key: "budget_actuals", width: 20 },
     { header: "Forecast", key: "budget_forecast", width: 20 },
@@ -362,6 +409,7 @@ export const exportProjectsToExcel = async (
     const row = budgetSheet.addRow({
       project: project.title,
       status: (project.status || "active").toUpperCase(),
+      priority: (project.priority || "medium").toUpperCase(),
       budget_total: project.budget_total,
       budget_actuals: project.budget_actuals,
       budget_forecast: project.budget_forecast,
@@ -374,19 +422,19 @@ export const exportProjectsToExcel = async (
       cell.alignment = { vertical: "middle" };
 
       // Format currency columns
-      if (colNumber >= 3 && colNumber <= 6) {
+      if (colNumber >= 4 && colNumber <= 7) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
 
       // Format percentage columns
-      if (colNumber === 7 || colNumber === 8) {
+      if (colNumber === 8 || colNumber === 9) {
         cell.numFmt = '0.0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Add conditional formatting for variance
-      if (colNumber === 6) {
+      if (colNumber === 7) {
         if (cell.value < 0) {
           cell.font = { color: { argb: "FFFF0000" } }; // Red for negative variance
         } else if (cell.value > 0) {
@@ -463,6 +511,49 @@ export const exportProjectsToExcel = async (
     ],
   });
 
+  // Add conditional formatting for priority column
+  budgetSheet.addConditionalFormatting({
+    ref: `C2:C${projects.length + 1}`,
+    rules: [
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "HIGH",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFFCE4D6" },
+          },
+        },
+      },
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "MEDIUM",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFFFF2CC" },
+          },
+        },
+      },
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "LOW",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFE2F0D9" },
+          },
+        },
+      },
+    ],
+  });
+
   // Add table formatting to budget details
   budgetSheet.addTable({
     name: "BudgetDetailsTable",
@@ -485,6 +576,7 @@ export const exportProjectsToExcel = async (
       return [
         project.title,
         (project.status || "active").toUpperCase(),
+        (project.priority || "medium").toUpperCase(),
         project.budget_total,
         project.budget_actuals,
         project.budget_forecast,
