@@ -78,5 +78,8 @@
     "tempo-devtools": "^2.0.94",
     "typescript": "^5.7.3",
     "vite": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
