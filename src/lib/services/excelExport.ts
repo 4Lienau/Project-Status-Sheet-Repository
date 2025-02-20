@@ -1,6 +1,4 @@
 import ExcelJS from "exceljs";
-import { ProjectWithRelations } from "./project";
-
 import type { ProjectWithRelations } from "./project";
 
 export const exportProjectsToExcel = async (
@@ -45,7 +43,7 @@ export const exportProjectsToExcel = async (
           )
         : 0;
 
-    const row = overviewSheet.addRow({
+    const rowData = {
       title: project.title,
       description: project.description || "",
       value_statement: project.value_statement || "",
@@ -67,8 +65,9 @@ export const exportProjectsToExcel = async (
         : "",
       milestone_count: project.milestones.length,
       risk_count: project.risks.length,
-      priority: project.priority || "medium",
-    });
+    };
+
+    const row = overviewSheet.addRow(rowData);
 
     // Style all cells in the row
     row.eachCell((cell, colNumber) => {
@@ -190,30 +189,39 @@ export const exportProjectsToExcel = async (
       showRowStripes: true,
     },
     columns: overviewColumns.map((col) => ({ name: col.header })),
-    rows: projects.map((project) => [
-      project.title,
-      project.description || "",
-      project.value_statement || "",
-      (project.status || "active").toUpperCase(),
-      project.milestones?.length
-        ? Math.round(
-            project.milestones.reduce((acc, m) => acc + m.completion, 0) /
-              project.milestones.length,
-          )
-        : 0,
-      project.budget_total,
-      project.budget_actuals,
-      project.budget_forecast,
-      project.budget_total - project.budget_forecast,
-      project.charter_link,
-      project.sponsors,
-      project.business_leads,
-      project.project_manager,
-      new Date(project.created_at || "").toLocaleDateString(),
-      new Date(project.updated_at || "").toLocaleDateString(),
-      project.milestones?.length || 0,
-      project.risks?.length || 0,
-    ]),
+    rows: projects.map((project) => {
+      const overallComplete =
+        project.milestones.length > 0
+          ? Math.round(
+              project.milestones.reduce((acc, m) => acc + m.completion, 0) /
+                project.milestones.length,
+            )
+          : 0;
+
+      return [
+        project.title,
+        project.description || "",
+        project.value_statement || "",
+        (project.status || "active").toUpperCase(),
+        overallComplete,
+        project.budget_total,
+        project.budget_actuals,
+        project.budget_forecast,
+        project.budget_total - project.budget_forecast,
+        project.charter_link,
+        project.sponsors,
+        project.business_leads,
+        project.project_manager,
+        project.created_at
+          ? new Date(project.created_at).toLocaleDateString()
+          : "",
+        project.updated_at
+          ? new Date(project.updated_at).toLocaleDateString()
+          : "",
+        project.milestones.length,
+        project.risks.length,
+      ];
+    }),
   });
 
   // Milestones Sheet
@@ -232,7 +240,7 @@ export const exportProjectsToExcel = async (
   // Add milestones data
   const allMilestones = [];
   projects.forEach((project) => {
-    project.milestones?.forEach((milestone) => {
+    project.milestones.forEach((milestone) => {
       allMilestones.push({
         project: project.title,
         date: milestone.date,
