@@ -27,13 +27,6 @@ export interface ProjectWithRelations {
   priority?: "low" | "medium" | "high" | null;
   created_at?: string | null;
   updated_at?: string | null;
-  status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
-  description?: string;
-  value_statement?: string;
-  budget_total: number;
-  budget_actuals: number;
-  budget_forecast: number;
-  priority?: "low" | "medium" | "high";
   milestones: Milestone[];
   accomplishments: Accomplishment[];
   next_period_activities: NextPeriodActivity[];
