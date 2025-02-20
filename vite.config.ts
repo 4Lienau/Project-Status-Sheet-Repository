@@ -3,12 +3,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import { tempo } from "tempo-devtools/dist/vite";
 
-// Add this block of code
+// Configure plugins based on environment
 const conditionalPlugins = [];
 if (process.env.TEMPO === "true") {
   conditionalPlugins.push("tempo-devtools/dist/babel-plugin");
 }
 
+// https://vitejs.dev/config/
 // https://vitejs.dev/config/
 export default defineConfig({
   define: {
@@ -41,7 +42,7 @@ export default defineConfig({
   },
   server: {
     // @ts-ignore
-    allowedHosts: process.env.TEMPO === "true" ? true : undefined,
+    allowedHosts: true,
     host: true, // Add this to allow connections from all hosts
     port: 5173, // Explicitly set the port
   },

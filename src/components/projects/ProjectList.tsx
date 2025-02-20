@@ -11,13 +11,6 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import type { ProjectWithRelations } from "@/lib/services/project";
 import { exportProjectsToExcel } from "@/lib/services/excelExport";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface ProjectListProps {
   onSelectProject: (project: ProjectWithRelations) => void;
@@ -44,13 +37,10 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
         });
     }
   }, [user?.id]);
-
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [selectedManager, setSelectedManager] = useState<string>("all");
-  const [projectManagers, setProjectManagers] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -62,11 +52,6 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
         (p): p is ProjectWithRelations => p !== null,
       );
       setProjects(projects);
-      // Extract unique project managers
-      const managers = [
-        ...new Set(projects.map((p) => p.project_manager).filter(Boolean)),
-      ].sort();
-      setProjectManagers(managers);
       setLoading(false);
     };
 
@@ -78,7 +63,7 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-semibold">Project Dashboard</h2>
+            <h2 className="text-2xl font-semibold">Your Projects</h2>
             <Button variant="outline" size="sm" disabled>
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Export to Excel
@@ -97,20 +82,7 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold">Project Dashboard</h2>
-          <Select value={selectedManager} onValueChange={setSelectedManager}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Filter by Project Manager" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Project Managers</SelectItem>
-              {projectManagers.map((manager) => (
-                <SelectItem key={manager} value={manager}>
-                  {manager}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <h2 className="text-2xl font-semibold">Your Projects</h2>
           <Button
             variant="outline"
             size="sm"
@@ -120,12 +92,7 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
                 await new Promise((resolve) => setTimeout(resolve, 100)); // Let UI update
                 const username =
                   profile.full_name || user?.email?.split("@")[0] || "user";
-                const filteredProjects = projects.filter(
-                  (project) =>
-                    selectedManager === "all" ||
-                    project.project_manager === selectedManager,
-                );
-                await exportProjectsToExcel(filteredProjects, username);
+                await exportProjectsToExcel(projects, username);
                 toast({
                   title: "Export Successful",
                   description:
@@ -162,58 +129,52 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects
-          .filter(
-            (project) =>
-              selectedManager === "all" ||
-              project.project_manager === selectedManager,
-          )
-          .map((project) => (
-            <Card
-              key={project.id}
-              onClick={() => onSelectProject(project)}
-              className="group p-6 cursor-pointer bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
-              style={{
-                background:
-                  "linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card)))",
-                borderRadius: "1rem",
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-semibold">{project.title}</h3>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${
-                      {
-                        active:
-                          "bg-green-100 text-green-800 border border-green-200",
-                        on_hold:
-                          "bg-yellow-100 text-yellow-800 border border-yellow-200",
-                        completed:
-                          "bg-blue-100 text-blue-800 border border-blue-200",
-                        cancelled:
-                          "bg-red-100 text-red-800 border border-red-200",
-                        draft:
-                          "bg-yellow-100 text-yellow-800 border border-yellow-200",
-                      }[project.status || "active"]
-                    }`}
-                  >
-                    {project.status?.replace("_", " ").charAt(0).toUpperCase() +
-                      project.status?.slice(1).replace("_", " ") || "Active"}
-                  </span>
-                </div>
-                {project.description && (
-                  <p className="text-sm text-blue-800 mb-3 line-clamp-2">
-                    {project.description}
-                  </p>
-                )}
-                <p className="text-sm text-blue-800 mb-4">
-                  Project Manager: {project.project_manager}
-                </p>
+        {projects.map((project) => (
+          <Card
+            key={project.id}
+            onClick={() => onSelectProject(project)}
+            className="group p-6 cursor-pointer bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+            style={{
+              background:
+                "linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card)))",
+              borderRadius: "1rem",
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold">{project.title}</h3>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${
+                    {
+                      active:
+                        "bg-green-100 text-green-800 border border-green-200",
+                      on_hold:
+                        "bg-yellow-100 text-yellow-800 border border-yellow-200",
+                      completed:
+                        "bg-blue-100 text-blue-800 border border-blue-200",
+                      cancelled:
+                        "bg-red-100 text-red-800 border border-red-200",
+                      draft:
+                        "bg-yellow-100 text-yellow-800 border border-yellow-200",
+                    }[project.status || "active"]
+                  }`}
+                >
+                  {project.status?.replace("_", " ").charAt(0).toUpperCase() +
+                    project.status?.slice(1).replace("_", " ") || "Active"}
+                </span>
               </div>
-            </Card>
-          ))}
+              {project.description && (
+                <p className="text-sm text-blue-800 mb-3 line-clamp-2">
+                  {project.description}
+                </p>
+              )}
+              <p className="text-sm text-blue-800 mb-4">
+                Project Manager: {project.project_manager}
+              </p>
+            </div>
+          </Card>
+        ))}
 
         {projects.length === 0 && (
           <div className="col-span-full text-center py-8 text-blue-800">

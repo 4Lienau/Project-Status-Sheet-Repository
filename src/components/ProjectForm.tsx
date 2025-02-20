@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Save, Wand2, Loader2, Trash2 } from "lucide-react";
+import { Save, Wand2, Loader2 } from "lucide-react";
 import { SuggestedMilestones } from "./SuggestedMilestones";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -340,18 +340,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                         return;
                       }
 
-                      // If there are existing milestones, confirm before proceeding
-                      if (
-                        formData.milestones.some(
-                          (m) => m.milestone.trim() !== "",
-                        )
-                      ) {
-                        const shouldProceed = window.confirm(
-                          "This will generate new milestones that you can choose to add to your existing ones. Do you want to continue?",
-                        );
-                        if (!shouldProceed) return;
-                      }
-
                       setIsGenerating(true);
                       try {
                         const response = await fetch(
@@ -685,20 +673,6 @@ Ensure dates are realistic starting from current date. Status should be one of: 
                     <option value="yellow">At Risk</option>
                     <option value="red">Behind</option>
                   </select>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => {
-                      const newMilestones = formData.milestones.filter(
-                        (_, i) => i !== index,
-                      );
-                      setFormData({ ...formData, milestones: newMilestones });
-                    }}
-                    className="flex-shrink-0"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
             ))}

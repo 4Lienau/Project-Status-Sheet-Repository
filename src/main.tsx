@@ -5,9 +5,9 @@ import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "./components/providers/ThemeProvider";
 
-// Import and initialize Tempo Devtools
-import { TempoDevtools } from "tempo-devtools";
+// Initialize Tempo Devtools
 if (import.meta.env.VITE_TEMPO === "true") {
+  const { TempoDevtools } = await import("tempo-devtools");
   TempoDevtools.init();
 }
 
