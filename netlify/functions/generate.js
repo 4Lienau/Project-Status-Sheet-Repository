@@ -1,39 +1,46 @@
-const { Configuration, OpenAIApi } = require("openai");
+const OpenAI = require("openai");
 
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
 });
-
-const openai = new OpenAIApi(configuration);
 
 exports.handler = async function (event, context) {
   // Handle CORS
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Content-Type": "application/json",
+  };
+
+  // Handle preflight requests
   if (event.httpMethod === "OPTIONS") {
     return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-      },
+      statusCode: 204,
+      headers,
     };
   }
 
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers,
       body: JSON.stringify({ error: "Method not allowed" }),
     };
   }
 
   try {
+    console.log("Request body:", event.body);
     const body = JSON.parse(event.body);
     const { messages } = body;
+    console.log("Parsed messages:", messages);
+    console.log("API Key present:", !!openai.apiKey);
 
-    const completion = await openai.createChatCompletion({
+    if (!openai.apiKey) {
+      throw new Error("OpenAI API key is missing");
+    }
+
+    const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: messages,
       max_tokens: body.max_tokens || 500,
@@ -42,20 +49,25 @@ exports.handler = async function (event, context) {
 
     return {
       statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(completion.data),
+      headers,
+      body: JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: completion.choices[0].message.content,
+            },
+          },
+        ],
+      }),
     };
   } catch (error) {
     console.error("Error:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Error response:", error.response?.data);
+
     return {
       statusCode: 500,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         error: "Failed to generate content",
         details: error.message,

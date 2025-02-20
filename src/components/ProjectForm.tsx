@@ -94,7 +94,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to generate content");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate content");
+      }
 
       const data = await response.json();
       return data.choices[0].message.content.trim();
@@ -265,7 +268,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 hover:bg-purple-50 hover:text-purple-600 transition-colors"
                 onClick={handleGenerateDescription}
                 disabled={isGenerating}
               >
@@ -289,7 +292,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 hover:bg-purple-50 hover:text-purple-600 transition-colors"
                 onClick={handleGenerateValueStatement}
                 disabled={isGenerating}
               >
@@ -418,7 +421,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 hover:bg-purple-50 hover:text-purple-600 transition-colors"
                   onClick={handleGenerateMilestones}
                   disabled={isGenerating}
                 >
@@ -429,6 +432,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="bg-white hover:bg-gray-50 shadow-sm hover:shadow transition-all"
                   onClick={() =>
                     setFormData({
                       ...formData,
@@ -514,6 +518,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="hover:bg-red-50 hover:text-red-600 transition-colors"
                   onClick={() => {
                     const newMilestones = formData.milestones.filter(
                       (_, i) => i !== index,
@@ -534,6 +539,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 type="button"
                 variant="outline"
                 size="sm"
+                className="bg-white hover:bg-gray-50 shadow-sm hover:shadow transition-all"
                 onClick={() =>
                   setFormData({
                     ...formData,
@@ -561,6 +567,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="hover:bg-red-50 hover:text-red-600 transition-colors"
                   onClick={() => {
                     const newAccomplishments = formData.accomplishments.filter(
                       (_, i) => i !== index,
@@ -584,6 +591,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 type="button"
                 variant="outline"
                 size="sm"
+                className="bg-white hover:bg-gray-50 shadow-sm hover:shadow transition-all"
                 onClick={() =>
                   setFormData({
                     ...formData,
@@ -614,6 +622,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="hover:bg-red-50 hover:text-red-600 transition-colors"
                   onClick={() => {
                     const newActivities = formData.nextPeriodActivities.filter(
                       (_, i) => i !== index,
@@ -637,6 +646,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 type="button"
                 variant="outline"
                 size="sm"
+                className="bg-white hover:bg-gray-50 shadow-sm hover:shadow transition-all"
                 onClick={() =>
                   setFormData({
                     ...formData,
@@ -661,6 +671,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="hover:bg-red-50 hover:text-red-600 transition-colors"
                   onClick={() => {
                     const newRisks = formData.risks.filter(
                       (_, i) => i !== index,
@@ -681,6 +692,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 type="button"
                 variant="outline"
                 size="sm"
+                className="bg-white hover:bg-gray-50 shadow-sm hover:shadow transition-all"
                 onClick={() =>
                   setFormData({
                     ...formData,
@@ -708,6 +720,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="hover:bg-red-50 hover:text-red-600 transition-colors"
                   onClick={() => {
                     const newConsiderations = formData.considerations.filter(
                       (_, i) => i !== index,
@@ -727,7 +740,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       </Card>
 
       <div className="flex justify-end">
-        <Button type="submit" size="lg">
+        <Button
+          type="submit"
+          size="lg"
+          className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5"
+        >
           Save Project
         </Button>
       </div>

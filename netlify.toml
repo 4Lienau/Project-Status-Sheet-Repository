@@ -4,11 +4,14 @@
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  port = 8888
+  publish = "dist"
+  framework = "#custom"
+  autoLaunch = true
