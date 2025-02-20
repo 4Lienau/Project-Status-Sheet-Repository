@@ -44,28 +44,9 @@ export const exportProjectsToExcel = async (
           )
         : 0;
 
-    type RowData = {
-      title: string;
-      description: string;
-      value_statement: string;
-      status: string;
-      priority: string;
-      overall_complete: number;
-      budget_total: number;
-      budget_actuals: number;
-      budget_forecast: number;
-      variance: number;
-      charter_link: string;
-      sponsors: string;
-      business_leads: string;
-      project_manager: string;
-      created_at: string;
-      updated_at: string;
-      milestone_count: number;
-      risk_count: number;
-    };
+    // No type needed, let TypeScript infer it;
 
-    const rowData: RowData = {
+    const rowData = {
       title: project.title,
       description: project.description || "",
       value_statement: project.value_statement || "",
@@ -426,18 +407,6 @@ export const exportProjectsToExcel = async (
       : 0;
     const variance = project.budget_total - project.budget_forecast;
 
-    type BudgetRowData = {
-      project: string;
-      status: string;
-      priority: string;
-      budget_total: number;
-      budget_actuals: number;
-      budget_forecast: number;
-      variance: number;
-      budget_used: number;
-      budget_forecast_pct: number;
-    };
-
     const row = budgetSheet.addRow({
       project: project.title,
       status: (project.status || "active").toUpperCase(),
@@ -448,7 +417,7 @@ export const exportProjectsToExcel = async (
       variance: variance,
       budget_used: budgetUsed,
       budget_forecast_pct: budgetForecast,
-    } as BudgetRowData);
+    });
 
     row.eachCell((cell, colNumber) => {
       cell.alignment = { vertical: "middle" };
