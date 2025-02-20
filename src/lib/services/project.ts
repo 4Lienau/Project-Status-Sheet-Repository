@@ -280,7 +280,7 @@ export const projectService = {
       .from("considerations")
       .insert(
         data.considerations.map((c) => ({
-          project_id: id,
+          project_id: project.id,
           description: c,
         })),
       );

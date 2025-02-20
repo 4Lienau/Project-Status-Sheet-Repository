@@ -73,7 +73,6 @@ export const exportProjectsToExcel = async (
 
     // Style all cells in the row
     row.eachCell((cell, colNumber) => {
-      // Default vertical middle alignment
       cell.alignment = { vertical: "middle" };
 
       // Format percentage column (Overall Complete)
