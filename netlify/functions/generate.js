@@ -4,67 +4,62 @@ const openai = new OpenAI({
   apiKey: process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
 });
 
-exports.handler = async function (event, context) {
-  // Handle CORS
+const handler = async (event) => {
+  // CORS headers
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Content-Type": "application/json",
+  };
+
+  // Handle preflight requests
   if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-      },
-    };
+    return { statusCode: 200, headers };
   }
 
+  // Only allow POST requests
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: "Method not allowed" }),
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
     };
   }
 
   try {
     console.log("Request received");
-    console.log(
-      "API Key present:",
-      !!process.env.VITE_OPENAI_API_KEY || !!process.env.OPENAI_API_KEY,
-    );
+    console.log("OpenAI API Key present:", !!openai.apiKey);
 
-    const body = JSON.parse(event.body);
-    const { messages } = body;
+    const { messages } = JSON.parse(event.body);
 
-    if (!messages || !Array.isArray(messages)) {
-      throw new Error("Invalid messages format");
+    if (!messages?.length) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: "Invalid or missing messages" }),
+      };
     }
 
     console.log("Sending request to OpenAI...");
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: messages,
+      messages,
       temperature: 0.7,
       max_tokens: 1000,
     });
-    console.log("Received response from OpenAI");
 
-    if (
-      !completion.choices ||
-      !completion.choices[0] ||
-      !completion.choices[0].message
-    ) {
-      throw new Error("Invalid response from OpenAI");
+    if (!completion.choices?.[0]?.message?.content) {
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: "Invalid response from OpenAI" }),
+      };
     }
 
     return {
       statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         choices: [
           {
@@ -76,8 +71,7 @@ exports.handler = async function (event, context) {
       }),
     };
   } catch (error) {
-    console.error("Error:", error.message);
-    console.error("Error stack:", error.stack);
+    console.error("Error:", error);
     if (error.response) {
       console.error("OpenAI API Error:", {
         status: error.response.status,
@@ -87,10 +81,7 @@ exports.handler = async function (event, context) {
 
     return {
       statusCode: 500,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         error: `Generation failed: ${error.message}`,
         details: error.response?.data || null,
@@ -98,3 +89,5 @@ exports.handler = async function (event, context) {
     };
   }
 };
+
+exports.handler = handler;
