@@ -44,7 +44,7 @@ export const exportProjectsToExcel = async (
           )
         : 0;
 
-    type RowData = {
+    interface RowData extends Record<string, string | number> {
       title: string;
       description: string;
       value_statement: string;
@@ -63,7 +63,7 @@ export const exportProjectsToExcel = async (
       updated_at: string;
       milestone_count: number;
       risk_count: number;
-    };
+    }
 
     const rowData: RowData = {
       title: project.title,
