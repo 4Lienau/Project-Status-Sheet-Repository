@@ -426,6 +426,18 @@ export const exportProjectsToExcel = async (
       : 0;
     const variance = project.budget_total - project.budget_forecast;
 
+    type BudgetRowData = {
+      project: string;
+      status: string;
+      priority: string;
+      budget_total: number;
+      budget_actuals: number;
+      budget_forecast: number;
+      variance: number;
+      budget_used: number;
+      budget_forecast_pct: number;
+    };
+
     const row = budgetSheet.addRow({
       project: project.title,
       status: (project.status || "active").toUpperCase(),
@@ -436,7 +448,7 @@ export const exportProjectsToExcel = async (
       variance: variance,
       budget_used: budgetUsed,
       budget_forecast_pct: budgetForecast,
-    });
+    } as BudgetRowData);
 
     row.eachCell((cell, colNumber) => {
       cell.alignment = { vertical: "middle" };
