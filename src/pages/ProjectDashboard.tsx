@@ -41,20 +41,9 @@ import {
 import { Input } from "@/components/ui/input";
 
 interface ProjectDashboardProps {
-  project: ProjectWithRelations & {
-    milestones?: Array<{
-      date: string;
-      milestone: string;
-      owner: string;
-      completion: number;
-      status: "green" | "yellow" | "red";
-    }>;
-    accomplishments?: Array<{ description: string }>;
-    next_period_activities?: Array<{ description: string }>;
-    risks?: Array<{ description: string }>;
-    considerations?: Array<{ description: string }>;
-  };
+  project: ProjectWithRelations;
   onBack: () => void;
+  initialEditMode?: boolean;
 }
 
 type ProjectState = ProjectDashboardProps["project"];

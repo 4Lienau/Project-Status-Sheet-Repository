@@ -2,14 +2,50 @@ import { supabase } from "../supabase";
 import { Database } from "@/types/supabase";
 
 export type Project = Database["public"]["Tables"]["projects"]["Row"];
-export type Milestone = Database["public"]["Tables"]["milestones"]["Row"];
-export type Accomplishment =
-  Database["public"]["Tables"]["accomplishments"]["Row"];
-export type NextPeriodActivity =
-  Database["public"]["Tables"]["next_period_activities"]["Row"];
-export type Risk = Database["public"]["Tables"]["risks"]["Row"];
-export type Consideration =
-  Database["public"]["Tables"]["considerations"]["Row"];
+
+export interface Milestone {
+  id: string;
+  project_id: string | null;
+  date: string;
+  milestone: string;
+  owner: string;
+  completion: number;
+  status: "green" | "yellow" | "red";
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface Accomplishment {
+  id: string;
+  project_id: string | null;
+  description: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface NextPeriodActivity {
+  id: string;
+  project_id: string | null;
+  description: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface Risk {
+  id: string;
+  project_id: string | null;
+  description: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface Consideration {
+  id: string;
+  project_id: string | null;
+  description: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
 
 export interface ProjectWithRelations {
   id: string;
@@ -27,11 +63,17 @@ export interface ProjectWithRelations {
   priority?: "low" | "medium" | "high" | null;
   created_at?: string | null;
   updated_at?: string | null;
-  milestones: Milestone[];
-  accomplishments: Accomplishment[];
-  next_period_activities: NextPeriodActivity[];
-  risks: Risk[];
-  considerations: Consideration[];
+  milestones: Array<{
+    date: string;
+    milestone: string;
+    owner: string;
+    completion: number;
+    status: "green" | "yellow" | "red";
+  }>;
+  accomplishments: Array<{ description: string }>;
+  next_period_activities: Array<{ description: string }>;
+  risks: Array<{ description: string }>;
+  considerations: Array<{ description: string }>;
 }
 
 export const projectService = {

@@ -18,7 +18,9 @@ const Home = () => {
   const { toast } = useToast();
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"list" | "form" | "preview">("list");
-  const [projectData, setProjectData] = useState(null);
+  const [projectData, setProjectData] = useState<ProjectWithRelations | null>(
+    null,
+  );
   const [hasSeenWelcome, setHasSeenWelcome] = React.useState(() => {
     return localStorage.getItem("hasSeenWelcome") === "true";
   });
