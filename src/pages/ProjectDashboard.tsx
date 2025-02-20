@@ -19,7 +19,7 @@ import {
 } from "@/lib/services/projectVersions";
 import StatusSheet from "@/components/StatusSheet";
 import ProjectForm from "@/components/ProjectForm";
-import type { Project } from "@/lib/services/project";
+import type { ProjectWithRelations } from "@/lib/services/project";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,

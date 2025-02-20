@@ -76,6 +76,12 @@ export interface ProjectWithRelations {
   considerations: Array<{ description: string }>;
 }
 
+export type CreateProjectInput = Omit<
+  ProjectWithRelations,
+  "id" | "created_at" | "updated_at"
+>;
+export type UpdateProjectInput = Partial<CreateProjectInput> & { id: string };
+
 export const projectService = {
   async updateProject(
     id: string,

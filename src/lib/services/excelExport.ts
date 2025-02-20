@@ -1,6 +1,8 @@
 import ExcelJS from "exceljs";
 import { ProjectWithRelations } from "./project";
 
+import type { ProjectWithRelations } from "./project";
+
 export const exportProjectsToExcel = async (
   projects: ProjectWithRelations[],
   username?: string,
@@ -35,12 +37,13 @@ export const exportProjectsToExcel = async (
 
   // Add data and apply formatting
   projects.forEach((project) => {
-    const overallComplete = project.milestones.length
-      ? Math.round(
-          project.milestones.reduce((acc, m) => acc + m.completion, 0) /
-            project.milestones.length,
-        )
-      : 0;
+    const overallComplete =
+      project.milestones.length > 0
+        ? Math.round(
+            project.milestones.reduce((acc, m) => acc + m.completion, 0) /
+              project.milestones.length,
+          )
+        : 0;
 
     const row = overviewSheet.addRow({
       title: project.title,
@@ -56,10 +59,15 @@ export const exportProjectsToExcel = async (
       sponsors: project.sponsors,
       business_leads: project.business_leads,
       project_manager: project.project_manager,
-      created_at: new Date(project.created_at || "").toLocaleDateString(),
-      updated_at: new Date(project.updated_at || "").toLocaleDateString(),
+      created_at: project.created_at
+        ? new Date(project.created_at).toLocaleDateString()
+        : "",
+      updated_at: project.updated_at
+        ? new Date(project.updated_at).toLocaleDateString()
+        : "",
       milestone_count: project.milestones.length,
       risk_count: project.risks.length,
+      priority: project.priority || "medium",
     });
 
     // Style all cells in the row
