@@ -47,22 +47,7 @@ export interface Consideration {
   updated_at?: string | null;
 }
 
-export interface ProjectWithRelations {
-  id: string;
-  title: string;
-  description: string | null;
-  value_statement: string | null;
-  status: "active" | "on_hold" | "completed" | "cancelled" | "draft" | null;
-  priority: "low" | "medium" | "high" | null;
-  budget_total: number;
-  budget_actuals: number;
-  budget_forecast: number;
-  charter_link: string;
-  sponsors: string;
-  business_leads: string;
-  project_manager: string;
-  created_at: string | null;
-  updated_at: string | null;
+export interface ProjectWithRelations extends Project {
   milestones: Array<{
     date: string;
     milestone: string;
