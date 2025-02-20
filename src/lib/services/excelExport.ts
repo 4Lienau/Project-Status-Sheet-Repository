@@ -44,7 +44,28 @@ export const exportProjectsToExcel = async (
           )
         : 0;
 
-    const rowData = {
+    type RowData = {
+      title: string;
+      description: string;
+      value_statement: string;
+      status: string;
+      priority: string;
+      overall_complete: number;
+      budget_total: number;
+      budget_actuals: number;
+      budget_forecast: number;
+      variance: number;
+      charter_link: string;
+      sponsors: string;
+      business_leads: string;
+      project_manager: string;
+      created_at: string;
+      updated_at: string;
+      milestone_count: number;
+      risk_count: number;
+    };
+
+    const rowData: RowData = {
       title: project.title,
       description: project.description || "",
       value_statement: project.value_statement || "",
