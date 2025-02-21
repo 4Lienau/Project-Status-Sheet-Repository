@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Save, Wand2, Loader2 } from "lucide-react";
+import { Save, Wand2, Loader2, Trash2 } from "lucide-react";
 import { SuggestedMilestones } from "./SuggestedMilestones";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -108,6 +108,73 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     }
   };
 
+  const handleGenerateContent = async (
+    type: "description" | "value" | "milestones",
+  ) => {
+    if (!formData.title.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a project title first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (
+      (type === "description" && formData.description?.trim()) ||
+      (type === "value" && formData.valueStatement?.trim())
+    ) {
+      const shouldReplace = window.confirm(
+        `This will replace your existing ${type === "description" ? "project description" : "value statement"}. Do you want to continue?`,
+      );
+      if (!shouldReplace) return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const content = await aiService.generateContent(
+        type,
+        formData.title,
+        formData.description,
+      );
+
+      if (type === "milestones") {
+        let milestones;
+        try {
+          milestones = JSON.parse(content.trim());
+          if (!Array.isArray(milestones)) {
+            throw new Error("Invalid response structure");
+          }
+          setSuggestedMilestones(milestones);
+          setShowSuggestedMilestones(true);
+        } catch (parseError) {
+          console.error("JSON Parse Error:", parseError);
+          throw new Error("Failed to parse AI response");
+        }
+      } else {
+        setFormData({
+          ...formData,
+          [type === "description" ? "description" : "valueStatement"]: content,
+        });
+      }
+
+      toast({
+        title: "Success",
+        description: `Generated ${type === "description" ? "project description" : type === "value" ? "value statement" : "milestones"}`,
+        className: "bg-green-50 border-green-200",
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: `Failed to generate ${type === "description" ? "description" : type === "value" ? "value statement" : "milestones"}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <Card className="p-6 bg-card">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -125,249 +192,101 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 : "Create Project"}
           </Button>
         </div>
+
         <div className="space-y-4">
-          <div className="space-y-4">
-            <div>
-              <Label className="text-blue-800">Project Title *</Label>
-              <Input
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                required
-                placeholder="Enter project title"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <Label className="text-blue-800">Project Description</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={async () => {
-                      if (!formData.title.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Please enter a project title first",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      if (formData.description?.trim()) {
-                        const shouldReplace = window.confirm(
-                          "This will replace your existing project description. Do you want to continue?",
-                        );
-                        if (!shouldReplace) return;
-                      }
-
-                      setIsGenerating(true);
-                      try {
-                        const content = await aiService.generateContent(
-                          "description",
-                          formData.title,
-                        );
-                        setFormData({
-                          ...formData,
-                          description: content,
-                        });
-
-                        toast({
-                          title: "Success",
-                          description: "Generated project description",
-                          className: "bg-green-50 border-green-200",
-                        });
-                      } catch (error) {
-                        console.error(error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to generate description",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsGenerating(false);
-                      }
-                    }}
-                    disabled={isSubmitting || isGenerating}
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                    Generate Description
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={async () => {
-                      if (!formData.title.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Please enter a project title first",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      if (formData.valueStatement?.trim()) {
-                        const shouldReplace = window.confirm(
-                          "This will replace your existing value statement. Do you want to continue?",
-                        );
-                        if (!shouldReplace) return;
-                      }
-
-                      setIsGenerating(true);
-                      try {
-                        const content = await aiService.generateContent(
-                          "value",
-                          formData.title,
-                          formData.description,
-                        );
-                        setFormData({
-                          ...formData,
-                          valueStatement: content,
-                        });
-
-                        toast({
-                          title: "Success",
-                          description: "Generated value statement",
-                          className: "bg-green-50 border-green-200",
-                        });
-                      } catch (error) {
-                        console.error(error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to generate value statement",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsGenerating(false);
-                      }
-                    }}
-                    disabled={isSubmitting || isGenerating}
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                    Generate Value
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={async () => {
-                      if (!formData.title.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Please enter a project title first",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      setIsGenerating(true);
-                      try {
-                        const content = await aiService.generateContent(
-                          "milestones",
-                          formData.title,
-                          formData.description,
-                        );
-                        let milestones;
-                        try {
-                          milestones = JSON.parse(content.trim());
-                          if (!Array.isArray(milestones)) {
-                            throw new Error("Invalid response structure");
-                          }
-                        } catch (parseError) {
-                          console.error("JSON Parse Error:", parseError);
-                          throw new Error("Failed to parse AI response");
-                        }
-
-                        setSuggestedMilestones(milestones);
-                        setShowSuggestedMilestones(true);
-
-                        toast({
-                          title: "Success",
-                          description: "Generated milestones",
-                          className: "bg-green-50 border-green-200",
-                        });
-                      } catch (error) {
-                        console.error(error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to generate milestones",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsGenerating(false);
-                      }
-                    }}
-                    disabled={isSubmitting || isGenerating}
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                    Generate Milestones
-                  </Button>
-                </div>
-              </div>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Enter a brief description of the project"
-              />
-            </div>
-
-            <div>
-              <Label className="text-blue-800">Value Statement</Label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={formData.valueStatement}
-                onChange={(e) =>
-                  setFormData({ ...formData, valueStatement: e.target.value })
-                }
-                placeholder="Enter the business value, ROI, and strategic importance of this project"
-              />
-            </div>
-
-            <div>
-              <Label className="text-blue-800">Project Status</Label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    status: e.target.value as typeof formData.status,
-                  })
-                }
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="on_hold">On Hold</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
+          {/* Project Title */}
+          <div>
+            <Label className="text-blue-800">Project Title *</Label>
+            <Input
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              required
+              placeholder="Enter project title"
+            />
           </div>
 
+          {/* Project Description */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <Label className="text-blue-800">Project Description</Label>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800 shadow-lg hover:shadow-purple-500/25 transition-all duration-200 flex items-center gap-2"
+                onClick={() => handleGenerateContent("description")}
+                disabled={isSubmitting || isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+                AI Generate Description
+              </Button>
+            </div>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="Enter a brief description of the project"
+            />
+          </div>
+
+          {/* Value Statement */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <Label className="text-blue-800">Value Statement</Label>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-gradient-to-r from-blue-500 to-blue-700 text-white hover:from-blue-600 hover:to-blue-800 shadow-lg hover:shadow-blue-500/25 transition-all duration-200 flex items-center gap-2"
+                onClick={() => handleGenerateContent("value")}
+                disabled={isSubmitting || isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+                AI Generate Value
+              </Button>
+            </div>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={formData.valueStatement}
+              onChange={(e) =>
+                setFormData({ ...formData, valueStatement: e.target.value })
+              }
+              placeholder="Enter the business value, ROI, and strategic importance of this project"
+            />
+          </div>
+
+          {/* Project Status */}
+          <div>
+            <Label className="text-blue-800">Project Status</Label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              value={formData.status}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  status: e.target.value as typeof formData.status,
+                })
+              }
+            >
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+              <option value="on_hold">On Hold</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          {/* Budget Section */}
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label className="text-blue-800">Total Budget</Label>
@@ -440,6 +359,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </div>
           </div>
 
+          {/* Project Links and Team */}
           <div>
             <Label className="text-blue-800">Project Charter Link</Label>
             <Input
@@ -487,7 +407,23 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
           {/* Milestones */}
           <div className="space-y-2">
-            <Label className="text-blue-800 text-lg">Milestones</Label>
+            <div className="flex justify-between items-center">
+              <Label className="text-blue-800 text-lg">Milestones</Label>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-gradient-to-r from-green-500 to-green-700 text-white hover:from-green-600 hover:to-green-800 shadow-lg hover:shadow-green-500/25 transition-all duration-200 flex items-center gap-2"
+                onClick={() => handleGenerateContent("milestones")}
+                disabled={isSubmitting || isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+                AI Generate Milestones
+              </Button>
+            </div>
             <div className="grid grid-cols-4 gap-2 mb-2">
               <div className="text-sm font-medium text-muted-foreground">
                 Date
@@ -567,6 +503,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     <option value="yellow">At Risk</option>
                     <option value="red">Behind</option>
                   </select>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={`hover:bg-destructive/10 ${milestone.status === "green" ? "text-green-600" : milestone.status === "yellow" ? "text-yellow-600" : "text-red-600"}`}
+                    onClick={() => {
+                      const newMilestones = [...formData.milestones];
+                      newMilestones.splice(index, 1);
+                      setFormData({ ...formData, milestones: newMilestones });
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}
