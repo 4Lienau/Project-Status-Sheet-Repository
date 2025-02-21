@@ -214,7 +214,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               <Button
                 type="button"
                 size="sm"
-                className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800 shadow-lg hover:shadow-purple-500/25 transition-all duration-200 flex items-center gap-2"
+                className="bg-gradient-to-r from-green-500 to-green-700 text-white hover:from-green-600 hover:to-green-800 shadow-lg hover:shadow-green-500/25 transition-all duration-200 flex items-center gap-2 w-[200px] justify-center"
                 onClick={() => handleGenerateContent("description")}
                 disabled={isSubmitting || isGenerating}
               >
@@ -243,7 +243,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               <Button
                 type="button"
                 size="sm"
-                className="bg-gradient-to-r from-blue-500 to-blue-700 text-white hover:from-blue-600 hover:to-blue-800 shadow-lg hover:shadow-blue-500/25 transition-all duration-200 flex items-center gap-2"
+                className="bg-gradient-to-r from-green-500 to-green-700 text-white hover:from-green-600 hover:to-green-800 shadow-lg hover:shadow-green-500/25 transition-all duration-200 flex items-center gap-2 w-[200px] justify-center"
                 onClick={() => handleGenerateContent("value")}
                 disabled={isSubmitting || isGenerating}
               >
@@ -412,7 +412,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               <Button
                 type="button"
                 size="sm"
-                className="bg-gradient-to-r from-green-500 to-green-700 text-white hover:from-green-600 hover:to-green-800 shadow-lg hover:shadow-green-500/25 transition-all duration-200 flex items-center gap-2"
+                className="bg-gradient-to-r from-green-500 to-green-700 text-white hover:from-green-600 hover:to-green-800 shadow-lg hover:shadow-green-500/25 transition-all duration-200 flex items-center gap-2 w-[200px] justify-center"
                 onClick={() => handleGenerateContent("milestones")}
                 disabled={isSubmitting || isGenerating}
               >
@@ -507,7 +507,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className={`hover:bg-destructive/10 ${milestone.status === "green" ? "text-green-600" : milestone.status === "yellow" ? "text-yellow-600" : "text-red-600"}`}
+                    className="hover:bg-destructive/10 text-red-600"
                     onClick={() => {
                       const newMilestones = [...formData.milestones];
                       newMilestones.splice(index, 1);
