@@ -7,6 +7,7 @@ import { Save, Wand2, Loader2 } from "lucide-react";
 import { SuggestedMilestones } from "./SuggestedMilestones";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { aiService } from "@/lib/services/aiService";
 
 interface ProjectData {
   title: string;
@@ -147,17 +148,57 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
-                    onClick={() => {
-                      toast({
-                        title: "Feature Not Available",
-                        description:
-                          "AI generation requires a backend service. This feature has been disabled for security reasons.",
-                        variant: "destructive",
-                      });
+                    onClick={async () => {
+                      if (!formData.title.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Please enter a project title first",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
+                      if (formData.description?.trim()) {
+                        const shouldReplace = window.confirm(
+                          "This will replace your existing project description. Do you want to continue?",
+                        );
+                        if (!shouldReplace) return;
+                      }
+
+                      setIsGenerating(true);
+                      try {
+                        const content = await aiService.generateContent(
+                          "description",
+                          formData.title,
+                        );
+                        setFormData({
+                          ...formData,
+                          description: content,
+                        });
+
+                        toast({
+                          title: "Success",
+                          description: "Generated project description",
+                          className: "bg-green-50 border-green-200",
+                        });
+                      } catch (error) {
+                        console.error(error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to generate description",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setIsGenerating(false);
+                      }
                     }}
-                    disabled={true}
+                    disabled={isSubmitting || isGenerating}
                   >
-                    <Wand2 className="h-4 w-4" />
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-4 w-4" />
+                    )}
                     Generate Description
                   </Button>
 
@@ -166,17 +207,58 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
-                    onClick={() => {
-                      toast({
-                        title: "Feature Not Available",
-                        description:
-                          "AI generation requires a backend service. This feature has been disabled for security reasons.",
-                        variant: "destructive",
-                      });
+                    onClick={async () => {
+                      if (!formData.title.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Please enter a project title first",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
+                      if (formData.valueStatement?.trim()) {
+                        const shouldReplace = window.confirm(
+                          "This will replace your existing value statement. Do you want to continue?",
+                        );
+                        if (!shouldReplace) return;
+                      }
+
+                      setIsGenerating(true);
+                      try {
+                        const content = await aiService.generateContent(
+                          "value",
+                          formData.title,
+                          formData.description,
+                        );
+                        setFormData({
+                          ...formData,
+                          valueStatement: content,
+                        });
+
+                        toast({
+                          title: "Success",
+                          description: "Generated value statement",
+                          className: "bg-green-50 border-green-200",
+                        });
+                      } catch (error) {
+                        console.error(error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to generate value statement",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setIsGenerating(false);
+                      }
                     }}
-                    disabled={true}
+                    disabled={isSubmitting || isGenerating}
                   >
-                    <Wand2 className="h-4 w-4" />
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-4 w-4" />
+                    )}
                     Generate Value
                   </Button>
 
@@ -185,17 +267,60 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
-                    onClick={() => {
-                      toast({
-                        title: "Feature Not Available",
-                        description:
-                          "AI generation requires a backend service. This feature has been disabled for security reasons.",
-                        variant: "destructive",
-                      });
+                    onClick={async () => {
+                      if (!formData.title.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Please enter a project title first",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
+                      setIsGenerating(true);
+                      try {
+                        const content = await aiService.generateContent(
+                          "milestones",
+                          formData.title,
+                          formData.description,
+                        );
+                        let milestones;
+                        try {
+                          milestones = JSON.parse(content.trim());
+                          if (!Array.isArray(milestones)) {
+                            throw new Error("Invalid response structure");
+                          }
+                        } catch (parseError) {
+                          console.error("JSON Parse Error:", parseError);
+                          throw new Error("Failed to parse AI response");
+                        }
+
+                        setSuggestedMilestones(milestones);
+                        setShowSuggestedMilestones(true);
+
+                        toast({
+                          title: "Success",
+                          description: "Generated milestones",
+                          className: "bg-green-50 border-green-200",
+                        });
+                      } catch (error) {
+                        console.error(error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to generate milestones",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setIsGenerating(false);
+                      }
                     }}
-                    disabled={true}
+                    disabled={isSubmitting || isGenerating}
                   >
-                    <Wand2 className="h-4 w-4" />
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-4 w-4" />
+                    )}
                     Generate Milestones
                   </Button>
                 </div>

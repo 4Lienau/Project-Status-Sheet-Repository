@@ -39,3 +39,6 @@ dist-ssr
 **/tempobook/storyboards/
 
 core
+
+# Local Netlify folder
+.netlify
