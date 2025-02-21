@@ -147,88 +147,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
-                    onClick={async () => {
-                      if (!formData.title.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Please enter a project title first",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      if (formData.description?.trim()) {
-                        const shouldReplace = window.confirm(
-                          "This will replace your existing project description. Do you want to continue?",
-                        );
-                        if (!shouldReplace) return;
-                      }
-
-                      setIsGenerating(true);
-                      try {
-                        const response = await fetch(
-                          "https://api.openai.com/v1/chat/completions",
-                          {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-                            },
-                            body: JSON.stringify({
-                              model: "gpt-3.5-turbo",
-                              messages: [
-                                {
-                                  role: "system",
-                                  content:
-                                    "You are a professional project manager. Generate a concise but detailed project description focusing on purpose, goals, and expected outcomes based on the project title. Return ONLY the description text, no other content or formatting.",
-                                },
-                                {
-                                  role: "user",
-                                  content: formData.title,
-                                },
-                              ],
-                              max_tokens: 500,
-                              temperature: 0.7,
-                            }),
-                          },
-                        );
-
-                        if (!response.ok)
-                          throw new Error("Failed to generate content");
-
-                        const data = await response.json();
-                        const description =
-                          data.choices[0].message.content.trim();
-
-                        setFormData({
-                          ...formData,
-                          description: description,
-                        });
-
-                        toast({
-                          title: "Success",
-                          description: "Generated project description",
-                          className: "bg-green-50 border-green-200",
-                        });
-                      } catch (error) {
-                        console.error(error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to generate description",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsGenerating(false);
-                      }
+                    onClick={() => {
+                      toast({
+                        title: "Feature Not Available",
+                        description:
+                          "AI generation requires a backend service. This feature has been disabled for security reasons.",
+                        variant: "destructive",
+                      });
                     }}
-                    disabled={isSubmitting || isGenerating}
+                    disabled={true}
                   >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                    {isGenerating ? "Generating..." : "Generate Description"}
+                    <Wand2 className="h-4 w-4" />
+                    Generate Description
                   </Button>
 
                   <Button
@@ -236,93 +166,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
-                    onClick={async () => {
-                      if (!formData.title.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Please enter a project title first",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      if (formData.valueStatement?.trim()) {
-                        const shouldReplace = window.confirm(
-                          "This will replace your existing value statement. Do you want to continue?",
-                        );
-                        if (!shouldReplace) return;
-                      }
-
-                      setIsGenerating(true);
-                      try {
-                        const response = await fetch(
-                          "https://api.openai.com/v1/chat/completions",
-                          {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-                            },
-                            body: JSON.stringify({
-                              model: "gpt-3.5-turbo",
-                              messages: [
-                                {
-                                  role: "system",
-                                  content:
-                                    "You are a professional project manager. Generate a clear value statement focusing on the project's business value, ROI, and strategic importance based on the project title. Return ONLY the value statement text, no other content or formatting.",
-                                },
-                                {
-                                  role: "user",
-                                  content:
-                                    formData.title +
-                                    (formData.description
-                                      ? "\n\nProject Description: " +
-                                        formData.description
-                                      : ""),
-                                },
-                              ],
-                              max_tokens: 300,
-                              temperature: 0.7,
-                            }),
-                          },
-                        );
-
-                        if (!response.ok)
-                          throw new Error("Failed to generate content");
-
-                        const data = await response.json();
-                        const valueStatement =
-                          data.choices[0].message.content.trim();
-
-                        setFormData({
-                          ...formData,
-                          valueStatement: valueStatement,
-                        });
-
-                        toast({
-                          title: "Success",
-                          description: "Generated value statement",
-                          className: "bg-green-50 border-green-200",
-                        });
-                      } catch (error) {
-                        console.error(error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to generate value statement",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsGenerating(false);
-                      }
+                    onClick={() => {
+                      toast({
+                        title: "Feature Not Available",
+                        description:
+                          "AI generation requires a backend service. This feature has been disabled for security reasons.",
+                        variant: "destructive",
+                      });
                     }}
-                    disabled={isSubmitting || isGenerating}
+                    disabled={true}
                   >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                    {isGenerating ? "Generating..." : "Generate Value"}
+                    <Wand2 className="h-4 w-4" />
+                    Generate Value
                   </Button>
 
                   <Button
@@ -330,104 +185,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
-                    onClick={async () => {
-                      if (!formData.title.trim()) {
-                        toast({
-                          title: "Error",
-                          description: "Please enter a project title first",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      setIsGenerating(true);
-                      try {
-                        const response = await fetch(
-                          "https://api.openai.com/v1/chat/completions",
-                          {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-                            },
-                            body: JSON.stringify({
-                              model: "gpt-3.5-turbo",
-                              messages: [
-                                {
-                                  role: "system",
-                                  content: `You are a professional project manager. Generate key milestones based on the project title and description. Return ONLY a JSON array of milestones with the following structure, no other text:
-[
-  {
-    "date": "YYYY-MM-DD",
-    "milestone": "Milestone description",
-    "owner": "Role title",
-    "completion": 0,
-    "status": "green"
-  }
-]
-
-Ensure dates are realistic starting from current date. Status should be one of: green, yellow, red.`,
-                                },
-                                {
-                                  role: "user",
-                                  content:
-                                    formData.title +
-                                    (formData.description
-                                      ? "\n\nProject Description: " +
-                                        formData.description
-                                      : ""),
-                                },
-                              ],
-                              max_tokens: 1000,
-                              temperature: 0.7,
-                            }),
-                          },
-                        );
-
-                        if (!response.ok)
-                          throw new Error("Failed to generate content");
-
-                        const data = await response.json();
-                        let milestones;
-                        try {
-                          const content = data.choices[0].message.content;
-                          milestones = JSON.parse(content.trim());
-
-                          if (!Array.isArray(milestones)) {
-                            throw new Error("Invalid response structure");
-                          }
-                        } catch (parseError) {
-                          console.error("JSON Parse Error:", parseError);
-                          throw new Error("Failed to parse AI response");
-                        }
-
-                        setSuggestedMilestones(milestones);
-                        setShowSuggestedMilestones(true);
-
-                        toast({
-                          title: "Success",
-                          description: "Generated milestones",
-                          className: "bg-green-50 border-green-200",
-                        });
-                      } catch (error) {
-                        console.error(error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to generate milestones",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsGenerating(false);
-                      }
+                    onClick={() => {
+                      toast({
+                        title: "Feature Not Available",
+                        description:
+                          "AI generation requires a backend service. This feature has been disabled for security reasons.",
+                        variant: "destructive",
+                      });
                     }}
-                    disabled={isSubmitting || isGenerating}
+                    disabled={true}
                   >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                    {isGenerating ? "Generating..." : "Generate Milestones"}
+                    <Wand2 className="h-4 w-4" />
+                    Generate Milestones
                   </Button>
                 </div>
               </div>
