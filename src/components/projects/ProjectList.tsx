@@ -43,7 +43,10 @@ const ProjectList = ({
     }
   }, [user?.id]);
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
+  const [allProjects, setAllProjects] = useState<ProjectWithRelations[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<
+    ProjectWithRelations[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
@@ -53,16 +56,19 @@ const ProjectList = ({
       const projectPromises = (await projectService.getAllProjects()).map((p) =>
         projectService.getProject(p.id),
       );
-      let projects = (await Promise.all(projectPromises)).filter(
+      const projects = (await Promise.all(projectPromises)).filter(
         (p): p is ProjectWithRelations => p !== null,
       );
 
-      // Apply project manager filter
-      if (filterManager && filterManager !== "all") {
-        projects = projects.filter((p) => p.project_manager === filterManager);
-      }
+      setAllProjects(projects);
 
-      setProjects(projects);
+      // Apply project manager filter
+      const filtered =
+        filterManager && filterManager !== "all"
+          ? projects.filter((p) => p.project_manager === filterManager)
+          : projects;
+
+      setFilteredProjects(filtered);
       setLoading(false);
     };
 
@@ -103,7 +109,7 @@ const ProjectList = ({
                 await new Promise((resolve) => setTimeout(resolve, 100)); // Let UI update
                 const username =
                   profile.full_name || user?.email?.split("@")[0] || "user";
-                await exportProjectsToExcel(projects, username);
+                await exportProjectsToExcel(filteredProjects, username);
                 toast({
                   title: "Export Successful",
                   description:
@@ -120,7 +126,7 @@ const ProjectList = ({
                 setExporting(false);
               }
             }}
-            disabled={projects.length === 0 || exporting}
+            disabled={filteredProjects.length === 0 || exporting}
             className="flex items-center gap-2"
           >
             {exporting ? (
@@ -140,7 +146,7 @@ const ProjectList = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
+        {filteredProjects.map((project) => (
           <Card
             key={project.id}
             onClick={() => onSelectProject(project)}
@@ -187,7 +193,7 @@ const ProjectList = ({
           </Card>
         ))}
 
-        {projects.length === 0 && (
+        {filteredProjects.length === 0 && (
           <div className="col-span-full text-center py-8 text-blue-800">
             No projects yet. Click "New Project" to create one.
           </div>
