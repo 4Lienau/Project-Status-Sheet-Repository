@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Layout from "./layout/Layout";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +22,16 @@ import {
 } from "@/components/ui/select";
 
 const Home = () => {
+  const location = useLocation();
+  // If we're in production and on the root path, redirect to /
+  useEffect(() => {
+    // Handle OAuth redirects that might contain localhost
+    if (window.location.href.includes("localhost:3000")) {
+      const url = new URL(window.location.href);
+      // Preserve the hash fragment which contains the auth tokens
+      window.location.href = `${window.location.origin}${url.hash}`;
+    }
+  }, []);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading } = useAuth();
