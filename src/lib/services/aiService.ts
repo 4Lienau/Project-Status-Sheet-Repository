@@ -35,17 +35,22 @@ export const aiService = {
   ) {
     // Try using Netlify function first
     try {
-      const response = await fetch("/.netlify/functions/generate-content", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Get the base URL from the current window location
+      const baseUrl = window.location.origin;
+      const response = await fetch(
+        `${baseUrl}/.netlify/functions/generate-content`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type,
+            title,
+            description,
+          }),
         },
-        body: JSON.stringify({
-          type,
-          title,
-          description,
-        }),
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
