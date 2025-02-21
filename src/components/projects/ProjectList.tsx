@@ -15,9 +15,14 @@ import { exportProjectsToExcel } from "@/lib/services/excelExport";
 interface ProjectListProps {
   onSelectProject: (project: ProjectWithRelations) => void;
   onCreateNew: () => void;
+  filterManager?: string;
 }
 
-const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
+const ProjectList = ({
+  onSelectProject,
+  onCreateNew,
+  filterManager = "",
+}: ProjectListProps) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<{ full_name: string | null }>({
     full_name: null,
@@ -48,15 +53,21 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
       const projectPromises = (await projectService.getAllProjects()).map((p) =>
         projectService.getProject(p.id),
       );
-      const projects = (await Promise.all(projectPromises)).filter(
+      let projects = (await Promise.all(projectPromises)).filter(
         (p): p is ProjectWithRelations => p !== null,
       );
+
+      // Apply project manager filter
+      if (filterManager && filterManager !== "all") {
+        projects = projects.filter((p) => p.project_manager === filterManager);
+      }
+
       setProjects(projects);
       setLoading(false);
     };
 
     loadProjects();
-  }, []);
+  }, [filterManager]);
 
   if (loading) {
     return (

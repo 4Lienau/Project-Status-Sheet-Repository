@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Layout from "./layout/Layout";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,13 @@ import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -19,9 +26,27 @@ const Home = () => {
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"list" | "form" | "preview">("list");
   const [projectData, setProjectData] = useState(null);
+  const [selectedManager, setSelectedManager] = useState<string>("all");
+  const [projectManagers, setProjectManagers] = useState<string[]>([]);
   const [hasSeenWelcome, setHasSeenWelcome] = React.useState(() => {
     return localStorage.getItem("hasSeenWelcome") === "true";
   });
+
+  // Load unique project managers
+  useEffect(() => {
+    const loadProjectManagers = async () => {
+      if (!user) return;
+      const projects = await projectService.getAllProjects();
+      const uniqueManagers = [
+        ...new Set(projects.map((p) => p.project_manager)),
+      ]
+        .filter((manager) => manager) // Remove empty values
+        .sort();
+      setProjectManagers(uniqueManagers);
+    };
+
+    loadProjectManagers();
+  }, [user]);
 
   const handleSelectProject = async (project: Project) => {
     const fullProject = await projectService.getProject(project.id);
@@ -58,10 +83,31 @@ const Home = () => {
       <div className="p-6 bg-background">
         <div className="max-w-7xl mx-auto space-y-6">
           {mode === "list" && (
-            <ProjectList
-              onSelectProject={handleSelectProject}
-              onCreateNew={() => setMode("form")}
-            />
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <Select
+                  value={selectedManager}
+                  onValueChange={setSelectedManager}
+                >
+                  <SelectTrigger className="w-[280px]">
+                    <SelectValue placeholder="Filter by Project Manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Project Managers</SelectItem>
+                    {projectManagers.map((manager) => (
+                      <SelectItem key={manager} value={manager}>
+                        {manager}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <ProjectList
+                onSelectProject={handleSelectProject}
+                onCreateNew={() => setMode("form")}
+                filterManager={selectedManager}
+              />
+            </div>
           )}
 
           {mode === "form" && (
