@@ -1,22 +1,14 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
 
-[dev]
-  command = "npm run dev"
-  targetPort = 5173
-  port = 8888
-  publish = "dist"
-  functions = "netlify/functions"
-  framework = "#custom"
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "OPENAI_API_KEY,VITE_OPENAI_API_KEY"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-[[headers]]
-  for = "/*"
-    [headers.values]
-    Access-Control-Allow-Origin = "*"
+[functions]
+  directory = "netlify/functions"
