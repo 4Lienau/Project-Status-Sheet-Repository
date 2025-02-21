@@ -3,19 +3,23 @@ import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { BrowserRouter } from "react-router-dom";
-import { ThemeProvider } from "./components/providers/ThemeProvider";
-
-import { TempoDevtools } from "tempo-devtools";
-TempoDevtools.init();
 
 const basename = import.meta.env.BASE_URL;
 
+// Initialize Tempo Devtools
+if (import.meta.env.VITE_TEMPO === "true") {
+  const initTempo = async () => {
+    const { TempoDevtools } = await import("tempo-devtools");
+    await TempoDevtools.init();
+  };
+  initTempo();
+}
+
+// Render the app
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode className="bg-[#d74141]">
-    <ThemeProvider defaultTheme="system" storageKey="ui-theme">
-      <BrowserRouter basename={basename}>
-        <App />
-      </BrowserRouter>
-    </ThemeProvider>
+  <React.StrictMode>
+    <BrowserRouter basename={basename}>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>,
 );

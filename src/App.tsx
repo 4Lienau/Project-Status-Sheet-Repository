@@ -11,14 +11,17 @@ function App() {
   return (
     <Suspense fallback={<p>Loading...</p>}>
       <>
+        {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
         <Routes>
           <Route path="/*" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/status-sheet/:id" element={<StatusSheetView />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          {import.meta.env.VITE_TEMPO === "true" && (
+            <Route path="/tempobook/*" />
+          )}
         </Routes>
-        {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
       </>
     </Suspense>
   );
