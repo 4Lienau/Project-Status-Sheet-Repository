@@ -1,5 +1,15 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,6 +89,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   const [showSuggestedMilestones, setShowSuggestedMilestones] =
     React.useState(false);
   const [suggestedMilestones, setSuggestedMilestones] = React.useState([]);
+  const [showOverwriteDialog, setShowOverwriteDialog] = React.useState(false);
+  const [pendingGenerationType, setPendingGenerationType] = React.useState<
+    "description" | "value" | null
+  >(null);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,6 +101,25 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   };
 
   const handleGenerateContent = async (
+    type: "description" | "value" | "milestones",
+  ) => {
+    // Check if we need to show the overwrite dialog
+    if (type === "description" && formData.description?.trim()) {
+      setPendingGenerationType("description");
+      setShowOverwriteDialog(true);
+      return;
+    }
+    if (type === "value" && formData.valueStatement?.trim()) {
+      setPendingGenerationType("value");
+      setShowOverwriteDialog(true);
+      return;
+    }
+
+    // If no existing content or it's milestones, proceed with generation
+    await generateContent(type);
+  };
+
+  const generateContent = async (
     type: "description" | "value" | "milestones",
   ) => {
     try {
@@ -142,6 +175,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       <div className={cardClasses}>
         <div className="space-y-4">
           <div className="space-y-2">
+            <h3 className="text-2xl font-bold text-blue-800 mb-4">
+              Project Details
+            </h3>
             <Label htmlFor="title">Project Title</Label>
             <Input
               id="title"
@@ -215,7 +251,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       {/* Project Status */}
       <div className={cardClasses}>
         <div className="space-y-2">
-          <Label>Project Status</Label>
+          <h3 className="text-2xl font-bold text-blue-800 mb-4">
+            Project Status
+          </h3>
           <Select
             value={formData.status}
             onValueChange={(value: any) =>
@@ -239,7 +277,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       {/* Health Calculation */}
       <div className={cardClasses}>
         <div className="space-y-2">
-          <Label>Health Calculation</Label>
+          <h3 className="text-2xl font-bold text-blue-800 mb-4">
+            Health Calculation
+          </h3>
           <Select
             value={formData.health_calculation_type}
             onValueChange={(value: any) =>
@@ -264,7 +304,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       {formData.health_calculation_type === "manual" && (
         <div className={cardClasses}>
           <div className="space-y-2">
-            <Label htmlFor="manual_health_percentage">Health Percentage</Label>
+            <h3 className="text-2xl font-bold text-blue-800 mb-4">
+              Health Percentage
+            </h3>
             <Input
               id="manual_health_percentage"
               type="number"
@@ -285,6 +327,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
       {/* Budget & Links */}
       <div className={cardClasses}>
+        <h3 className="text-2xl font-bold text-blue-800 mb-4">
+          Budget & Links
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="space-y-2">
@@ -404,7 +449,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       {/* Milestones */}
       <div className={cardClasses}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">Milestones</h3>
+          <h3 className="text-2xl font-bold text-blue-800">Milestones</h3>
           <Button
             type="button"
             variant="outline"
@@ -465,7 +510,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
       {/* Accomplishments */}
       <div className={cardClasses}>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        <h3 className="text-2xl font-bold text-blue-800 mb-4">
           Accomplishments
         </h3>
         <div className="space-y-4">
@@ -519,7 +564,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
       {/* Next Period Activities */}
       <div className={cardClasses}>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        <h3 className="text-2xl font-bold text-blue-800 mb-4">
           Next Period Activities
         </h3>
         <div className="space-y-4">
@@ -573,7 +618,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
       {/* Risks */}
       <div className={cardClasses}>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Risks</h3>
+        <h3 className="text-2xl font-bold text-blue-800 mb-4">Risks</h3>
         <div className="space-y-4">
           {formData.risks.map((item, index) => (
             <div key={index} className="flex gap-2">
@@ -620,7 +665,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
 
       {/* Considerations */}
       <div className={cardClasses}>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        <h3 className="text-2xl font-bold text-blue-800 mb-4">
           Considerations
         </h3>
         <div className="space-y-4">
@@ -697,6 +742,41 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           }))
         }
       />
+
+      {/* Overwrite Confirmation Dialog */}
+      <AlertDialog
+        open={showOverwriteDialog}
+        onOpenChange={setShowOverwriteDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Overwrite</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to overwrite the existing{" "}
+              {pendingGenerationType === "value"
+                ? "value statement"
+                : "description"}
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingGenerationType(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingGenerationType) {
+                  generateContent(pendingGenerationType);
+                  setPendingGenerationType(null);
+                }
+                setShowOverwriteDialog(false);
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 };
