@@ -96,7 +96,13 @@ export function MilestoneSortableItem({
             type="button"
             variant="ghost"
             size="icon"
-            className="hover:bg-destructive/10 text-red-600"
+            className={`hover:opacity-80 ${
+              milestone.status === "green"
+                ? "text-green-600"
+                : milestone.status === "yellow"
+                  ? "text-yellow-600"
+                  : "text-red-600"
+            }`}
             onClick={onDelete}
           >
             <Trash2 className="h-4 w-4" />
