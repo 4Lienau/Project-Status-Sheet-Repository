@@ -52,7 +52,7 @@ export function MilestoneSortableItem({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-[120px_1fr_150px_200px] gap-2">
         <Input
           placeholder="Date"
           type="date"
