@@ -184,11 +184,6 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
           <h2 className="text-xl text-blue-50 dark:text-blue-50">
             {data.description}
           </h2>
-          {data.valueStatement && (
-            <div className="mt-2 text-lg text-blue-50 dark:text-blue-50">
-              <strong>Value Statement:</strong> {data.valueStatement}
-            </div>
-          )}
         </div>
 
         <div className="px-3">
