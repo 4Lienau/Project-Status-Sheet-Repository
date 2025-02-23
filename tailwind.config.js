@@ -11,6 +11,17 @@ module.exports = {
   ],
   prefix: "",
   theme: {
+    fontFamily: {
+      sans: [
+        "-apple-system",
+        "BlinkMacSystemFont",
+        "Segoe UI",
+        "Roboto",
+        "Helvetica Neue",
+        "Arial",
+        "sans-serif",
+      ],
+    },
     container: {
       center: true,
       padding: "2rem",

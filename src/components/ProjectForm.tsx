@@ -1,32 +1,22 @@
-import React, { useMemo } from "react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import React from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Wand2, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Wand2 } from "lucide-react";
 import { MilestoneSortableItem } from "./MilestoneSortableItem";
-import { SuggestedMilestones } from "./SuggestedMilestones";
-import { useToast } from "@/components/ui/use-toast";
-import { Toaster } from "@/components/ui/toaster";
 import { aiService } from "@/lib/services/aiService";
+import { SuggestedMilestones } from "./SuggestedMilestones";
+import { useToast } from "./ui/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-interface ProjectData {
+interface ProjectFormData {
   title: string;
   description?: string;
   valueStatement?: string;
@@ -38,12 +28,10 @@ interface ProjectData {
     actuals: string;
     forecast: string;
   };
-  charterLink?: string;
-  sponsors?: string;
-  businessLeads?: string;
-  projectManager?: string;
-  accomplishments: string[];
-  nextPeriodActivities: string[];
+  charterLink: string;
+  sponsors: string;
+  businessLeads: string;
+  projectManager: string;
   milestones: Array<{
     date: string;
     milestone: string;
@@ -51,35 +39,25 @@ interface ProjectData {
     completion: number;
     status: "green" | "yellow" | "red";
   }>;
+  accomplishments: string[];
+  nextPeriodActivities: string[];
   risks: string[];
   considerations: string[];
 }
 
 interface ProjectFormProps {
-  initialData?: ProjectData;
-  onSubmit: (data: ProjectData) => void;
+  initialData?: ProjectFormData;
+  onSubmit: (data: ProjectFormData) => void;
 }
 
 const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
-  const formatCurrency = (value: string) => {
-    // Remove any non-numeric characters except decimal point
-    const cleanValue = value.replace(/[^0-9.]/g, "");
-    const numValue = parseFloat(cleanValue);
+  const { toast } = useToast();
+  const [loading, setLoading] = React.useState(false);
+  const [showSuggestedMilestones, setShowSuggestedMilestones] =
+    React.useState(false);
+  const [suggestedMilestones, setSuggestedMilestones] = React.useState([]);
 
-    if (!isNaN(numValue)) {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
-        .format(numValue)
-        .replace("$", "");
-    }
-    return "0.00";
-  };
-
-  const [formData, setFormData] = React.useState<ProjectData>(
+  const [formData, setFormData] = React.useState<ProjectFormData>(
     initialData || {
       title: "",
       description: "",
@@ -88,51 +66,37 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       health_calculation_type: "automatic",
       manual_health_percentage: 0,
       budget: {
-        total: formatCurrency("0"),
-        actuals: formatCurrency("0"),
-        forecast: formatCurrency("0"),
+        total: "0.00",
+        actuals: "0.00",
+        forecast: "0.00",
       },
       charterLink: "",
       sponsors: "",
       businessLeads: "",
       projectManager: "",
+      milestones: [
+        {
+          date: new Date().toISOString().split("T")[0],
+          milestone: "",
+          owner: "",
+          completion: 0,
+          status: "green",
+        },
+      ],
       accomplishments: [""],
       nextPeriodActivities: [""],
-      milestones: [
-        { date: "", milestone: "", owner: "", completion: 0, status: "green" },
-      ],
       risks: [""],
       considerations: [""],
     },
   );
 
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isGenerating, setIsGenerating] = React.useState(false);
-  const [showSuggestedMilestones, setShowSuggestedMilestones] =
-    React.useState(false);
-  const [suggestedMilestones, setSuggestedMilestones] = React.useState([]);
-  const { toast } = useToast();
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
-
-    if (!formData.title.trim()) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onSubmit(formData);
-    } finally {
-      setIsSubmitting(false);
-    }
+    onSubmit(formData);
   };
 
-  const handleGenerateContent = async (
-    type: "description" | "value" | "milestones",
-  ) => {
-    if (!formData.title.trim()) {
+  const handleGenerateDescription = async () => {
+    if (!formData.title) {
       toast({
         title: "Error",
         description: "Please enter a project title first",
@@ -141,613 +105,656 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       return;
     }
 
-    if (
-      (type === "description" && formData.description?.trim()) ||
-      (type === "value" && formData.valueStatement?.trim())
-    ) {
-      const shouldReplace = window.confirm(
-        `This will replace your existing ${type === "description" ? "project description" : "value statement"}. Do you want to continue?`,
-      );
-      if (!shouldReplace) return;
-    }
-
-    setIsGenerating(true);
+    setLoading(true);
     try {
-      const content = await aiService.generateContent(
-        type,
+      const description = await aiService.generateContent(
+        "description",
         formData.title,
-        formData.description,
       );
-
-      if (type === "milestones") {
-        let milestones;
-        try {
-          milestones = JSON.parse(content.trim());
-          if (!Array.isArray(milestones)) {
-            throw new Error("Invalid response structure");
-          }
-          setSuggestedMilestones(milestones);
-          setShowSuggestedMilestones(true);
-        } catch (parseError) {
-          console.error("JSON Parse Error:", parseError);
-          throw new Error("Failed to parse AI response");
-        }
-      } else {
-        setFormData({
-          ...formData,
-          [type === "description" ? "description" : "valueStatement"]: content,
-        });
-      }
-
-      toast({
-        title: "Success",
-        description: `Generated ${type === "description" ? "project description" : type === "value" ? "value statement" : "milestones"}`,
-        className: "bg-green-50 border-green-200",
-      });
+      setFormData((prev) => ({ ...prev, description }));
     } catch (error) {
-      console.error(error);
       toast({
         title: "Error",
-        description: `Failed to generate ${type === "description" ? "description" : type === "value" ? "value statement" : "milestones"}`,
+        description: "Failed to generate description",
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateValue = async () => {
+    if (!formData.title) {
+      toast({
+        title: "Error",
+        description: "Please enter a project title first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const value = await aiService.generateContent(
+        "value",
+        formData.title,
+        formData.description,
+      );
+      setFormData((prev) => ({ ...prev, valueStatement: value }));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate value statement",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateMilestones = async () => {
+    if (!formData.title) {
+      toast({
+        title: "Error",
+        description: "Please enter a project title first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const milestonesJson = await aiService.generateContent(
+        "milestones",
+        formData.title,
+        formData.description,
+      );
+      const milestones = JSON.parse(milestonesJson);
+      setSuggestedMilestones(milestones);
+      setShowSuggestedMilestones(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate milestones",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Card className="p-6 bg-card">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            className="flex items-center gap-2"
-            disabled={isSubmitting}
-          >
-            <Save className="h-4 w-4" />
-            {isSubmitting
-              ? "Saving..."
-              : initialData
-                ? "Save Changes"
-                : "Create Project"}
-          </Button>
-        </div>
-
-        <div className="space-y-4">
-          {/* Project Title */}
-          <div>
-            <Label className="text-blue-800">Project Title *</Label>
+    <form onSubmit={handleSubmit} className="space-y-8 max-w-[1200px] mx-auto">
+      {/* Project Overview */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Project Overview
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="title">Project Title</Label>
             <Input
+              id="title"
               value={formData.title}
               onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
+                setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              required
               placeholder="Enter project title"
+              className="bg-gradient-to-b from-gray-50/50 to-white/50"
             />
           </div>
 
-          {/* Project Description */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <Label className="text-blue-800">Project Description</Label>
-              <Button
-                type="button"
-                size="sm"
-                className="bg-gradient-to-r from-green-500 to-green-700 text-white hover:from-green-600 hover:to-green-800 shadow-lg hover:shadow-green-500/25 transition-all duration-200 flex items-center gap-2 w-[200px] justify-center"
-                onClick={() => handleGenerateContent("description")}
-                disabled={isSubmitting || isGenerating}
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Wand2 className="h-4 w-4" />
-                )}
-                AI Generate Description
-              </Button>
-            </div>
-            <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
+          <div className="space-y-2">
+            <Label htmlFor="status">Project Status</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  status: value as typeof formData.status,
+                }))
               }
-              placeholder="Enter a brief description of the project"
-            />
+            >
+              <SelectTrigger className="bg-gradient-to-b from-gray-50/50 to-white/50">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="on_hold">On Hold</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+        </div>
 
-          {/* Value Statement */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <Label className="text-blue-800">Value Statement</Label>
-              <Button
-                type="button"
-                size="sm"
-                className="bg-gradient-to-r from-green-500 to-green-700 text-white hover:from-green-600 hover:to-green-800 shadow-lg hover:shadow-green-500/25 transition-all duration-200 flex items-center gap-2 w-[200px] justify-center"
-                onClick={() => handleGenerateContent("value")}
-                disabled={isSubmitting || isGenerating}
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Wand2 className="h-4 w-4" />
-                )}
-                AI Generate Value
-              </Button>
-            </div>
-            <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              value={formData.valueStatement}
-              onChange={(e) =>
-                setFormData({ ...formData, valueStatement: e.target.value })
-              }
-              placeholder="Enter the business value, ROI, and strategic importance of this project"
-            />
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <Label htmlFor="description">Project Description</Label>
+            <Button
+              type="button"
+              onClick={handleGenerateDescription}
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-500/90 to-blue-600/90 text-white hover:from-blue-600/90 hover:to-blue-700/90 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2 w-[200px] justify-center rounded-xl border border-blue-400/20 backdrop-blur-sm"
+            >
+              <Wand2 className="w-4 h-4" />
+              {loading ? "Generating..." : "Generate with AI"}
+            </Button>
           </div>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, description: e.target.value }))
+            }
+            placeholder="Enter project description"
+            className="h-32 bg-gradient-to-b from-gray-50/50 to-white/50"
+          />
+        </div>
 
-          {/* Project Status and Health */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-blue-800">Project Status</Label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    status: e.target.value as typeof formData.status,
-                  })
-                }
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="on_hold">On Hold</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label className="text-blue-800">Health Calculation</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  value={formData.health_calculation_type}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      health_calculation_type: e.target.value as
-                        | "automatic"
-                        | "manual",
-                    })
-                  }
-                >
-                  <option value="automatic">
-                    Automatic (Based on Milestones)
-                  </option>
-                  <option value="manual">Manual Override</option>
-                </select>
-              </div>
-
-              {formData.health_calculation_type === "manual" && (
-                <div>
-                  <Label className="text-blue-800">Health Percentage</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.manual_health_percentage}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        manual_health_percentage: Number(e.target.value),
-                      })
-                    }
-                    placeholder="Enter health percentage"
-                  />
-                </div>
-              )}
-            </div>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <Label htmlFor="valueStatement">Value Statement</Label>
+            <Button
+              type="button"
+              onClick={handleGenerateValue}
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-500/90 to-blue-600/90 text-white hover:from-blue-600/90 hover:to-blue-700/90 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2 w-[200px] justify-center rounded-xl border border-blue-400/20 backdrop-blur-sm"
+            >
+              <Wand2 className="w-4 h-4" />
+              {loading ? "Generating..." : "Generate with AI"}
+            </Button>
           </div>
+          <Textarea
+            id="valueStatement"
+            value={formData.valueStatement}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                valueStatement: e.target.value,
+              }))
+            }
+            placeholder="Enter value statement"
+            className="h-32 bg-gradient-to-b from-gray-50/50 to-white/50"
+          />
+        </div>
+      </div>
 
-          {/* Budget Section */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label className="text-blue-800">Total Budget</Label>
-              <Input
-                type="text"
-                placeholder="0.00"
-                value={formData.budget.total}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    budget: { ...formData.budget, total: e.target.value },
-                  })
-                }
-                onBlur={(e) =>
-                  setFormData({
-                    ...formData,
-                    budget: {
-                      ...formData.budget,
-                      total: formatCurrency(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label className="text-blue-800">Actuals</Label>
-              <Input
-                type="text"
-                placeholder="0.00"
-                value={formData.budget.actuals}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    budget: { ...formData.budget, actuals: e.target.value },
-                  })
-                }
-                onBlur={(e) =>
-                  setFormData({
-                    ...formData,
-                    budget: {
-                      ...formData.budget,
-                      actuals: formatCurrency(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label className="text-blue-800">Forecast</Label>
-              <Input
-                type="text"
-                placeholder="0.00"
-                value={formData.budget.forecast}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    budget: { ...formData.budget, forecast: e.target.value },
-                  })
-                }
-                onBlur={(e) =>
-                  setFormData({
-                    ...formData,
-                    budget: {
-                      ...formData.budget,
-                      forecast: formatCurrency(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-          </div>
-
-          {/* Project Links and Team */}
-          <div>
-            <Label className="text-blue-800">Project Charter Link</Label>
+      {/* Budget Section */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Budget Information
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="budgetTotal">Total Budget</Label>
             <Input
-              type="url"
-              value={formData.charterLink}
+              id="budgetTotal"
+              value={formData.budget.total}
               onChange={(e) =>
-                setFormData({ ...formData, charterLink: e.target.value })
+                setFormData((prev) => ({
+                  ...prev,
+                  budget: { ...prev.budget, total: e.target.value },
+                }))
               }
-              placeholder="https://..."
+              placeholder="Enter total budget"
+              className="bg-gradient-to-b from-gray-50/50 to-white/50"
             />
           </div>
-
-          <div>
-            <Label className="text-blue-800">Sponsors</Label>
+          <div className="space-y-2">
+            <Label htmlFor="budgetActuals">Actuals</Label>
             <Input
+              id="budgetActuals"
+              value={formData.budget.actuals}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  budget: { ...prev.budget, actuals: e.target.value },
+                }))
+              }
+              placeholder="Enter actuals"
+              className="bg-gradient-to-b from-gray-50/50 to-white/50"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="budgetForecast">Forecast</Label>
+            <Input
+              id="budgetForecast"
+              value={formData.budget.forecast}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  budget: { ...prev.budget, forecast: e.target.value },
+                }))
+              }
+              placeholder="Enter forecast"
+              className="bg-gradient-to-b from-gray-50/50 to-white/50"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Project Links */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <h2 className="text-xl font-semibold text-gray-900">Project Links</h2>
+        <div className="space-y-2">
+          <Label htmlFor="charterLink">Charter Link</Label>
+          <Input
+            id="charterLink"
+            value={formData.charterLink}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, charterLink: e.target.value }))
+            }
+            placeholder="Enter charter link"
+            className="bg-gradient-to-b from-gray-50/50 to-white/50"
+          />
+        </div>
+      </div>
+
+      {/* Team Information */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Team Information
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="sponsors">Sponsors</Label>
+            <Input
+              id="sponsors"
               value={formData.sponsors}
               onChange={(e) =>
-                setFormData({ ...formData, sponsors: e.target.value })
+                setFormData((prev) => ({ ...prev, sponsors: e.target.value }))
               }
               placeholder="Enter sponsors"
+              className="bg-gradient-to-b from-gray-50/50 to-white/50"
             />
           </div>
-
-          <div>
-            <Label className="text-blue-800">Business Lead(s)</Label>
+          <div className="space-y-2">
+            <Label htmlFor="businessLeads">Business Lead(s)</Label>
             <Input
+              id="businessLeads"
               value={formData.businessLeads}
               onChange={(e) =>
-                setFormData({ ...formData, businessLeads: e.target.value })
+                setFormData((prev) => ({
+                  ...prev,
+                  businessLeads: e.target.value,
+                }))
               }
               placeholder="Enter business leads"
+              className="bg-gradient-to-b from-gray-50/50 to-white/50"
             />
           </div>
-
-          <div>
-            <Label className="text-blue-800">Project Manager</Label>
+          <div className="space-y-2">
+            <Label htmlFor="projectManager">Project Manager</Label>
             <Input
+              id="projectManager"
               value={formData.projectManager}
               onChange={(e) =>
-                setFormData({ ...formData, projectManager: e.target.value })
+                setFormData((prev) => ({
+                  ...prev,
+                  projectManager: e.target.value,
+                }))
               }
               placeholder="Enter project manager"
+              className="bg-gradient-to-b from-gray-50/50 to-white/50"
             />
           </div>
+        </div>
+      </div>
 
-          {/* Milestones */}
+      {/* Project Health */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <h2 className="text-xl font-semibold text-gray-900">Project Health</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label className="text-blue-800 text-lg">Milestones</Label>
-              <Button
-                type="button"
-                size="sm"
-                className="bg-gradient-to-r from-green-500 to-green-700 text-white hover:from-green-600 hover:to-green-800 shadow-lg hover:shadow-green-500/25 transition-all duration-200 flex items-center gap-2 w-[200px] justify-center"
-                onClick={() => handleGenerateContent("milestones")}
-                disabled={isSubmitting || isGenerating}
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Wand2 className="h-4 w-4" />
-                )}
-                AI Generate Milestones
-              </Button>
-            </div>
-            <div className="grid grid-cols-4 gap-2 mb-2">
-              <div className="text-sm font-medium text-muted-foreground">
-                Date
-              </div>
-              <div className="text-sm font-medium text-muted-foreground">
-                Milestone
-              </div>
-              <div className="text-sm font-medium text-muted-foreground">
-                Owner
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-sm font-medium text-muted-foreground">
-                  Percent
-                </div>
-                <div className="text-sm font-medium text-muted-foreground">
-                  Status
-                </div>
-              </div>
-            </div>
-            <DndContext
-              sensors={useSensors(
-                useSensor(PointerSensor),
-                useSensor(KeyboardSensor, {
-                  coordinateGetter: sortableKeyboardCoordinates,
-                }),
-              )}
-              collisionDetection={closestCenter}
-              onDragEnd={({ active, over }) => {
-                if (over && active.id !== over.id) {
-                  const oldIndex = formData.milestones.findIndex(
-                    (_, i) => `milestone-${i}` === active.id,
-                  );
-                  const newIndex = formData.milestones.findIndex(
-                    (_, i) => `milestone-${i}` === over.id,
-                  );
-
-                  setFormData({
-                    ...formData,
-                    milestones: arrayMove(
-                      formData.milestones,
-                      oldIndex,
-                      newIndex,
-                    ),
-                  });
-                }
-              }}
+            <Label>Health Calculation</Label>
+            <Select
+              value={formData.health_calculation_type}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  health_calculation_type: value as "automatic" | "manual",
+                }))
+              }
             >
-              <SortableContext
-                items={formData.milestones.map((_, i) => `milestone-${i}`)}
-                strategy={verticalListSortingStrategy}
-              >
-                {formData.milestones.map((milestone, index) => (
-                  <MilestoneSortableItem
-                    key={`milestone-${index}`}
-                    id={`milestone-${index}`}
-                    milestone={milestone}
-                    onUpdate={(values) => {
-                      const newMilestones = [...formData.milestones];
-                      newMilestones[index] = {
-                        ...newMilestones[index],
-                        ...values,
-                      };
-                      setFormData({ ...formData, milestones: newMilestones });
-                    }}
-                    onDelete={() => {
-                      const newMilestones = [...formData.milestones];
-                      newMilestones.splice(index, 1);
-                      setFormData({ ...formData, milestones: newMilestones });
-                    }}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+              <SelectTrigger className="bg-gradient-to-b from-gray-50/50 to-white/50">
+                <SelectValue placeholder="Select calculation type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="automatic">
+                  Automatic (from milestones)
+                </SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {formData.health_calculation_type === "manual" && (
+            <div className="space-y-2">
+              <Label htmlFor="manualHealthPercentage">Health Percentage</Label>
+              <Input
+                id="manualHealthPercentage"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.manual_health_percentage}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    manual_health_percentage: Number(e.target.value),
+                  }))
+                }
+                placeholder="Enter health percentage"
+                className="bg-gradient-to-b from-gray-50/50 to-white/50"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Milestones */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-900">Milestones</h2>
+          <div className="space-x-2">
+            <Button
+              type="button"
+              onClick={handleGenerateMilestones}
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-500/90 to-blue-600/90 text-white hover:from-blue-600/90 hover:to-blue-700/90 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2 w-[200px] justify-center rounded-xl border border-blue-400/20 backdrop-blur-sm"
+            >
+              <Wand2 className="w-4 h-4" />
+              {loading ? "Generating..." : "Generate with AI"}
+            </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() =>
-                setFormData({
-                  ...formData,
+                setFormData((prev) => ({
+                  ...prev,
                   milestones: [
-                    ...formData.milestones,
+                    ...prev.milestones,
                     {
-                      date: "",
+                      date: new Date().toISOString().split("T")[0],
                       milestone: "",
                       owner: "",
                       completion: 0,
                       status: "green",
                     },
                   ],
-                })
+                }))
               }
             >
               Add Milestone
             </Button>
           </div>
-
-          {/* Accomplishments */}
-          <div className="space-y-2">
-            <Label className="text-blue-800 text-lg">Accomplishments</Label>
-            {formData.accomplishments.map((accomplishment, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  value={accomplishment}
-                  onChange={(e) => {
-                    const newAccomplishments = [...formData.accomplishments];
-                    newAccomplishments[index] = e.target.value;
-                    setFormData({
-                      ...formData,
-                      accomplishments: newAccomplishments,
-                    });
-                  }}
-                  placeholder="Enter accomplishment"
-                />
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                setFormData({
-                  ...formData,
-                  accomplishments: [...formData.accomplishments, ""],
-                })
-              }
-            >
-              Add Accomplishment
-            </Button>
-          </div>
-
-          {/* Next Period's Activities */}
-          <div className="space-y-2">
-            <Label className="text-blue-800 text-lg">
-              Next Period's Activities
-            </Label>
-            {formData.nextPeriodActivities.map((activity, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  value={activity}
-                  onChange={(e) => {
-                    const newActivities = [...formData.nextPeriodActivities];
-                    newActivities[index] = e.target.value;
-                    setFormData({
-                      ...formData,
-                      nextPeriodActivities: newActivities,
-                    });
-                  }}
-                  placeholder="Enter activity"
-                />
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                setFormData({
-                  ...formData,
-                  nextPeriodActivities: [...formData.nextPeriodActivities, ""],
-                })
-              }
-            >
-              Add Activity
-            </Button>
-          </div>
-
-          {/* Risks */}
-          <div className="space-y-2">
-            <Label className="text-blue-800 text-lg">Risks and Issues</Label>
-            {formData.risks.map((risk, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  value={risk}
-                  onChange={(e) => {
-                    const newRisks = [...formData.risks];
-                    newRisks[index] = e.target.value;
-                    setFormData({ ...formData, risks: newRisks });
-                  }}
-                  placeholder="Enter risk or issue"
-                />
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                setFormData({
-                  ...formData,
-                  risks: [...formData.risks, ""],
-                })
-              }
-            >
-              Add Risk
-            </Button>
-          </div>
-
-          {/* Considerations */}
-          <div className="space-y-2">
-            <Label className="text-blue-800 text-lg">
-              Questions / Items for Consideration
-            </Label>
-            {formData.considerations.map((consideration, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  value={consideration}
-                  onChange={(e) => {
-                    const newConsiderations = [...formData.considerations];
-                    newConsiderations[index] = e.target.value;
-                    setFormData({
-                      ...formData,
-                      considerations: newConsiderations,
-                    });
-                  }}
-                  placeholder="Enter consideration"
-                />
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                setFormData({
-                  ...formData,
-                  considerations: [...formData.considerations, ""],
-                })
-              }
-            >
-              Add Consideration
-            </Button>
-          </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="space-y-4">
+          {formData.milestones.map((milestone, index) => (
+            <MilestoneSortableItem
+              key={index}
+              id={index.toString()}
+              milestone={milestone}
+              onUpdate={(values) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  milestones: prev.milestones.map((m, i) =>
+                    i === index ? { ...m, ...values } : m,
+                  ),
+                }))
+              }
+              onDelete={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  milestones: prev.milestones.filter((_, i) => i !== index),
+                }))
+              }
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Accomplishments */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Accomplishments
+          </h2>
           <Button
-            type="submit"
-            className="flex items-center gap-2"
-            disabled={isSubmitting}
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                accomplishments: [...prev.accomplishments, ""],
+              }))
+            }
           >
-            <Save className="h-4 w-4" />
-            {isSubmitting
-              ? "Saving..."
-              : initialData
-                ? "Save Changes"
-                : "Create Project"}
+            Add Accomplishment
           </Button>
         </div>
-      </form>
+
+        <div className="space-y-4">
+          {formData.accomplishments.map((accomplishment, index) => (
+            <div key={index} className="flex gap-2">
+              <Input
+                value={accomplishment}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    accomplishments: prev.accomplishments.map((a, i) =>
+                      i === index ? e.target.value : a,
+                    ),
+                  }))
+                }
+                placeholder="Enter accomplishment"
+                className="bg-gradient-to-b from-gray-50/50 to-white/50"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    accomplishments: prev.accomplishments.filter(
+                      (_, i) => i !== index,
+                    ),
+                  }))
+                }
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Next Period Activities */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Next Period Activities
+          </h2>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                nextPeriodActivities: [...prev.nextPeriodActivities, ""],
+              }))
+            }
+          >
+            Add Activity
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {formData.nextPeriodActivities.map((activity, index) => (
+            <div key={index} className="flex gap-2">
+              <Input
+                value={activity}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    nextPeriodActivities: prev.nextPeriodActivities.map(
+                      (a, i) => (i === index ? e.target.value : a),
+                    ),
+                  }))
+                }
+                placeholder="Enter activity"
+                className="bg-gradient-to-b from-gray-50/50 to-white/50"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    nextPeriodActivities: prev.nextPeriodActivities.filter(
+                      (_, i) => i !== index,
+                    ),
+                  }))
+                }
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Risks */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-900">Risks</h2>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                risks: [...prev.risks, ""],
+              }))
+            }
+          >
+            Add Risk
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {formData.risks.map((risk, index) => (
+            <div key={index} className="flex gap-2">
+              <Input
+                value={risk}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    risks: prev.risks.map((r, i) =>
+                      i === index ? e.target.value : r,
+                    ),
+                  }))
+                }
+                placeholder="Enter risk"
+                className="bg-gradient-to-b from-gray-50/50 to-white/50"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    risks: prev.risks.filter((_, i) => i !== index),
+                  }))
+                }
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Considerations */}
+      <div className="space-y-6 p-6 bg-gradient-to-b from-gray-50/80 to-white/80 rounded-2xl border border-gray-100/20 shadow-sm backdrop-blur-sm">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Considerations
+          </h2>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                considerations: [...prev.considerations, ""],
+              }))
+            }
+          >
+            Add Consideration
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {formData.considerations.map((consideration, index) => (
+            <div key={index} className="flex gap-2">
+              <Input
+                value={consideration}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    considerations: prev.considerations.map((c, i) =>
+                      i === index ? e.target.value : c,
+                    ),
+                  }))
+                }
+                placeholder="Enter consideration"
+                className="bg-gradient-to-b from-gray-50/50 to-white/50"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    considerations: prev.considerations.filter(
+                      (_, i) => i !== index,
+                    ),
+                  }))
+                }
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Submit Button */}
+      <div className="flex justify-end">
+        <Button
+          type="submit"
+          size="lg"
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
+        >
+          Save Project
+        </Button>
+      </div>
 
       <SuggestedMilestones
         isOpen={showSuggestedMilestones}
         onClose={() => setShowSuggestedMilestones(false)}
         suggestedMilestones={suggestedMilestones}
-        onApply={(selected) => {
-          setFormData({
-            ...formData,
-            milestones: [...formData.milestones, ...selected],
-          });
-        }}
+        onApply={(selectedMilestones) =>
+          setFormData((prev) => ({
+            ...prev,
+            milestones: [...prev.milestones, ...selectedMilestones],
+          }))
+        }
       />
-      <Toaster />
-    </Card>
+    </form>
   );
 };
 

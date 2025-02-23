@@ -150,7 +150,7 @@ const ProjectList = ({
           <Card
             key={project.id}
             onClick={() => onSelectProject(project)}
-            className="group p-6 cursor-pointer bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+            className="group p-6 cursor-pointer bg-card/50 backdrop-blur-sm border border-border/10 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
             style={{
               background:
                 "linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card)))",
