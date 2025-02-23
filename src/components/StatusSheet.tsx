@@ -1,6 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, FileOutput } from "lucide-react";
+import { exportToPowerPoint } from "@/lib/services/pptExport";
+import { useToast } from "./ui/use-toast";
 import html2canvas from "html2canvas";
 import {
   Tooltip,
@@ -39,6 +41,7 @@ interface StatusSheetProps {
 }
 
 const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
+  const { toast } = useToast();
   if (!data) return null;
 
   // Calculate overall completion percentage
@@ -133,13 +136,43 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 gap-2">
         <Button
           onClick={handleExportToJpg}
           className="flex items-center gap-2"
           variant="outline"
         >
           <Download className="h-4 w-4" /> Export to JPG
+        </Button>
+        <Button
+          onClick={async () => {
+            const element = document.getElementById("status-sheet");
+            if (!element) return;
+
+            try {
+              const success = await exportToPowerPoint(element, data?.title);
+              if (success) {
+                toast({
+                  title: "Export Successful",
+                  description:
+                    "PowerPoint file has been generated and downloaded.",
+                  className: "bg-green-50 border-green-200",
+                });
+              } else {
+                throw new Error("Export failed");
+              }
+            } catch (error) {
+              toast({
+                title: "Export Failed",
+                description: "Failed to generate PowerPoint file.",
+                variant: "destructive",
+              });
+            }
+          }}
+          className="flex items-center gap-2"
+          variant="outline"
+        >
+          <FileOutput className="h-4 w-4" /> Export to PowerPoint
         </Button>
       </div>
       <div id="status-sheet" className="bg-white dark:bg-white">
