@@ -31,6 +31,8 @@ interface ProjectData {
   description?: string;
   valueStatement?: string;
   status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
+  health_calculation_type?: "automatic" | "manual";
+  manual_health_percentage?: number;
   budget: {
     total: string;
     actuals: string;
@@ -83,6 +85,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
       description: "",
       valueStatement: "",
       status: "active",
+      health_calculation_type: "automatic",
+      manual_health_percentage: 0,
       budget: {
         total: formatCurrency("0"),
         actuals: formatCurrency("0"),
@@ -282,25 +286,69 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             />
           </div>
 
-          {/* Project Status */}
-          <div>
-            <Label className="text-blue-800">Project Status</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              value={formData.status}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  status: e.target.value as typeof formData.status,
-                })
-              }
-            >
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="on_hold">On Hold</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+          {/* Project Status and Health */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-blue-800">Project Status</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    status: e.target.value as typeof formData.status,
+                  })
+                }
+              >
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="on_hold">On Hold</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-blue-800">Health Calculation</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  value={formData.health_calculation_type}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      health_calculation_type: e.target.value as
+                        | "automatic"
+                        | "manual",
+                    })
+                  }
+                >
+                  <option value="automatic">
+                    Automatic (Based on Milestones)
+                  </option>
+                  <option value="manual">Manual Override</option>
+                </select>
+              </div>
+
+              {formData.health_calculation_type === "manual" && (
+                <div>
+                  <Label className="text-blue-800">Health Percentage</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.manual_health_percentage}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        manual_health_percentage: Number(e.target.value),
+                      })
+                    }
+                    placeholder="Enter health percentage"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Budget Section */}

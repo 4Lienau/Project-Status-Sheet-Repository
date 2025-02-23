@@ -105,6 +105,9 @@ const ProjectDashboard = ({
     description: currentProject?.description || "",
     valueStatement: currentProject?.value_statement || "",
     status: currentProject?.status || "active",
+    health_calculation_type:
+      currentProject?.health_calculation_type || "automatic",
+    manual_health_percentage: currentProject?.manual_health_percentage || 0,
     budget: {
       total: currentProject?.budget_total
         ? formatCurrency(currentProject.budget_total)
@@ -251,6 +254,12 @@ const ProjectDashboard = ({
                   description: data.description || null,
                   valueStatement: data.valueStatement || null,
                   status: data.status || "active",
+                  health_calculation_type:
+                    data.health_calculation_type || "automatic",
+                  manual_health_percentage:
+                    data.health_calculation_type === "manual"
+                      ? data.manual_health_percentage
+                      : null,
                   budget_total: parseFloat(
                     data.budget.total.replace(/[^0-9.-]+/g, ""),
                   ),
@@ -369,6 +378,10 @@ const ProjectDashboard = ({
                     sponsors: currentProject.sponsors,
                     business_leads: currentProject.business_leads,
                     project_manager: currentProject.project_manager,
+                    health_calculation_type:
+                      currentProject.health_calculation_type,
+                    manual_health_percentage:
+                      currentProject.manual_health_percentage,
                     milestones:
                       currentProject.milestones?.map((m) => ({
                         date: m.date,

@@ -34,6 +34,8 @@ export const projectService = {
       sponsors: string;
       business_leads: string;
       project_manager: string;
+      health_calculation_type?: "automatic" | "manual";
+      manual_health_percentage?: number;
       milestones: Array<{
         date: string;
         milestone: string;
@@ -61,6 +63,8 @@ export const projectService = {
         sponsors: data.sponsors,
         business_leads: data.business_leads,
         project_manager: data.project_manager,
+        health_calculation_type: data.health_calculation_type || "automatic",
+        manual_health_percentage: data.manual_health_percentage,
       })
       .eq("id", id)
       .select()
@@ -136,6 +140,8 @@ export const projectService = {
     sponsors: string;
     business_leads: string;
     project_manager: string;
+    health_calculation_type?: "automatic" | "manual";
+    manual_health_percentage?: number;
     milestones: Array<{
       date: string;
       milestone: string;
@@ -162,6 +168,8 @@ export const projectService = {
         sponsors: data.sponsors,
         business_leads: data.business_leads,
         project_manager: data.project_manager,
+        health_calculation_type: data.health_calculation_type || "automatic",
+        manual_health_percentage: data.manual_health_percentage,
       })
       .select()
       .single();

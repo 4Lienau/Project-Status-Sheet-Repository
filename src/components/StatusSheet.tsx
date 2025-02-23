@@ -42,10 +42,13 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
   if (!data) return null;
 
   // Calculate overall completion percentage
-  const overallCompletion = Math.round(
-    data.milestones.reduce((acc, m) => acc + m.completion, 0) /
-      Math.max(data.milestones.length, 1),
-  );
+  const overallCompletion =
+    data.health_calculation_type === "manual"
+      ? data.manual_health_percentage
+      : Math.round(
+          data.milestones.reduce((acc, m) => acc + m.completion, 0) /
+            Math.max(data.milestones.length, 1),
+        );
 
   // Determine overall status color
   const getStatusColor = (status: string) => {
