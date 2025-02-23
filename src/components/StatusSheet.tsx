@@ -175,7 +175,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
           <FileOutput className="h-4 w-4" /> Export to PowerPoint
         </Button>
       </div>
-      <div id="status-sheet" className="bg-white dark:bg-white">
+      <div id="status-sheet" className="bg-white dark:bg-white pb-4">
         {/* Title and Description */}
         <div className="bg-gradient-to-r from-blue-650 via-blue-600 to-blue-450 p-3 mb-2">
           <h1 className="text-2xl font-bold text-white dark:text-white">
@@ -457,7 +457,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
           </div>
 
           {/* Status Legend */}
-          <div className="flex items-center justify-start gap-4 mt-4 px-2">
+          <div className="flex items-center justify-start gap-4 mt-4 mb-8 px-2">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-100"></div>
               <span className="text-sm text-gray-900 dark:text-gray-900">
