@@ -1,11 +1,40 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import StatusSheet from "@/components/StatusSheet";
 import { projectService } from "@/lib/services/project";
 
 const StatusSheetView = () => {
+  const handleExportToJpg = async () => {
+    const element = document.getElementById("status-sheet");
+    if (!element) return;
+
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: "#ffffff",
+        scale: 2, // Higher quality
+      });
+
+      // Convert to blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.95);
+      });
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${project?.title || "status-sheet"}_${new Date().toISOString().split("T")[0]}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error exporting to JPG:", error);
+    }
+  };
+
   const { id } = useParams();
   const navigate = useNavigate();
   const [project, setProject] = React.useState(null);
@@ -52,13 +81,22 @@ const StatusSheetView = () => {
     <div className="min-h-screen bg-white">
       <div className="max-w-[1800px] mx-auto p-8">
         <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
+            <Button
+              onClick={handleExportToJpg}
+              className="flex items-center gap-2"
+              variant="outline"
+            >
+              <Download className="h-4 w-4" /> Export to JPG
+            </Button>
+          </div>
         </div>
         <div className="bg-white shadow-none">
           <StatusSheet data={formattedData} />

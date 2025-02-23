@@ -57,31 +57,16 @@ export function MilestoneSortableItem({
           placeholder="Date"
           type="date"
           value={milestone.date}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-            }
-          }}
           onChange={(e) => onUpdate({ date: e.target.value })}
         />
         <Input
           placeholder="Milestone"
           value={milestone.milestone}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-            }
-          }}
           onChange={(e) => onUpdate({ milestone: e.target.value })}
         />
         <Input
           placeholder="Owner"
           value={milestone.owner}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-            }
-          }}
           onChange={(e) => onUpdate({ owner: e.target.value })}
         />
         <div className="flex gap-2">
@@ -91,11 +76,6 @@ export function MilestoneSortableItem({
             min="0"
             max="100"
             value={milestone.completion}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-              }
-            }}
             onChange={(e) => onUpdate({ completion: Number(e.target.value) })}
             className="w-24"
           />
@@ -116,7 +96,7 @@ export function MilestoneSortableItem({
             type="button"
             variant="ghost"
             size="icon"
-            className="hover:bg-destructive/10"
+            className="hover:bg-destructive/10 text-red-600"
             onClick={onDelete}
           >
             <Trash2 className="h-4 w-4" />

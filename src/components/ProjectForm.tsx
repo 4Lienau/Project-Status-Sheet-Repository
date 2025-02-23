@@ -11,8 +11,10 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
+  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,7 @@ interface ProjectFormProps {
 
 const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   const formatCurrency = (value: string) => {
+    // Remove any non-numeric characters except decimal point
     const cleanValue = value.replace(/[^0-9.]/g, "");
     const numValue = parseFloat(cleanValue);
 
@@ -99,7 +102,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     },
   );
 
-  const [localFormData, setLocalFormData] = React.useState(formData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [showSuggestedMilestones, setShowSuggestedMilestones] =
@@ -107,25 +109,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   const [suggestedMilestones, setSuggestedMilestones] = React.useState([]);
   const { toast } = useToast();
 
-  // Only set initial data, don't sync with formData changes
-  React.useEffect(() => {
-    if (initialData) {
-      setLocalFormData(initialData);
-    }
-  }, [initialData]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (!localFormData.title.trim()) {
+    if (!formData.title.trim()) {
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await onSubmit(localFormData);
-      // Don't update formData here since we don't need to sync anymore
+      await onSubmit(formData);
     } finally {
       setIsSubmitting(false);
     }
@@ -134,7 +128,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
   const handleGenerateContent = async (
     type: "description" | "value" | "milestones",
   ) => {
-    if (!localFormData.title.trim()) {
+    if (!formData.title.trim()) {
       toast({
         title: "Error",
         description: "Please enter a project title first",
@@ -144,8 +138,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     }
 
     if (
-      (type === "description" && localFormData.description?.trim()) ||
-      (type === "value" && localFormData.valueStatement?.trim())
+      (type === "description" && formData.description?.trim()) ||
+      (type === "value" && formData.valueStatement?.trim())
     ) {
       const shouldReplace = window.confirm(
         `This will replace your existing ${type === "description" ? "project description" : "value statement"}. Do you want to continue?`,
@@ -157,8 +151,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     try {
       const content = await aiService.generateContent(
         type,
-        localFormData.title,
-        localFormData.description,
+        formData.title,
+        formData.description,
       );
 
       if (type === "milestones") {
@@ -175,8 +169,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           throw new Error("Failed to parse AI response");
         }
       } else {
-        setLocalFormData({
-          ...localFormData,
+        setFormData({
+          ...formData,
           [type === "description" ? "description" : "valueStatement"]: content,
         });
       }
@@ -198,24 +192,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     }
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
   return (
     <Card className="p-6 bg-card">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-          }
-        }}
-      >
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="flex justify-end">
           <Button
             type="submit"
@@ -236,9 +215,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           <div>
             <Label className="text-blue-800">Project Title *</Label>
             <Input
-              value={localFormData.title}
+              value={formData.title}
               onChange={(e) =>
-                setLocalFormData({ ...localFormData, title: e.target.value })
+                setFormData({ ...formData, title: e.target.value })
               }
               required
               placeholder="Enter project title"
@@ -266,12 +245,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </div>
             <textarea
               className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              value={localFormData.description}
+              value={formData.description}
               onChange={(e) =>
-                setLocalFormData({
-                  ...localFormData,
-                  description: e.target.value,
-                })
+                setFormData({ ...formData, description: e.target.value })
               }
               placeholder="Enter a brief description of the project"
             />
@@ -298,12 +274,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </div>
             <textarea
               className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              value={localFormData.valueStatement}
+              value={formData.valueStatement}
               onChange={(e) =>
-                setLocalFormData({
-                  ...localFormData,
-                  valueStatement: e.target.value,
-                })
+                setFormData({ ...formData, valueStatement: e.target.value })
               }
               placeholder="Enter the business value, ROI, and strategic importance of this project"
             />
@@ -314,11 +287,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             <Label className="text-blue-800">Project Status</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              value={localFormData.status}
+              value={formData.status}
               onChange={(e) =>
-                setLocalFormData({
-                  ...localFormData,
-                  status: e.target.value as typeof localFormData.status,
+                setFormData({
+                  ...formData,
+                  status: e.target.value as typeof formData.status,
                 })
               }
             >
@@ -337,18 +310,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               <Input
                 type="text"
                 placeholder="0.00"
-                value={localFormData.budget.total}
+                value={formData.budget.total}
                 onChange={(e) =>
-                  setLocalFormData({
-                    ...localFormData,
-                    budget: { ...localFormData.budget, total: e.target.value },
+                  setFormData({
+                    ...formData,
+                    budget: { ...formData.budget, total: e.target.value },
                   })
                 }
                 onBlur={(e) =>
-                  setLocalFormData({
-                    ...localFormData,
+                  setFormData({
+                    ...formData,
                     budget: {
-                      ...localFormData.budget,
+                      ...formData.budget,
                       total: formatCurrency(e.target.value),
                     },
                   })
@@ -360,21 +333,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               <Input
                 type="text"
                 placeholder="0.00"
-                value={localFormData.budget.actuals}
+                value={formData.budget.actuals}
                 onChange={(e) =>
-                  setLocalFormData({
-                    ...localFormData,
-                    budget: {
-                      ...localFormData.budget,
-                      actuals: e.target.value,
-                    },
+                  setFormData({
+                    ...formData,
+                    budget: { ...formData.budget, actuals: e.target.value },
                   })
                 }
                 onBlur={(e) =>
-                  setLocalFormData({
-                    ...localFormData,
+                  setFormData({
+                    ...formData,
                     budget: {
-                      ...localFormData.budget,
+                      ...formData.budget,
                       actuals: formatCurrency(e.target.value),
                     },
                   })
@@ -386,21 +356,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               <Input
                 type="text"
                 placeholder="0.00"
-                value={localFormData.budget.forecast}
+                value={formData.budget.forecast}
                 onChange={(e) =>
-                  setLocalFormData({
-                    ...localFormData,
-                    budget: {
-                      ...localFormData.budget,
-                      forecast: e.target.value,
-                    },
+                  setFormData({
+                    ...formData,
+                    budget: { ...formData.budget, forecast: e.target.value },
                   })
                 }
                 onBlur={(e) =>
-                  setLocalFormData({
-                    ...localFormData,
+                  setFormData({
+                    ...formData,
                     budget: {
-                      ...localFormData.budget,
+                      ...formData.budget,
                       forecast: formatCurrency(e.target.value),
                     },
                   })
@@ -414,12 +381,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             <Label className="text-blue-800">Project Charter Link</Label>
             <Input
               type="url"
-              value={localFormData.charterLink}
+              value={formData.charterLink}
               onChange={(e) =>
-                setLocalFormData({
-                  ...localFormData,
-                  charterLink: e.target.value,
-                })
+                setFormData({ ...formData, charterLink: e.target.value })
               }
               placeholder="https://..."
             />
@@ -428,9 +392,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           <div>
             <Label className="text-blue-800">Sponsors</Label>
             <Input
-              value={localFormData.sponsors}
+              value={formData.sponsors}
               onChange={(e) =>
-                setLocalFormData({ ...localFormData, sponsors: e.target.value })
+                setFormData({ ...formData, sponsors: e.target.value })
               }
               placeholder="Enter sponsors"
             />
@@ -439,12 +403,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           <div>
             <Label className="text-blue-800">Business Lead(s)</Label>
             <Input
-              value={localFormData.businessLeads}
+              value={formData.businessLeads}
               onChange={(e) =>
-                setLocalFormData({
-                  ...localFormData,
-                  businessLeads: e.target.value,
-                })
+                setFormData({ ...formData, businessLeads: e.target.value })
               }
               placeholder="Enter business leads"
             />
@@ -453,12 +414,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           <div>
             <Label className="text-blue-800">Project Manager</Label>
             <Input
-              value={localFormData.projectManager}
+              value={formData.projectManager}
               onChange={(e) =>
-                setLocalFormData({
-                  ...localFormData,
-                  projectManager: e.target.value,
-                })
+                setFormData({ ...formData, projectManager: e.target.value })
               }
               placeholder="Enter project manager"
             />
@@ -503,57 +461,54 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               </div>
             </div>
             <DndContext
-              sensors={sensors}
+              sensors={useSensors(
+                useSensor(PointerSensor),
+                useSensor(KeyboardSensor, {
+                  coordinateGetter: sortableKeyboardCoordinates,
+                }),
+              )}
               collisionDetection={closestCenter}
               onDragEnd={({ active, over }) => {
                 if (over && active.id !== over.id) {
-                  const oldIndex = localFormData.milestones.findIndex(
+                  const oldIndex = formData.milestones.findIndex(
                     (_, i) => `milestone-${i}` === active.id,
                   );
-                  const newIndex = localFormData.milestones.findIndex(
+                  const newIndex = formData.milestones.findIndex(
                     (_, i) => `milestone-${i}` === over.id,
                   );
 
-                  const newMilestones = arrayMove(
-                    localFormData.milestones,
-                    oldIndex,
-                    newIndex,
-                  );
-
-                  setLocalFormData((prev) => ({
-                    ...prev,
-                    milestones: newMilestones,
-                  }));
+                  setFormData({
+                    ...formData,
+                    milestones: arrayMove(
+                      formData.milestones,
+                      oldIndex,
+                      newIndex,
+                    ),
+                  });
                 }
               }}
             >
               <SortableContext
-                items={localFormData.milestones.map((_, i) => `milestone-${i}`)}
+                items={formData.milestones.map((_, i) => `milestone-${i}`)}
                 strategy={verticalListSortingStrategy}
               >
-                {localFormData.milestones.map((milestone, index) => (
+                {formData.milestones.map((milestone, index) => (
                   <MilestoneSortableItem
                     key={`milestone-${index}`}
                     id={`milestone-${index}`}
                     milestone={milestone}
                     onUpdate={(values) => {
-                      const newMilestones = [...localFormData.milestones];
+                      const newMilestones = [...formData.milestones];
                       newMilestones[index] = {
                         ...newMilestones[index],
                         ...values,
                       };
-                      setLocalFormData((prev) => ({
-                        ...prev,
-                        milestones: newMilestones,
-                      }));
+                      setFormData({ ...formData, milestones: newMilestones });
                     }}
                     onDelete={() => {
-                      const newMilestones = [...localFormData.milestones];
+                      const newMilestones = [...formData.milestones];
                       newMilestones.splice(index, 1);
-                      setLocalFormData((prev) => ({
-                        ...prev,
-                        milestones: newMilestones,
-                      }));
+                      setFormData({ ...formData, milestones: newMilestones });
                     }}
                   />
                 ))}
@@ -563,10 +518,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               type="button"
               variant="outline"
               onClick={() =>
-                setLocalFormData((prev) => ({
-                  ...prev,
+                setFormData({
+                  ...formData,
                   milestones: [
-                    ...prev.milestones,
+                    ...formData.milestones,
                     {
                       date: "",
                       milestone: "",
@@ -575,7 +530,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                       status: "green",
                     },
                   ],
-                }))
+                })
               }
             >
               Add Milestone
@@ -585,19 +540,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           {/* Accomplishments */}
           <div className="space-y-2">
             <Label className="text-blue-800 text-lg">Accomplishments</Label>
-            {localFormData.accomplishments.map((accomplishment, index) => (
+            {formData.accomplishments.map((accomplishment, index) => (
               <div key={index} className="flex gap-2">
                 <Input
                   value={accomplishment}
                   onChange={(e) => {
-                    const newAccomplishments = [
-                      ...localFormData.accomplishments,
-                    ];
+                    const newAccomplishments = [...formData.accomplishments];
                     newAccomplishments[index] = e.target.value;
-                    setLocalFormData((prev) => ({
-                      ...prev,
+                    setFormData({
+                      ...formData,
                       accomplishments: newAccomplishments,
-                    }));
+                    });
                   }}
                   placeholder="Enter accomplishment"
                 />
@@ -607,10 +560,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               type="button"
               variant="outline"
               onClick={() =>
-                setLocalFormData((prev) => ({
-                  ...prev,
-                  accomplishments: [...prev.accomplishments, ""],
-                }))
+                setFormData({
+                  ...formData,
+                  accomplishments: [...formData.accomplishments, ""],
+                })
               }
             >
               Add Accomplishment
@@ -622,19 +575,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             <Label className="text-blue-800 text-lg">
               Next Period's Activities
             </Label>
-            {localFormData.nextPeriodActivities.map((activity, index) => (
+            {formData.nextPeriodActivities.map((activity, index) => (
               <div key={index} className="flex gap-2">
                 <Input
                   value={activity}
                   onChange={(e) => {
-                    const newActivities = [
-                      ...localFormData.nextPeriodActivities,
-                    ];
+                    const newActivities = [...formData.nextPeriodActivities];
                     newActivities[index] = e.target.value;
-                    setLocalFormData((prev) => ({
-                      ...prev,
+                    setFormData({
+                      ...formData,
                       nextPeriodActivities: newActivities,
-                    }));
+                    });
                   }}
                   placeholder="Enter activity"
                 />
@@ -644,10 +595,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               type="button"
               variant="outline"
               onClick={() =>
-                setLocalFormData((prev) => ({
-                  ...prev,
-                  nextPeriodActivities: [...prev.nextPeriodActivities, ""],
-                }))
+                setFormData({
+                  ...formData,
+                  nextPeriodActivities: [...formData.nextPeriodActivities, ""],
+                })
               }
             >
               Add Activity
@@ -657,17 +608,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           {/* Risks */}
           <div className="space-y-2">
             <Label className="text-blue-800 text-lg">Risks and Issues</Label>
-            {localFormData.risks.map((risk, index) => (
+            {formData.risks.map((risk, index) => (
               <div key={index} className="flex gap-2">
                 <Input
                   value={risk}
                   onChange={(e) => {
-                    const newRisks = [...localFormData.risks];
+                    const newRisks = [...formData.risks];
                     newRisks[index] = e.target.value;
-                    setLocalFormData((prev) => ({
-                      ...prev,
-                      risks: newRisks,
-                    }));
+                    setFormData({ ...formData, risks: newRisks });
                   }}
                   placeholder="Enter risk or issue"
                 />
@@ -677,10 +625,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               type="button"
               variant="outline"
               onClick={() =>
-                setLocalFormData((prev) => ({
-                  ...prev,
-                  risks: [...prev.risks, ""],
-                }))
+                setFormData({
+                  ...formData,
+                  risks: [...formData.risks, ""],
+                })
               }
             >
               Add Risk
@@ -692,17 +640,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             <Label className="text-blue-800 text-lg">
               Questions / Items for Consideration
             </Label>
-            {localFormData.considerations.map((consideration, index) => (
+            {formData.considerations.map((consideration, index) => (
               <div key={index} className="flex gap-2">
                 <Input
                   value={consideration}
                   onChange={(e) => {
-                    const newConsiderations = [...localFormData.considerations];
+                    const newConsiderations = [...formData.considerations];
                     newConsiderations[index] = e.target.value;
-                    setLocalFormData((prev) => ({
-                      ...prev,
+                    setFormData({
+                      ...formData,
                       considerations: newConsiderations,
-                    }));
+                    });
                   }}
                   placeholder="Enter consideration"
                 />
@@ -712,10 +660,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               type="button"
               variant="outline"
               onClick={() =>
-                setLocalFormData((prev) => ({
-                  ...prev,
-                  considerations: [...prev.considerations, ""],
-                }))
+                setFormData({
+                  ...formData,
+                  considerations: [...formData.considerations, ""],
+                })
               }
             >
               Add Consideration
@@ -744,10 +692,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
         onClose={() => setShowSuggestedMilestones(false)}
         suggestedMilestones={suggestedMilestones}
         onApply={(selected) => {
-          setLocalFormData((prev) => ({
-            ...prev,
-            milestones: [...prev.milestones, ...selected],
-          }));
+          setFormData({
+            ...formData,
+            milestones: [...formData.milestones, ...selected],
+          });
         }}
       />
       <Toaster />
