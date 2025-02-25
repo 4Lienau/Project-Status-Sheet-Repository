@@ -494,7 +494,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 milestones: [
                   ...prev.milestones,
                   {
-                    date: "",
+                    date: new Date().toISOString().split("T")[0],
                     milestone: "",
                     owner: "",
                     completion: 0,
