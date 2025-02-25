@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Wand2 } from "lucide-react";
-import { MilestoneSortableItem } from "./MilestoneSortableItem";
+import { MilestoneList } from "./MilestoneList";
 import { aiService } from "@/lib/services/aiService";
 import { SuggestedMilestones } from "./SuggestedMilestones";
 import { useToast } from "./ui/use-toast";
@@ -462,27 +462,29 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
         </div>
 
         <div className="space-y-4">
-          {formData.milestones.map((milestone, index) => (
-            <MilestoneSortableItem
-              key={index}
-              id={`milestone-${index}`}
-              milestone={milestone}
-              onUpdate={(values) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  milestones: prev.milestones.map((m, i) =>
-                    i === index ? { ...m, ...values } : m,
-                  ),
-                }))
-              }
-              onDelete={() =>
-                setFormData((prev) => ({
-                  ...prev,
-                  milestones: prev.milestones.filter((_, i) => i !== index),
-                }))
-              }
-            />
-          ))}
+          <MilestoneList
+            milestones={formData.milestones}
+            onMilestonesChange={(newMilestones) =>
+              setFormData((prev) => ({
+                ...prev,
+                milestones: newMilestones,
+              }))
+            }
+            onUpdate={(index, values) =>
+              setFormData((prev) => ({
+                ...prev,
+                milestones: prev.milestones.map((m, i) =>
+                  i === index ? { ...m, ...values } : m,
+                ),
+              }))
+            }
+            onDelete={(index) =>
+              setFormData((prev) => ({
+                ...prev,
+                milestones: prev.milestones.filter((_, i) => i !== index),
+              }))
+            }
+          />
           <Button
             type="button"
             variant="outline"
