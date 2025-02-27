@@ -2,11 +2,9 @@ import React, { useState, useEffect } from "react";
 import Layout from "./layout/Layout";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import LandingPage from "./landing/LandingPage";
 import WelcomePage from "./welcome/WelcomePage";
 import ProjectList from "./projects/ProjectList";
 import ProjectForm from "./ProjectForm";
-import StatusSheet from "./StatusSheet";
 import ProjectDashboard from "@/pages/ProjectDashboard";
 import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
@@ -28,9 +26,6 @@ const Home = () => {
   const [projectData, setProjectData] = useState(null);
   const [selectedManager, setSelectedManager] = useState<string>("all");
   const [projectManagers, setProjectManagers] = useState<string[]>([]);
-  const [hasSeenWelcome, setHasSeenWelcome] = React.useState(() => {
-    return localStorage.getItem("hasSeenWelcome") === "true";
-  });
 
   // Load unique project managers
   useEffect(() => {
