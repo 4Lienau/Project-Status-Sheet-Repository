@@ -175,7 +175,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
           <FileOutput className="h-4 w-4" /> Export to PowerPoint
         </Button>
       </div>
-      <div id="status-sheet" className="bg-white dark:bg-white pb-4">
+      <div id="status-sheet" className="bg-white dark:bg-white pb-4 w-full">
         {/* Title and Description */}
         <div className="bg-gradient-to-r from-blue-650 via-blue-600 to-blue-450 p-3 mb-2">
           <h1 className="text-2xl font-bold text-white dark:text-white">

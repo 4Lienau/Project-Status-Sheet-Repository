@@ -79,7 +79,7 @@ const StatusSheetView = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-[1800px] mx-auto p-8">
+      <div className="max-w-[1850px] mx-auto p-8">
         <div className="mb-6">
           <div className="flex items-center gap-4">
             <Button
