@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-import { User, Settings, LogOut } from "lucide-react";
+import { User, Shield, LogOut } from "lucide-react";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -104,6 +104,14 @@ const Navbar = () => {
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
+
+                  {(user.email === "4lienau@gmail.com" ||
+                    user.email === "chrisl@re-wa.org") && (
+                    <DropdownMenuItem onClick={() => navigate("/admin")}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Admin Dashboard</span>
+                    </DropdownMenuItem>
+                  )}
 
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
