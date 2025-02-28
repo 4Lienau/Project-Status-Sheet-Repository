@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useTheme } from "@/components/providers/ThemeProvider";
-import { Moon, Sun, User, Settings, LogOut } from "lucide-react";
+
+import { User, Settings, LogOut } from "lucide-react";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -60,8 +60,6 @@ const Navbar = () => {
     };
   }, [user?.id]);
 
-  const { theme, setTheme } = useTheme();
-
   return (
     <nav className="sticky top-0 z-50 w-full border-none bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-sm">
       <div className="container flex h-16 items-center">
@@ -107,23 +105,6 @@ const Navbar = () => {
                     <span>Profile</span>
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem
-                    onClick={() =>
-                      setTheme(theme === "dark" ? "light" : "dark")
-                    }
-                  >
-                    {theme === "dark" ? (
-                      <>
-                        <Sun className="mr-2 h-4 w-4" />
-                        <span>Light mode</span>
-                      </>
-                    ) : (
-                      <>
-                        <Moon className="mr-2 h-4 w-4" />
-                        <span>Dark mode</span>
-                      </>
-                    )}
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
