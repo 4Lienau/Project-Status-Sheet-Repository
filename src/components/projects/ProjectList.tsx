@@ -62,7 +62,7 @@ const ProjectList = ({
 
       setAllProjects(projects);
 
-      // Apply project manager filter
+      // Apply project manager filter & Project Status filters
       const filtered =
         filterManager && filterManager !== "all"
           ? projects.filter((p) => p.project_manager === filterManager)

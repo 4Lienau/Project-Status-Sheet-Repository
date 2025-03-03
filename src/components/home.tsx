@@ -25,6 +25,7 @@ const Home = () => {
   const [mode, setMode] = useState<"list" | "form" | "preview">("list");
   const [projectData, setProjectData] = useState(null);
   const [selectedManager, setSelectedManager] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [projectManagers, setProjectManagers] = useState<string[]>([]);
 
   // Load unique project managers
@@ -101,6 +102,7 @@ const Home = () => {
                 onSelectProject={handleSelectProject}
                 onCreateNew={() => setMode("form")}
                 filterManager={selectedManager}
+                filterStatus={selectedStatus}
               />
             </div>
           )}
