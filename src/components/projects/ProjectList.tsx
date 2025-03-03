@@ -16,12 +16,14 @@ interface ProjectListProps {
   onSelectProject: (project: ProjectWithRelations) => void;
   onCreateNew: () => void;
   filterManager?: string;
+  filterStatus?: string;
 }
 
 const ProjectList = ({
   onSelectProject,
   onCreateNew,
   filterManager = "",
+  filterStatus = "all",
 }: ProjectListProps) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<{ full_name: string | null }>({
@@ -63,17 +65,24 @@ const ProjectList = ({
       setAllProjects(projects);
 
       // Apply project manager filter & Project Status filters
-      const filtered =
-        filterManager && filterManager !== "all"
-          ? projects.filter((p) => p.project_manager === filterManager)
-          : projects;
+      let filtered = projects;
+
+      // Apply project manager filter
+      if (filterManager && filterManager !== "all") {
+        filtered = filtered.filter((p) => p.project_manager === filterManager);
+      }
+
+      // Apply status filter
+      if (filterStatus && filterStatus !== "all") {
+        filtered = filtered.filter((p) => p.status === filterStatus);
+      }
 
       setFilteredProjects(filtered);
       setLoading(false);
     };
 
     loadProjects();
-  }, [filterManager]);
+  }, [filterManager, filterStatus]);
 
   if (loading) {
     return (
