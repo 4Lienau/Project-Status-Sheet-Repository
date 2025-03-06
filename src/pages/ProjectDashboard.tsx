@@ -53,6 +53,7 @@ interface ProjectDashboardProps {
     next_period_activities?: Array<{ description: string }>;
     risks?: Array<{ description: string }>;
     considerations?: Array<{ description: string }>;
+    changes?: Array<{ change: string; impact: string; disposition: string }>;
   };
   onBack: () => void;
 }
@@ -136,6 +137,12 @@ const ProjectDashboard = ({
     risks: currentProject?.risks?.map((r) => r.description) || [],
     considerations:
       currentProject?.considerations?.map((c) => c.description) || [],
+    changes:
+      currentProject?.changes?.map((c) => ({
+        change: c.change || "",
+        impact: c.impact || "",
+        disposition: c.disposition || "",
+      })) || [],
   };
 
   return (
@@ -302,6 +309,13 @@ const ProjectDashboard = ({
                   considerations: data.considerations.filter(
                     (c) => c.trim() !== "",
                   ),
+                  changes: data.changes
+                    .filter((c) => c.change.trim() !== "")
+                    .map((c) => ({
+                      change: c.change,
+                      impact: c.impact,
+                      disposition: c.disposition,
+                    })),
                 },
               );
 

@@ -18,6 +18,15 @@ export type NextPeriodActivity = {
 export type Risk = Database["public"]["Tables"]["risks"]["Row"];
 export type Consideration =
   Database["public"]["Tables"]["considerations"]["Row"];
+export type Change = {
+  id: string;
+  project_id: string;
+  change: string;
+  impact: string;
+  disposition: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export interface ProjectWithRelations extends Project {
   milestones: Milestone[];
@@ -25,6 +34,7 @@ export interface ProjectWithRelations extends Project {
   next_period_activities: NextPeriodActivity[];
   risks: Risk[];
   considerations: Consideration[];
+  changes: Change[];
 }
 
 export const projectService = {
@@ -60,6 +70,11 @@ export const projectService = {
       }>;
       risks: string[];
       considerations: string[];
+      changes: Array<{
+        change: string;
+        impact: string;
+        disposition: string;
+      }>;
     },
   ): Promise<ProjectWithRelations | null> {
     const { data: project, error: projectError } = await supabase
@@ -92,6 +107,7 @@ export const projectService = {
       supabase.from("next_period_activities").delete().eq("project_id", id),
       supabase.from("risks").delete().eq("project_id", id),
       supabase.from("considerations").delete().eq("project_id", id),
+      supabase.from("changes").delete().eq("project_id", id),
     ]);
 
     // Insert new records
@@ -131,6 +147,14 @@ export const projectService = {
         data.considerations.map((c) => ({
           project_id: id,
           description: c,
+        })),
+      ),
+      supabase.from("changes").insert(
+        data.changes.map((c) => ({
+          project_id: id,
+          change: c.change,
+          impact: c.impact,
+          disposition: c.disposition,
         })),
       ),
     ]);
@@ -250,12 +274,23 @@ export const projectService = {
         })),
       );
 
+    // Insert changes
+    const { error: changesError } = await supabase.from("changes").insert(
+      data.changes.map((c) => ({
+        project_id: project.id,
+        change: c.change,
+        impact: c.impact,
+        disposition: c.disposition,
+      })),
+    );
+
     if (
       milestonesError ||
       accomplishmentsError ||
       activitiesError ||
       risksError ||
-      considerationsError
+      considerationsError ||
+      changesError
     ) {
       return null;
     }
@@ -297,6 +332,11 @@ export const projectService = {
       .select("*")
       .eq("project_id", id);
 
+    const { data: changes } = await supabase
+      .from("changes")
+      .select("*")
+      .eq("project_id", id);
+
     return {
       ...project,
       milestones: milestones || [],
@@ -304,6 +344,7 @@ export const projectService = {
       next_period_activities: activities || [],
       risks: risks || [],
       considerations: considerations || [],
+      changes: changes || [],
     };
   },
 
@@ -390,6 +431,19 @@ export const projectService = {
             event: "*",
             schema: "public",
             table: "considerations",
+            filter: `project_id=eq.${id}`,
+          },
+          () => this.getProject(id).then((p) => p && callback(p)),
+        )
+        .subscribe(),
+      supabase
+        .channel(`changes:${id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "changes",
             filter: `project_id=eq.${id}`,
           },
           () => this.getProject(id).then((p) => p && callback(p)),

@@ -65,6 +65,11 @@ interface ProjectFormProps {
     }>;
     risks: string[];
     considerations: string[];
+    changes: Array<{
+      change: string;
+      impact: string;
+      disposition: string;
+    }>;
   };
   onSubmit: (data: any) => void;
 }
@@ -90,6 +95,7 @@ const defaultFormData = {
   nextPeriodActivities: [],
   risks: [],
   considerations: [],
+  changes: [],
 };
 
 const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
@@ -985,7 +991,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
         </div>
 
-        {/* Considerations */}
+        {/* Considerations Section */}
         <div className={cardClasses}>
           <div className="flex items-center gap-1 mb-4">
             <h3 className="text-2xl font-bold text-blue-800">Considerations</h3>
@@ -1046,6 +1052,101 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
             >
               Add Consideration
+            </Button>
+          </div>
+        </div>
+
+        {/* Changes Section */}
+        <div className={cardClasses}>
+          <div className="flex items-center gap-1 mb-4">
+            <h3 className="text-2xl font-bold text-blue-800">Changes</h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs">
+                  List any changes to the project, their impact, and
+                  disposition.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="space-y-4">
+            {formData.changes.map((item, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-start"
+              >
+                <Input
+                  value={item.change}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      changes: prev.changes.map((c, i) =>
+                        i === index ? { ...c, change: e.target.value } : c,
+                      ),
+                    }))
+                  }
+                  placeholder="Enter change"
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                />
+                <Input
+                  value={item.impact}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      changes: prev.changes.map((c, i) =>
+                        i === index ? { ...c, impact: e.target.value } : c,
+                      ),
+                    }))
+                  }
+                  placeholder="Enter impact"
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                />
+                <Input
+                  value={item.disposition}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      changes: prev.changes.map((c, i) =>
+                        i === index ? { ...c, disposition: e.target.value } : c,
+                      ),
+                    }))
+                  }
+                  placeholder="Enter disposition"
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      changes: prev.changes.filter((_, i) => i !== index),
+                    }))
+                  }
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  changes: [
+                    ...prev.changes,
+                    { change: "", impact: "", disposition: "" },
+                  ],
+                }))
+              }
+              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+            >
+              Add Change
             </Button>
           </div>
         </div>

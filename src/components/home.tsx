@@ -179,6 +179,13 @@ const Home = () => {
                       considerations: data.considerations.filter(
                         (c) => c.trim() !== "",
                       ),
+                      changes: data.changes
+                        .filter((c) => c.change.trim() !== "")
+                        .map((c) => ({
+                          change: c.change,
+                          impact: c.impact,
+                          disposition: c.disposition,
+                        })),
                     };
 
                     const project =

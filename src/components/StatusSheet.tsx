@@ -42,6 +42,11 @@ interface StatusSheetProps {
     }>;
     risks: string[];
     considerations: string[];
+    changes: Array<{
+      change: string;
+      impact: string;
+      disposition: string;
+    }>;
   };
 }
 
@@ -398,7 +403,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
               </div>
 
               {/* Considerations Section */}
-              <div className="border-2 border-gray-300 p-3">
+              <div className="border-2 border-gray-300 p-3 mb-2">
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Questions / Items for Consideration
                 </h3>
@@ -412,6 +417,43 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              {/* Changes Section */}
+              <div className="border-2 border-gray-300 p-3">
+                <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
+                  Changes
+                </h3>
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-gray-300">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Change
+                      </th>
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Impact
+                      </th>
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Disposition
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.changes?.map((item, index) => (
+                      <tr key={index} className="border-b border-gray-300">
+                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                          {item.change}
+                        </td>
+                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                          {item.impact}
+                        </td>
+                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                          {item.disposition}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
