@@ -127,7 +127,12 @@ const ProjectDashboard = ({
     accomplishments:
       currentProject?.accomplishments?.map((a) => a.description) || [],
     nextPeriodActivities:
-      currentProject?.next_period_activities?.map((a) => a.description) || [],
+      currentProject?.next_period_activities?.map((a) => ({
+        description: a.description || "",
+        date: a.date || new Date().toISOString().split("T")[0],
+        completion: a.completion || 0,
+        assignee: a.assignee || "",
+      })) || [],
     risks: currentProject?.risks?.map((r) => r.description) || [],
     considerations:
       currentProject?.considerations?.map((c) => c.description) || [],
@@ -285,9 +290,14 @@ const ProjectDashboard = ({
                   accomplishments: data.accomplishments.filter(
                     (a) => a.trim() !== "",
                   ),
-                  next_period_activities: data.nextPeriodActivities.filter(
-                    (a) => a.trim() !== "",
-                  ),
+                  next_period_activities: data.nextPeriodActivities
+                    .filter((a) => a.description.trim() !== "")
+                    .map((a) => ({
+                      description: a.description,
+                      date: a.date,
+                      completion: a.completion,
+                      assignee: a.assignee,
+                    })),
                   risks: data.risks.filter((r) => r.trim() !== ""),
                   considerations: data.considerations.filter(
                     (c) => c.trim() !== "",

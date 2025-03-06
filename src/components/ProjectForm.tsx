@@ -57,7 +57,12 @@ interface ProjectFormProps {
       status: "green" | "yellow" | "red";
     }>;
     accomplishments: string[];
-    nextPeriodActivities: string[];
+    nextPeriodActivities: Array<{
+      description: string;
+      date: string;
+      completion: number;
+      assignee: string;
+    }>;
     risks: string[];
     considerations: string[];
   };
@@ -802,26 +807,78 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  List planned activities for the next reporting period or
-                  sprint.
+                  List activities planned for the next reporting period,
+                  including dates, completion percentages, and assignees.
                 </p>
               </TooltipContent>
             </Tooltip>
           </div>
           <div className="space-y-4">
             {formData.nextPeriodActivities.map((item, index) => (
-              <div key={index} className="flex gap-2">
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_140px_100px_150px_auto] gap-2 items-start"
+              >
                 <Input
-                  value={item}
+                  value={item.description}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
                       nextPeriodActivities: prev.nextPeriodActivities.map(
-                        (a, i) => (i === index ? e.target.value : a),
+                        (a, i) =>
+                          i === index
+                            ? { ...a, description: e.target.value }
+                            : a,
                       ),
                     }))
                   }
                   placeholder="Enter activity"
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                />
+                <Input
+                  type="date"
+                  value={item.date}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      nextPeriodActivities: prev.nextPeriodActivities.map(
+                        (a, i) =>
+                          i === index ? { ...a, date: e.target.value } : a,
+                      ),
+                    }))
+                  }
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={item.completion}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      nextPeriodActivities: prev.nextPeriodActivities.map(
+                        (a, i) =>
+                          i === index
+                            ? { ...a, completion: Number(e.target.value) }
+                            : a,
+                      ),
+                    }))
+                  }
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                />
+                <Input
+                  value={item.assignee}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      nextPeriodActivities: prev.nextPeriodActivities.map(
+                        (a, i) =>
+                          i === index ? { ...a, assignee: e.target.value } : a,
+                      ),
+                    }))
+                  }
+                  placeholder="Enter assignee"
                   className="bg-white/50 backdrop-blur-sm border-gray-200/50"
                 />
                 <Button
@@ -847,7 +904,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               onClick={() =>
                 setFormData((prev) => ({
                   ...prev,
-                  nextPeriodActivities: [...prev.nextPeriodActivities, ""],
+                  nextPeriodActivities: [
+                    ...prev.nextPeriodActivities,
+                    {
+                      description: "",
+                      date: new Date().toISOString().split("T")[0],
+                      completion: 0,
+                      assignee: "",
+                    },
+                  ],
                 }))
               }
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
@@ -860,15 +925,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
         {/* Risks */}
         <div className={cardClasses}>
           <div className="flex items-center gap-1 mb-4">
-            <h3 className="text-2xl font-bold text-blue-800">Risks</h3>
+            <h3 className="text-2xl font-bold text-blue-800">Risks & Issues</h3>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-4 w-4 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  List any identified risks or issues that could impact project
-                  success.
+                  List any risks, issues, or challenges that may impact the
+                  project's success.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -886,7 +951,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                       ),
                     }))
                   }
-                  placeholder="Enter risk"
+                  placeholder="Enter risk or issue"
                   className="bg-white/50 backdrop-blur-sm border-gray-200/50"
                 />
                 <Button
@@ -908,7 +973,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               type="button"
               variant="outline"
               onClick={() =>
-                setFormData((prev) => ({ ...prev, risks: [...prev.risks, ""] }))
+                setFormData((prev) => ({
+                  ...prev,
+                  risks: [...prev.risks, ""],
+                }))
               }
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
             >
@@ -927,8 +995,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  List any questions, items for discussion, or considerations
-                  that need stakeholder input.
+                  List any items that need consideration or decisions from
+                  stakeholders.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -983,16 +1051,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
         </div>
 
         {/* Submit Button */}
-        <div className="sticky bottom-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-4 px-4">
-          <div className="flex justify-end max-w-[1200px] mx-auto">
-            <Button
-              type="submit"
-              size="lg"
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-8"
-            >
-              Save Project
-            </Button>
-          </div>
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+          >
+            Save Project
+          </Button>
         </div>
 
         {/* Suggested Milestones Dialog */}
@@ -1000,28 +1065,28 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           isOpen={showSuggestedMilestones}
           onClose={() => setShowSuggestedMilestones(false)}
           suggestedMilestones={suggestedMilestones}
-          onApply={(selectedMilestones) =>
+          onApply={(selectedMilestones) => {
             setFormData((prev) => ({
               ...prev,
               milestones: [...prev.milestones, ...selectedMilestones],
-            }))
-          }
+            }));
+          }}
         />
 
-        {/* Overwrite Confirmation Dialog */}
+        {/* Overwrite Dialog */}
         <AlertDialog
           open={showOverwriteDialog}
           onOpenChange={setShowOverwriteDialog}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Overwrite</AlertDialogTitle>
+              <AlertDialogTitle>Overwrite existing content?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to overwrite the existing{" "}
-                {pendingGenerationType === "value"
-                  ? "value statement"
-                  : "description"}
-                ? This action cannot be undone.
+                This will replace your existing{" "}
+                {pendingGenerationType === "description"
+                  ? "project description"
+                  : "value statement"}
+                . Are you sure you want to continue?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1034,7 +1099,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                     generateContent(pendingGenerationType);
                     setPendingGenerationType(null);
                   }
-                  setShowOverwriteDialog(false);
                 }}
               >
                 Continue

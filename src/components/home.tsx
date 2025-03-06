@@ -167,9 +167,14 @@ const Home = () => {
                       accomplishments: data.accomplishments.filter(
                         (a) => a.trim() !== "",
                       ),
-                      next_period_activities: data.nextPeriodActivities.filter(
-                        (a) => a.trim() !== "",
-                      ),
+                      next_period_activities: data.nextPeriodActivities
+                        .filter((a) => a.description.trim() !== "")
+                        .map((a) => ({
+                          description: a.description,
+                          date: a.date,
+                          completion: a.completion,
+                          assignee: a.assignee,
+                        })),
                       risks: data.risks.filter((r) => r.trim() !== ""),
                       considerations: data.considerations.filter(
                         (c) => c.trim() !== "",

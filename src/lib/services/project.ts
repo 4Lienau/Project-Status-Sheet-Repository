@@ -5,8 +5,16 @@ export type Project = Database["public"]["Tables"]["projects"]["Row"];
 export type Milestone = Database["public"]["Tables"]["milestones"]["Row"];
 export type Accomplishment =
   Database["public"]["Tables"]["accomplishments"]["Row"];
-export type NextPeriodActivity =
-  Database["public"]["Tables"]["next_period_activities"]["Row"];
+export type NextPeriodActivity = {
+  id: string;
+  project_id: string;
+  description: string;
+  date: string;
+  completion: number;
+  assignee: string;
+  created_at?: string;
+  updated_at?: string;
+};
 export type Risk = Database["public"]["Tables"]["risks"]["Row"];
 export type Consideration =
   Database["public"]["Tables"]["considerations"]["Row"];
@@ -44,7 +52,12 @@ export const projectService = {
         status: "green" | "yellow" | "red";
       }>;
       accomplishments: string[];
-      next_period_activities: string[];
+      next_period_activities: Array<{
+        description: string;
+        date: string;
+        completion: number;
+        assignee: string;
+      }>;
       risks: string[];
       considerations: string[];
     },
@@ -102,7 +115,10 @@ export const projectService = {
       supabase.from("next_period_activities").insert(
         data.next_period_activities.map((a) => ({
           project_id: id,
-          description: a,
+          description: a.description,
+          date: a.date,
+          completion: a.completion,
+          assignee: a.assignee,
         })),
       ),
       supabase.from("risks").insert(
@@ -150,7 +166,12 @@ export const projectService = {
       status: "green" | "yellow" | "red";
     }>;
     accomplishments: string[];
-    next_period_activities: string[];
+    next_period_activities: Array<{
+      description: string;
+      date: string;
+      completion: number;
+      assignee: string;
+    }>;
     risks: string[];
     considerations: string[];
   }): Promise<ProjectWithRelations | null> {
@@ -204,7 +225,10 @@ export const projectService = {
       .insert(
         data.next_period_activities.map((a) => ({
           project_id: project.id,
-          description: a,
+          description: a.description,
+          date: a.date || new Date().toISOString().split("T")[0],
+          completion: a.completion || 0,
+          assignee: a.assignee || "",
         })),
       );
 

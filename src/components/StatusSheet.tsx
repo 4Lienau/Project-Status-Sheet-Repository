@@ -27,7 +27,12 @@ interface StatusSheetProps {
     businessLeads: string;
     projectManager: string;
     accomplishments: string[];
-    nextPeriodActivities: string[];
+    nextPeriodActivities: Array<{
+      description: string;
+      date: string;
+      completion: number;
+      assignee: string;
+    }>;
     milestones: Array<{
       date: string;
       milestone: string;
@@ -354,16 +359,42 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Next Period's Key Activities
                 </h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  {data.nextPeriodActivities.map((item, index) => (
-                    <li
-                      key={index}
-                      className="text-gray-900 dark:text-gray-900"
-                    >
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-gray-300">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Activity
+                      </th>
+                      <th className="py-1 pr-4 w-32 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
+                        Date
+                      </th>
+                      <th className="py-1 pr-4 w-24 font-bold text-gray-900 dark:text-gray-900">
+                        %
+                      </th>
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Assignee
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.nextPeriodActivities.map((item, index) => (
+                      <tr key={index} className="border-b border-gray-300">
+                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                          {item.description}
+                        </td>
+                        <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
+                          {item.date}
+                        </td>
+                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                          {item.completion}%
+                        </td>
+                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                          {item.assignee}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               {/* Considerations Section */}
