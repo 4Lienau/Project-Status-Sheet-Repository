@@ -1,0 +1,1 @@
+ALTER TABLE public.risks ADD COLUMN impact TEXT;

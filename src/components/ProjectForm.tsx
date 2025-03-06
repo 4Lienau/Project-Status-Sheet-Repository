@@ -946,18 +946,42 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
           <div className="space-y-4">
             {formData.risks.map((item, index) => (
-              <div key={index} className="flex gap-2">
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start"
+              >
                 <Input
-                  value={item}
+                  value={typeof item === "string" ? item : item.description}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
                       risks: prev.risks.map((r, i) =>
-                        i === index ? e.target.value : r,
+                        i === index
+                          ? typeof r === "string"
+                            ? { description: e.target.value, impact: "" }
+                            : { ...r, description: e.target.value }
+                          : r,
                       ),
                     }))
                   }
                   placeholder="Enter risk or issue"
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                />
+                <Input
+                  value={typeof item === "string" ? "" : item.impact || ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      risks: prev.risks.map((r, i) =>
+                        i === index
+                          ? typeof r === "string"
+                            ? { description: r, impact: e.target.value }
+                            : { ...r, impact: e.target.value }
+                          : r,
+                      ),
+                    }))
+                  }
+                  placeholder="Enter impact"
                   className="bg-white/50 backdrop-blur-sm border-gray-200/50"
                 />
                 <Button
@@ -981,7 +1005,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               onClick={() =>
                 setFormData((prev) => ({
                   ...prev,
-                  risks: [...prev.risks, ""],
+                  risks: [...prev.risks, { description: "", impact: "" }],
                 }))
               }
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"

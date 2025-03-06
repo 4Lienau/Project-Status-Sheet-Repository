@@ -134,7 +134,11 @@ const ProjectDashboard = ({
         completion: a.completion || 0,
         assignee: a.assignee || "",
       })) || [],
-    risks: currentProject?.risks?.map((r) => r.description) || [],
+    risks:
+      currentProject?.risks?.map((r) => ({
+        description: r.description,
+        impact: r.impact,
+      })) || [],
     considerations:
       currentProject?.considerations?.map((c) => c.description) || [],
     changes:
@@ -305,7 +309,11 @@ const ProjectDashboard = ({
                       completion: a.completion,
                       assignee: a.assignee,
                     })),
-                  risks: data.risks.filter((r) => r.trim() !== ""),
+                  risks: data.risks.filter((r) =>
+                    typeof r === "string"
+                      ? r.trim() !== ""
+                      : r.description.trim() !== "",
+                  ),
                   considerations: data.considerations.filter(
                     (c) => c.trim() !== "",
                   ),

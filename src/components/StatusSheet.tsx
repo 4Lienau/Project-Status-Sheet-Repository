@@ -510,16 +510,30 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Risks and Issues
                 </h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  {data.risks.map((risk, index) => (
-                    <li
-                      key={index}
-                      className="text-gray-900 dark:text-gray-900"
-                    >
-                      {risk}
-                    </li>
-                  ))}
-                </ul>
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-gray-300">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Risk/Issue
+                      </th>
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Impact
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.risks.map((risk, index) => (
+                      <tr key={index} className="border-b border-gray-300">
+                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                          {typeof risk === "string" ? risk : risk.description}
+                        </td>
+                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                          {typeof risk === "string" ? "" : risk.impact}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

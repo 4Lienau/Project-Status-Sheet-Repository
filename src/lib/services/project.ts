@@ -140,7 +140,8 @@ export const projectService = {
       supabase.from("risks").insert(
         data.risks.map((r) => ({
           project_id: id,
-          description: r,
+          description: typeof r === "string" ? r : r.description,
+          impact: typeof r === "string" ? null : r.impact,
         })),
       ),
       supabase.from("considerations").insert(
@@ -260,7 +261,8 @@ export const projectService = {
     const { error: risksError } = await supabase.from("risks").insert(
       data.risks.map((r) => ({
         project_id: project.id,
-        description: r,
+        description: typeof r === "string" ? r : r.description,
+        impact: typeof r === "string" ? null : r.impact,
       })),
     );
 
