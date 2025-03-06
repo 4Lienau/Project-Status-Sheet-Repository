@@ -686,6 +686,26 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
 
           <div className="space-y-4">
+            {/* Column Headers */}
+            <div className="grid grid-cols-[30px_1fr] gap-2">
+              <div></div>
+              <div className="grid grid-cols-[140px_1fr_150px_200px] gap-2">
+                <div className="font-medium text-sm text-blue-800">Date</div>
+                <div className="font-medium text-sm text-blue-800">
+                  Milestone
+                </div>
+                <div className="font-medium text-sm text-blue-800">Owner</div>
+                <div className="flex gap-2">
+                  <div className="w-24 font-medium text-sm text-blue-800">
+                    Completion %
+                  </div>
+                  <div className="w-24 font-medium text-sm text-blue-800">
+                    Status
+                  </div>
+                  <div className="w-8"></div>
+                </div>
+              </div>
+            </div>
             <MilestoneList
               milestones={formData.milestones}
               onMilestonesChange={(newMilestones) =>
@@ -820,6 +840,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </Tooltip>
           </div>
           <div className="space-y-4">
+            {/* Column Headers */}
+            <div className="grid grid-cols-[1fr_140px_100px_150px_auto] gap-2 items-start">
+              <div className="font-medium text-sm text-blue-800">Activity</div>
+              <div className="font-medium text-sm text-blue-800">Date</div>
+              <div className="font-medium text-sm text-blue-800">
+                Completion %
+              </div>
+              <div className="font-medium text-sm text-blue-800">Assignee</div>
+              <div></div>
+            </div>
             {formData.nextPeriodActivities.map((item, index) => (
               <div
                 key={index}
@@ -945,6 +975,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </Tooltip>
           </div>
           <div className="space-y-4">
+            {/* Column Headers */}
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start">
+              <div className="font-medium text-sm text-blue-800">
+                Risk/Issue
+              </div>
+              <div className="font-medium text-sm text-blue-800">Impact</div>
+              <div></div>
+            </div>
             {formData.risks.map((item, index) => (
               <div
                 key={index}
@@ -1097,6 +1135,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </Tooltip>
           </div>
           <div className="space-y-4">
+            {/* Column Headers */}
+            <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-start">
+              <div className="font-medium text-sm text-blue-800">Change</div>
+              <div className="font-medium text-sm text-blue-800">Impact</div>
+              <div className="font-medium text-sm text-blue-800">
+                Disposition
+              </div>
+              <div></div>
+            </div>
             {formData.changes.map((item, index) => (
               <div
                 key={index}
