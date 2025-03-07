@@ -391,7 +391,17 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                           {item.date}
                         </td>
                         <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {item.completion}%
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 text-center">
+                              {item.completion}%
+                            </div>
+                            <div className="w-24 h-4 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full ${item.completion === 100 ? "bg-blue-500" : item.completion >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
+                                style={{ width: `${item.completion}%` }}
+                              ></div>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
                           {item.assignee}
