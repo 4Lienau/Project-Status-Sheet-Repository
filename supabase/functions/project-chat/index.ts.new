@@ -1,0 +1,247 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.6";
+import OpenAI from "https://esm.sh/openai@4.0.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  // Handle CORS preflight request
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    );
+
+    // Get the authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        },
+      );
+    }
+
+    // Set up OpenAI client
+    const openai = new OpenAI({
+      apiKey: Deno.env.get("OPENAI_API_KEY"),
+    });
+
+    // Get the request body
+    const { projectId, message, conversationId } = await req.json();
+
+    if (!projectId || !message) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        },
+      );
+    }
+
+    // Get the current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseClient.auth.getUser(authHeader.split(" ")[1]);
+    
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    // Get project details
+    const { data: project, error: projectError } = await supabaseClient
+      .from("projects")
+      .select(
+        "title, description, value_statement, status, project_manager, sponsors, business_leads",
+      )
+      .eq("id", projectId)
+      .single();
+
+    if (projectError || !project) {
+      return new Response(JSON.stringify({ error: "Project not found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404,
+      });
+    }
+
+    // Get or create conversation
+    let convoId = conversationId;
+    if (!convoId) {
+      const { data: newConvo, error: convoError } = await supabaseClient
+        .from("chat_conversations")
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          title: `Chat about ${project.title}`,
+        })
+        .select()
+        .single();
+
+      if (convoError || !newConvo) {
+        return new Response(
+          JSON.stringify({ error: "Failed to create conversation" }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          },
+        );
+      }
+
+      convoId = newConvo.id;
+    }
+
+    // Get conversation history
+    const { data: history, error: historyError } = await supabaseClient
+      .from("chat_messages")
+      .select("role, content")
+      .eq("conversation_id", convoId)
+      .order("created_at", { ascending: true });
+
+    if (historyError) {
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch conversation history" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        },
+      );
+    }
+
+    // Generate embedding for the query
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-ada-002",
+      input: message,
+    });
+
+    const embedding = embeddingResponse.data[0].embedding;
+
+    // Search for relevant knowledge
+    const { data: relevantKnowledge, error: searchError } =
+      await supabaseClient.rpc("match_pm_knowledge", {
+        query_embedding: embedding,
+        match_threshold: 0.7,
+        match_count: 5,
+      });
+
+    if (searchError) {
+      console.error("Knowledge search error:", searchError);
+      // Continue without knowledge context
+    }
+
+    // Format knowledge context
+    let knowledgeContext = "";
+    if (relevantKnowledge && relevantKnowledge.length > 0) {
+      knowledgeContext =
+        "Here is some relevant project management knowledge that might help with this query:\n\n";
+      relevantKnowledge.forEach((item, index) => {
+        knowledgeContext += `${index + 1}. ${item.title}:\n${item.content}\n\n`;
+      });
+    }
+
+    // Create system prompt with project context
+    const systemPrompt = `You are Project Pilot, an expert project management assistant. You are helping with a project titled "${project.title}".\n\n
+    Project details:\n
+    - Description: ${project.description || "Not provided"}\n
+    - Value Statement: ${project.value_statement || "Not provided"}\n
+    - Status: ${project.status || "Active"}\n
+    - Project Manager: ${project.project_manager || "Not assigned"}\n
+    - Sponsors: ${project.sponsors || "Not assigned"}\n
+    - Business Leads: ${project.business_leads || "Not assigned"}\n\n
+    ${knowledgeContext}\n\n
+    Provide specific, actionable advice tailored to this project. Be concise, practical, and helpful. Focus on best practices in project management and how they apply to this specific project.`;
+
+    // Save user message
+    const { error: userMsgError } = await supabaseClient
+      .from("chat_messages")
+      .insert({
+        conversation_id: convoId,
+        role: "user",
+        content: message,
+      });
+
+    if (userMsgError) {
+      return new Response(
+        JSON.stringify({ error: "Failed to save user message" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        },
+      );
+    }
+
+    // Prepare messages for OpenAI
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...history.map((msg) => ({ role: msg.role, content: msg.content })),
+      { role: "user", content: message },
+    ];
+
+    // Get response from OpenAI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages,
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
+
+    const responseContent =
+      completion.choices[0].message?.content ||
+      "Sorry, I could not generate a response.";
+
+    // Save assistant message
+    const { error: assistantMsgError } = await supabaseClient
+      .from("chat_messages")
+      .insert({
+        conversation_id: convoId,
+        role: "assistant",
+        content: responseContent,
+      });
+
+    if (assistantMsgError) {
+      return new Response(
+        JSON.stringify({ error: "Failed to save assistant message" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        },
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        conversationId: convoId,
+        message: responseContent,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      },
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({
+        error: error.message || "An unexpected error occurred",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      },
+    );
+  }
+});

@@ -1,0 +1,98 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.6";
+import { Configuration, OpenAIApi } from "https://esm.sh/openai@4.0.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  // Handle CORS preflight request
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    const openAIConfig = new Configuration({
+      apiKey: Deno.env.get("OPENAI_API_KEY"),
+    });
+    const openai = new OpenAIApi(openAIConfig);
+
+    // Get the request body
+    const { id } = await req.json();
+
+    if (!id) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        },
+      );
+    }
+
+    // Get the knowledge entry
+    const { data: knowledgeEntry, error: fetchError } = await supabaseClient
+      .from("pm_knowledge")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !knowledgeEntry) {
+      return new Response(
+        JSON.stringify({ error: "Knowledge entry not found" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 404,
+        },
+      );
+    }
+
+    // Generate embedding for the content
+    const embeddingResponse = await openai.createEmbedding({
+      model: "text-embedding-ada-002",
+      input: knowledgeEntry.content,
+    });
+
+    const [{ embedding }] = embeddingResponse.data.data;
+
+    // Update the knowledge entry with the embedding
+    const { error: updateError } = await supabaseClient
+      .from("pm_knowledge")
+      .update({ embedding })
+      .eq("id", id);
+
+    if (updateError) {
+      return new Response(
+        JSON.stringify({ error: "Failed to update embedding" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        },
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Embedding generated successfully",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      },
+    );
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+});

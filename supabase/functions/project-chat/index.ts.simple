@@ -1,0 +1,60 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  // Handle CORS preflight request
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    console.log("Function invoked");
+    
+    // Get the request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log("Request body received:", requestBody);
+    } catch (e) {
+      console.error("Error parsing request body:", e);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        },
+      );
+    }
+    
+    const { projectId, message, conversationId } = requestBody;
+
+    // Simple echo response for testing
+    console.log("Sending echo response");
+    return new Response(
+      JSON.stringify({
+        conversationId: conversationId || "new-conversation-id",
+        message: `Echo: ${message}\n\nThis is a test response from the Project Pilot chatbot. Your message was received for project ${projectId}.`,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({
+        error: error.message || "An unexpected error occurred",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      }
+    );
+  }
+});

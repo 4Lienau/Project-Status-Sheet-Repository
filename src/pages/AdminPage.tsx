@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
+import KnowledgeManager from "@/components/admin/KnowledgeManager";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -404,6 +405,10 @@ const AdminPage = () => {
               <Shield className="h-4 w-4" />
               Security
             </TabsTrigger>
+            <TabsTrigger value="knowledge" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Project Pilot Knowledge
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-4">
@@ -670,6 +675,10 @@ const AdminPage = () => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="knowledge" className="space-y-4">
+            <KnowledgeManager />
           </TabsContent>
 
           <TabsContent value="security" className="space-y-4">

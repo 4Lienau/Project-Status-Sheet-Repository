@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import ProjectPilot from "@/components/chat/ProjectPilot";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -192,6 +193,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
         onSubmit={handleSubmit}
         className="max-w-[1200px] mx-auto space-y-3"
       >
+        {/* Project Pilot Chat Assistant */}
+        <ProjectPilot
+          projectId={initialData?.id || ""}
+          projectTitle={formData.title}
+        />
         {/* Project Title, Description and Value Statement */}
         <div className={cardClasses}>
           <div className="space-y-4">
