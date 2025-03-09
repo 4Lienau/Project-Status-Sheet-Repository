@@ -10,6 +10,8 @@ import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
+import ProfileSetupDialog from "./auth/ProfileSetupDialog";
+import { supabase } from "@/lib/supabase";
 import {
   Select,
   SelectContent,
@@ -26,22 +28,67 @@ const Home = () => {
   const [projectData, setProjectData] = useState(null);
   const [selectedManager, setSelectedManager] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [projectManagers, setProjectManagers] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [profileChecked, setProfileChecked] = useState(false);
 
-  // Load unique project managers
+  // Check if user profile is complete
   useEffect(() => {
-    const loadProjectManagers = async () => {
+    const checkUserProfile = async () => {
+      if (!user || !user.id) return;
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, department")
+        .eq("id", user.id)
+        .single();
+
+      // Show profile setup dialog if name or department is missing
+      if (!data?.full_name || !data?.department) {
+        setShowProfileSetup(true);
+      }
+
+      setProfileChecked(true);
+    };
+
+    if (user && !profileChecked) {
+      checkUserProfile();
+    }
+  }, [user, profileChecked]);
+
+  // Load unique project managers and departments
+  useEffect(() => {
+    const loadProjectFilters = async () => {
       if (!user) return;
       const projects = await projectService.getAllProjects();
+
+      // Get unique managers
       const uniqueManagers = [
         ...new Set(projects.map((p) => p.project_manager)),
       ]
         .filter((manager) => manager) // Remove empty values
         .sort();
       setProjectManagers(uniqueManagers);
+
+      // Get unique departments from profiles
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("department")
+        .not("department", "is", null);
+
+      if (profiles) {
+        const uniqueDepartments = [
+          ...new Set(profiles.map((p) => p.department)),
+        ]
+          .filter(Boolean)
+          .sort();
+        setDepartments(uniqueDepartments);
+      }
     };
 
-    loadProjectManagers();
+    loadProjectFilters();
   }, [user]);
 
   const handleSelectProject = async (project: Project) => {
@@ -82,6 +129,23 @@ const Home = () => {
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <Select
+                  value={selectedDepartment}
+                  onValueChange={setSelectedDepartment}
+                >
+                  <SelectTrigger className="w-[280px]">
+                    <SelectValue placeholder="Filter by Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
                   value={selectedManager}
                   onValueChange={setSelectedManager}
                 >
@@ -120,6 +184,7 @@ const Home = () => {
                 onCreateNew={() => setMode("form")}
                 filterManager={selectedManager}
                 filterStatus={selectedStatus}
+                filterDepartment={selectedDepartment}
               />
             </div>
           )}
@@ -222,6 +287,14 @@ const Home = () => {
         </div>
       </div>
       <Toaster />
+
+      {/* Profile Setup Dialog */}
+      {showProfileSetup && (
+        <ProfileSetupDialog
+          open={showProfileSetup}
+          onComplete={() => setShowProfileSetup(false)}
+        />
+      )}
     </Layout>
   );
 };

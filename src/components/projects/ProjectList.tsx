@@ -17,6 +17,7 @@ interface ProjectListProps {
   onCreateNew: () => void;
   filterManager?: string;
   filterStatus?: string;
+  filterDepartment?: string;
 }
 
 const ProjectList = ({
@@ -24,6 +25,7 @@ const ProjectList = ({
   onCreateNew,
   filterManager = "",
   filterStatus = "all",
+  filterDepartment = "all",
 }: ProjectListProps) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<{ full_name: string | null }>({
@@ -64,7 +66,7 @@ const ProjectList = ({
 
       setAllProjects(projects);
 
-      // Apply project manager filter & Project Status filters
+      // Apply filters
       let filtered = projects;
 
       // Apply project manager filter
@@ -77,12 +79,33 @@ const ProjectList = ({
         filtered = filtered.filter((p) => p.status === filterStatus);
       }
 
+      // Apply department filter
+      if (filterDepartment && filterDepartment !== "all") {
+        // Get all users from this department
+        const { data: departmentUsers } = await supabase
+          .from("profiles")
+          .select("id, email")
+          .eq("department", filterDepartment);
+
+        if (departmentUsers && departmentUsers.length > 0) {
+          const departmentEmails = departmentUsers
+            .map((user) => user.email)
+            .filter(Boolean);
+          filtered = filtered.filter(
+            (p) =>
+              departmentEmails.includes(p.project_manager) ||
+              // Also include if the project manager contains the department name (fallback)
+              p.project_manager.includes(filterDepartment),
+          );
+        }
+      }
+
       setFilteredProjects(filtered);
       setLoading(false);
     };
 
     loadProjects();
-  }, [filterManager, filterStatus]);
+  }, [filterManager, filterStatus, filterDepartment]);
 
   if (loading) {
     return (

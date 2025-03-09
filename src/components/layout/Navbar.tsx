@@ -18,8 +18,12 @@ import { User, Shield, LogOut } from "lucide-react";
 const Navbar = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [profile, setProfile] = React.useState<{ full_name: string | null }>({
+  const [profile, setProfile] = React.useState<{
+    full_name: string | null;
+    department: string | null;
+  }>({
     full_name: null,
+    department: null,
   });
 
   React.useEffect(() => {
@@ -27,7 +31,7 @@ const Navbar = () => {
       if (user?.id) {
         const { data } = await supabase
           .from("profiles")
-          .select("full_name")
+          .select("full_name, department")
           .eq("id", user.id)
           .single();
 
@@ -72,9 +76,16 @@ const Navbar = () => {
 
           {user && (
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-muted-foreground">
-                {profile.full_name || user.email?.split("@")[0]}
-              </span>
+              <div className="flex flex-col">
+                <span className="text-sm">
+                  {profile.full_name || user.email?.split("@")[0]}
+                </span>
+                {profile.department && (
+                  <span className="text-xs text-muted-foreground">
+                    {profile.department}
+                  </span>
+                )}
+              </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
