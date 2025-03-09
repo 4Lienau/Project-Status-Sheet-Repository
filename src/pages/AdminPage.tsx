@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import KnowledgeManager from "@/components/admin/KnowledgeManager";
+import DepartmentManager from "@/components/admin/DepartmentManager";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -397,6 +398,13 @@ const AdminPage = () => {
               <Users className="h-4 w-4" />
               Users Management
             </TabsTrigger>
+            <TabsTrigger
+              value="departments"
+              className="flex items-center gap-2"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Departments
+            </TabsTrigger>
             <TabsTrigger value="statistics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Statistics
@@ -675,6 +683,10 @@ const AdminPage = () => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="departments" className="space-y-4">
+            <DepartmentManager />
           </TabsContent>
 
           <TabsContent value="knowledge" className="space-y-4">

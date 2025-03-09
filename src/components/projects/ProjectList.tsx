@@ -81,22 +81,38 @@ const ProjectList = ({
 
       // Apply department filter
       if (filterDepartment && filterDepartment !== "all") {
-        // Get all users from this department
-        const { data: departmentUsers } = await supabase
-          .from("profiles")
-          .select("id, email")
-          .eq("department", filterDepartment);
-
-        if (departmentUsers && departmentUsers.length > 0) {
-          const departmentEmails = departmentUsers
-            .map((user) => user.email)
-            .filter(Boolean);
-          filtered = filtered.filter(
-            (p) =>
-              departmentEmails.includes(p.project_manager) ||
-              // Also include if the project manager contains the department name (fallback)
-              p.project_manager.includes(filterDepartment),
+        // Special case for Technology department - show all projects since all users are in this department
+        if (filterDepartment === "Technology") {
+          // Keep all projects when filtering by Technology department
+          console.log(
+            "All users are in Technology department - showing all projects",
           );
+        } else {
+          // Get all users from this department
+          const { data: departmentUsers } = await supabase
+            .from("profiles")
+            .select("id, email, full_name")
+            .eq("department", filterDepartment);
+
+          if (departmentUsers && departmentUsers.length > 0) {
+            const departmentEmails = departmentUsers
+              .map((user) => user.email)
+              .filter(Boolean);
+
+            const departmentNames = departmentUsers
+              .map((user) => user.full_name)
+              .filter(Boolean);
+
+            filtered = filtered.filter(
+              (p) =>
+                departmentEmails.includes(p.project_manager) ||
+                departmentNames.some((name) =>
+                  p.project_manager.includes(name),
+                ) ||
+                // Also include if the project manager contains the department name (fallback)
+                p.project_manager.includes(filterDepartment),
+            );
+          }
         }
       }
 

@@ -56,38 +56,32 @@ const ProfilePage = () => {
 
         if (data && data.length > 0) {
           setDepartments(data);
+          // If department is not set or not in the list, set to first department
+          if (!department && data.length > 0) {
+            setDepartment(data[0].name);
+          }
         } else {
           // Fallback departments if none in database
-          setDepartments([
-            { id: "engineering", name: "Engineering" },
-            { id: "finance", name: "Finance" },
-            { id: "hr", name: "HR" },
-            { id: "marketing", name: "Marketing" },
-            { id: "operations", name: "Operations" },
-            { id: "it", name: "IT" },
-            { id: "executive", name: "Executive" },
-            { id: "project_management", name: "Project Management" },
-          ]);
+          const fallbackDepts = [{ id: "technology", name: "Technology" }];
+          setDepartments(fallbackDepts);
+          if (!department) {
+            setDepartment("Technology");
+          }
         }
       } catch (err) {
         console.error("Error loading departments:", err);
         // Fallback departments
-        setDepartments([
-          { id: "engineering", name: "Engineering" },
-          { id: "finance", name: "Finance" },
-          { id: "hr", name: "HR" },
-          { id: "marketing", name: "Marketing" },
-          { id: "operations", name: "Operations" },
-          { id: "it", name: "IT" },
-          { id: "executive", name: "Executive" },
-          { id: "project_management", name: "Project Management" },
-        ]);
+        const fallbackDepts = [{ id: "technology", name: "Technology" }];
+        setDepartments(fallbackDepts);
+        if (!department) {
+          setDepartment("Technology");
+        }
       }
     };
 
     loadProfile();
     loadDepartments();
-  }, [user?.id]);
+  }, [user?.id, department]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

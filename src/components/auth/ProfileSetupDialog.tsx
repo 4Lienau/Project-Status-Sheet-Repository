@@ -64,32 +64,20 @@ const ProfileSetupDialog: React.FC<ProfileSetupDialogProps> = ({
 
         if (data && data.length > 0) {
           setDepartments(data);
+          // If there's only one department, auto-select it
+          if (data.length === 1) {
+            setDepartment(data[0].name);
+          }
         } else {
           // Fallback departments if none in database
-          setDepartments([
-            { id: "engineering", name: "Engineering" },
-            { id: "finance", name: "Finance" },
-            { id: "hr", name: "HR" },
-            { id: "marketing", name: "Marketing" },
-            { id: "operations", name: "Operations" },
-            { id: "it", name: "IT" },
-            { id: "executive", name: "Executive" },
-            { id: "project_management", name: "Project Management" },
-          ]);
+          setDepartments([{ id: "technology", name: "Technology" }]);
+          setDepartment("Technology");
         }
       } catch (err) {
         console.error("Error loading departments:", err);
         // Fallback departments
-        setDepartments([
-          { id: "engineering", name: "Engineering" },
-          { id: "finance", name: "Finance" },
-          { id: "hr", name: "HR" },
-          { id: "marketing", name: "Marketing" },
-          { id: "operations", name: "Operations" },
-          { id: "it", name: "IT" },
-          { id: "executive", name: "Executive" },
-          { id: "project_management", name: "Project Management" },
-        ]);
+        setDepartments([{ id: "technology", name: "Technology" }]);
+        setDepartment("Technology");
       }
     };
 
