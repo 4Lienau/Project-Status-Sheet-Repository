@@ -57,6 +57,29 @@ const ProjectList = ({
 
   useEffect(() => {
     const loadProjects = async () => {
+      setLoading(true);
+
+      // First, get the current user's department and email
+      let userDepartment = "";
+      let userEmail = "";
+      let userName = "";
+
+      if (user?.id) {
+        const { data: userData } = await supabase
+          .from("profiles")
+          .select("department, email, full_name")
+          .eq("id", user.id)
+          .single();
+
+        if (userData) {
+          userDepartment = userData.department || "";
+          userEmail = userData.email || user.email || "";
+          userName = userData.full_name || "";
+        } else {
+          userEmail = user.email || "";
+        }
+      }
+
       const projectPromises = (await projectService.getAllProjects()).map((p) =>
         projectService.getProject(p.id),
       );
@@ -67,7 +90,26 @@ const ProjectList = ({
       setAllProjects(projects);
 
       // Apply filters
-      let filtered = projects;
+      let filtered = [...projects];
+
+      // First filter by user's department (unless they're in Technology department)
+      if (userDepartment && userDepartment !== "Technology") {
+        filtered = filtered.filter((project) => {
+          // Always show projects where user is the project manager
+          if (userEmail && project.project_manager === userEmail) return true;
+          if (userName && project.project_manager === userName) return true;
+
+          // Show projects from user's department
+          return project.department === userDepartment;
+        });
+      }
+
+      // Then apply department filter dropdown if selected
+      if (filterDepartment && filterDepartment !== "all") {
+        filtered = filtered.filter((project) => {
+          return project.department === filterDepartment;
+        });
+      }
 
       // Apply project manager filter
       if (filterManager && filterManager !== "all") {
@@ -79,49 +121,12 @@ const ProjectList = ({
         filtered = filtered.filter((p) => p.status === filterStatus);
       }
 
-      // Apply department filter
-      if (filterDepartment && filterDepartment !== "all") {
-        // Special case for Technology department - show all projects since all users are in this department
-        if (filterDepartment === "Technology") {
-          // Keep all projects when filtering by Technology department
-          console.log(
-            "All users are in Technology department - showing all projects",
-          );
-        } else {
-          // Get all users from this department
-          const { data: departmentUsers } = await supabase
-            .from("profiles")
-            .select("id, email, full_name")
-            .eq("department", filterDepartment);
-
-          if (departmentUsers && departmentUsers.length > 0) {
-            const departmentEmails = departmentUsers
-              .map((user) => user.email)
-              .filter(Boolean);
-
-            const departmentNames = departmentUsers
-              .map((user) => user.full_name)
-              .filter(Boolean);
-
-            filtered = filtered.filter(
-              (p) =>
-                departmentEmails.includes(p.project_manager) ||
-                departmentNames.some((name) =>
-                  p.project_manager.includes(name),
-                ) ||
-                // Also include if the project manager contains the department name (fallback)
-                p.project_manager.includes(filterDepartment),
-            );
-          }
-        }
-      }
-
       setFilteredProjects(filtered);
       setLoading(false);
     };
 
     loadProjects();
-  }, [filterManager, filterStatus, filterDepartment]);
+  }, [filterManager, filterStatus, filterDepartment, user?.id]);
 
   if (loading) {
     return (
@@ -237,6 +242,11 @@ const ProjectList = ({
               <p className="text-sm text-blue-800 mb-4">
                 Project Manager: {project.project_manager}
               </p>
+              {project.department && (
+                <p className="text-xs text-blue-600">
+                  Department: {project.department}
+                </p>
+              )}
             </div>
           </Card>
         ))}

@@ -43,15 +43,30 @@ const AuthForm = () => {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error, data } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
+      if (error) {
+        setError(error.message);
+      } else if (data.user) {
+        toast({
+          title: "Success",
+          description: "Signed in successfully",
+          duration: 2000,
+        });
+
+        // Force navigation to home page
+        window.location.href = "/";
+        return; // Don't continue execution
+      }
+    } catch (err) {
+      setError(err.message || "An error occurred during sign in");
     }
 
+    // Always set loading to false if we reach this point
     setLoading(false);
   };
 

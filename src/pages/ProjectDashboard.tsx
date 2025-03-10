@@ -39,6 +39,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 interface ProjectDashboardProps {
   project: Project & {
@@ -78,6 +80,7 @@ const ProjectDashboard = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [newProjectTitle, setNewProjectTitle] = React.useState("");
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   React.useEffect(() => {
     const loadVersions = async () => {
@@ -263,6 +266,13 @@ const ProjectDashboard = ({
           initialData={formattedData}
           onSubmit={async (data) => {
             try {
+              // Get current user's department if needed
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("department")
+                .eq("id", user?.id)
+                .single();
+
               const updatedProject = await projectService.updateProject(
                 currentProject.id,
                 {
@@ -289,6 +299,10 @@ const ProjectDashboard = ({
                   sponsors: data.sponsors,
                   business_leads: data.businessLeads,
                   project_manager: data.projectManager,
+                  department:
+                    data.department ||
+                    currentProject.department ||
+                    profile?.department,
                   milestones: data.milestones
                     .filter((m) => m.milestone.trim() !== "")
                     .map((m) => ({

@@ -75,6 +75,7 @@ export const projectService = {
         impact: string;
         disposition: string;
       }>;
+      department?: string;
     },
   ): Promise<ProjectWithRelations | null> {
     const { data: project, error: projectError } = await supabase
@@ -93,6 +94,7 @@ export const projectService = {
         project_manager: data.project_manager,
         health_calculation_type: data.health_calculation_type || "automatic",
         manual_health_percentage: data.manual_health_percentage,
+        department: data.department, // Update department if provided
       })
       .eq("id", id)
       .select()
@@ -199,7 +201,27 @@ export const projectService = {
     }>;
     risks: string[];
     considerations: string[];
+    department?: string;
   }): Promise<ProjectWithRelations | null> {
+    // Get current user's profile to get department
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    let department = data.department;
+
+    if (!department && user) {
+      // If department not provided, get it from user profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("department")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.department) {
+        department = profile.department;
+      }
+    }
+
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .insert({
@@ -216,6 +238,8 @@ export const projectService = {
         project_manager: data.project_manager,
         health_calculation_type: data.health_calculation_type || "automatic",
         manual_health_percentage: data.manual_health_percentage,
+        department: department, // Add department to project
+        created_by: user?.id, // Track who created the project
       })
       .select()
       .single();

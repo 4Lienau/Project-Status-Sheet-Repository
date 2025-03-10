@@ -72,20 +72,26 @@ const Home = () => {
         .sort();
       setProjectManagers(uniqueManagers);
 
-      // Get unique departments from profiles
+      // Get unique departments from projects
+      const projectDepartments = [
+        ...new Set(projects.map((p) => p.department)),
+      ].filter(Boolean);
+
+      // Also get departments from profiles
       const { data: profiles } = await supabase
         .from("profiles")
         .select("department")
         .not("department", "is", null);
 
-      if (profiles) {
-        const uniqueDepartments = [
-          ...new Set(profiles.map((p) => p.department)),
-        ]
-          .filter(Boolean)
-          .sort();
-        setDepartments(uniqueDepartments);
-      }
+      const profileDepartments = profiles
+        ? [...new Set(profiles.map((p) => p.department))].filter(Boolean)
+        : [];
+
+      // Combine both sources of departments
+      const allDepartments = [
+        ...new Set([...projectDepartments, ...profileDepartments]),
+      ].sort();
+      setDepartments(allDepartments);
     };
 
     loadProjectFilters();
@@ -209,6 +215,13 @@ const Home = () => {
                   }
 
                   try {
+                    // Get current user's department
+                    const { data: profile } = await supabase
+                      .from("profiles")
+                      .select("department, full_name")
+                      .eq("id", user?.id)
+                      .single();
+
                     const projectData = {
                       title: data.title,
                       description: data.description || "",
@@ -225,7 +238,9 @@ const Home = () => {
                       charter_link: data.charterLink || "",
                       sponsors: data.sponsors || "",
                       business_leads: data.businessLeads || "",
-                      project_manager: data.projectManager || "",
+                      project_manager:
+                        data.projectManager || profile?.full_name || "",
+                      department: data.department || profile?.department, // Use selected department or user's department
                       milestones: data.milestones.filter(
                         (m) => m.milestone.trim() !== "",
                       ),

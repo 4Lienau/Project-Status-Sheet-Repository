@@ -32,6 +32,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
+import DepartmentSelect from "@/components/DepartmentSelect";
 
 interface ProjectFormProps {
   initialData?: {
@@ -50,6 +53,7 @@ interface ProjectFormProps {
     sponsors: string;
     businessLeads: string;
     projectManager: string;
+    department?: string;
     milestones: Array<{
       date: string;
       milestone: string;
@@ -91,6 +95,7 @@ const defaultFormData = {
   sponsors: "",
   businessLeads: "",
   projectManager: "",
+  department: "",
   milestones: [],
   accomplishments: [],
   nextPeriodActivities: [],
@@ -104,6 +109,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     ...defaultFormData,
     ...initialData,
   }));
+
+  // For debugging
+  React.useEffect(() => {
+    console.log("Form data department:", formData.department);
+  }, [formData.department]);
+
   const [showSuggestedMilestones, setShowSuggestedMilestones] =
     React.useState(false);
   const [suggestedMilestones, setSuggestedMilestones] = React.useState([]);
@@ -112,6 +123,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     "description" | "value" | null
   >(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,42 +329,67 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
           </div>
         </div>
 
-        {/* Project Status */}
+        {/* Project Status and Department */}
         <div className={cardClasses}>
-          <div className="space-y-2">
-            <div className="flex items-center gap-1 mb-4">
-              <h3 className="text-2xl font-bold text-blue-800">
-                Project Status
-              </h3>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs">
-                    Select the current status of your project. You may select
-                    Active, On Hold, Completed, Cancelled, or Draft.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-1 mb-4">
+                <h3 className="text-xl font-bold text-blue-800">
+                  Project Status
+                </h3>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      Select the current status of your project. You may select
+                      Active, On Hold, Completed, Cancelled, or Draft.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <Select
+                value={formData.status}
+                onValueChange={(value: any) =>
+                  setFormData((prev) => ({ ...prev, status: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={formData.status}
-              onValueChange={(value: any) =>
-                setFormData((prev) => ({ ...prev, status: value }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="on_hold">On Hold</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-              </SelectContent>
-            </Select>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-1 mb-4">
+                <h3 className="text-xl font-bold text-blue-800">Department</h3>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      Select the department this project belongs to. Only users
+                      in this department will be able to see this project.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <DepartmentSelect
+                value={formData.department || ""}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, department: value }))
+                }
+              />
+            </div>
           </div>
         </div>
 
