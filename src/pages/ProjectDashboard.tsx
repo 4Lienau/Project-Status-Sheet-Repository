@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import html2canvas from "html2canvas";
+import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
 import {
   Edit,
   ArrowLeft,
@@ -9,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  BarChart2,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -78,6 +80,7 @@ const ProjectDashboard = ({
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] =
     React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [showGanttChart, setShowGanttChart] = React.useState(false);
   const [newProjectTitle, setNewProjectTitle] = React.useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -374,8 +377,28 @@ const ProjectDashboard = ({
           }}
         />
       ) : (
-        <StatusSheet data={formattedData} />
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setShowGanttChart(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <BarChart2 className="h-4 w-4" />
+              View Gantt Chart
+            </Button>
+          </div>
+          <StatusSheet data={formattedData} />
+        </div>
       )}
+
+      {/* Gantt Chart Dialog */}
+      <GanttChartDialog
+        open={showGanttChart}
+        onOpenChange={setShowGanttChart}
+        milestones={formattedData.milestones}
+        projectTitle={formattedData.title}
+      />
 
       <Dialog
         open={isDuplicateDialogOpen}

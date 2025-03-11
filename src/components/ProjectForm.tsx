@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import ProjectPilot from "@/components/chat/ProjectPilot";
+import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Wand2, Info } from "lucide-react";
+import { Wand2, Info, BarChart2 } from "lucide-react";
 import { MilestoneList } from "./MilestoneList";
 import { aiService } from "@/lib/services/aiService";
 import { SuggestedMilestones } from "./SuggestedMilestones";
@@ -119,6 +120,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
     React.useState(false);
   const [suggestedMilestones, setSuggestedMilestones] = React.useState([]);
   const [showOverwriteDialog, setShowOverwriteDialog] = React.useState(false);
+  const [showGanttChart, setShowGanttChart] = React.useState(false);
   const [pendingGenerationType, setPendingGenerationType] = React.useState<
     "description" | "value" | null
   >(null);
@@ -217,18 +219,29 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
               <h3 className="text-2xl font-bold text-blue-800 mb-4">
                 Project Details
               </h3>
-              <div className="flex items-center gap-1">
-                <Label htmlFor="title">Project Title</Label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs">
-                      Enter a clear, descriptive title for your project.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="title">Project Title</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        Enter a clear, descriptive title for your project.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => setShowGanttChart(true)}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <BarChart2 className="h-4 w-4" />
+                  View Gantt Chart
+                </Button>
               </div>
               <Input
                 id="title"
@@ -1321,6 +1334,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Gantt Chart Dialog */}
+        <GanttChartDialog
+          open={showGanttChart}
+          onOpenChange={setShowGanttChart}
+          milestones={formData.milestones}
+          projectTitle={formData.title}
+        />
       </form>
     </TooltipProvider>
   );
