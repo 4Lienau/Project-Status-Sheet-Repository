@@ -100,36 +100,20 @@ const ProfileSetupDialog: React.FC<ProfileSetupDialogProps> = ({
     try {
       setError(null);
 
-      // First check if profile exists
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", user?.id)
-        .single();
-
-      let result;
-
-      if (existingProfile) {
-        // Update existing profile
-        result = await supabase
-          .from("profiles")
-          .update({
-            full_name: fullName.trim(),
-            department: department.trim(),
-            email: user?.email,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", user?.id);
-      } else {
-        // Insert new profile
-        result = await supabase.from("profiles").insert({
+      // Use upsert to handle both insert and update cases
+      const result = await supabase.from("profiles").upsert(
+        {
           id: user?.id,
           full_name: fullName.trim(),
           department: department.trim(),
           email: user?.email,
           updated_at: new Date().toISOString(),
-        });
-      }
+        },
+        {
+          onConflict: "id",
+          returning: "minimal",
+        },
+      );
 
       if (result.error) throw result.error;
 
