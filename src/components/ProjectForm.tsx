@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Wand2, Info, BarChart2 } from "lucide-react";
+import { Wand2, Info, BarChart2, ArrowLeft } from "lucide-react";
 import { MilestoneList } from "./MilestoneList";
 import { aiService } from "@/lib/services/aiService";
 import { SuggestedMilestones } from "./SuggestedMilestones";
@@ -38,6 +38,7 @@ import { supabase } from "@/lib/supabase";
 import DepartmentSelect from "@/components/DepartmentSelect";
 
 interface ProjectFormProps {
+  onBack?: () => void;
   initialData?: {
     title: string;
     description?: string;
@@ -105,7 +106,11 @@ const defaultFormData = {
   changes: [],
 };
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({
+  initialData,
+  onSubmit,
+  onBack,
+}) => {
   const [formData, setFormData] = React.useState(() => ({
     ...defaultFormData,
     ...initialData,
@@ -220,18 +225,32 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSubmit }) => {
                 Project Details
               </h3>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <Label htmlFor="title">Project Title</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="max-w-xs">
-                        Enter a clear, descriptive title for your project.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+                <div className="flex items-center gap-4">
+                  {onBack && (
+                    <Button
+                      type="button"
+                      onClick={onBack}
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to Projects
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor="title">Project Title</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">
+                          Enter a clear, descriptive title for your project.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
                 <Button
                   type="button"

@@ -17,6 +17,9 @@ import {
 } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 
+// Custom CSS to override the today line color
+import { useEffect } from "react";
+
 interface Milestone {
   id?: string;
   date: string;
@@ -31,11 +34,40 @@ interface GanttChartProps {
   projectTitle: string;
 }
 
+// Create a style element to inject custom CSS
+const createTodayLineStyle = () => {
+  const styleEl = document.createElement("style");
+  styleEl.id = "gantt-today-line-style";
+  styleEl.innerHTML = `
+    .today-line {
+      stroke: #2563eb !important;
+      stroke-width: 2px !important;
+    }
+  `;
+  return styleEl;
+};
+
 const GanttChart: React.FC<GanttChartProps> = ({
   milestones,
   projectTitle,
 }) => {
   const [view, setView] = useState<ViewMode>(ViewMode.Month);
+
+  // Inject custom CSS for today line when component mounts
+  useEffect(() => {
+    // Check if style already exists
+    if (!document.getElementById("gantt-today-line-style")) {
+      document.head.appendChild(createTodayLineStyle());
+    }
+
+    // Cleanup when component unmounts
+    return () => {
+      const styleEl = document.getElementById("gantt-today-line-style");
+      if (styleEl) {
+        styleEl.remove();
+      }
+    };
+  }, []);
 
   // Convert milestones to tasks format required by gantt-task-react
   const tasks: Task[] = milestones.map((milestone, index) => {
@@ -108,7 +140,7 @@ const GanttChart: React.FC<GanttChartProps> = ({
     fontSize: "14px",
     arrowColor: "#64748b",
     arrowIndent: 10,
-    todayColor: "rgba(59, 130, 246, 0.3)", // Lighter blue with transparency
+    todayColor: "#2563eb", // Solid blue color for today line
     tableRowPadding: 12,
     // Additional styling
     headerFontSize: "15px",
@@ -129,6 +161,8 @@ const GanttChart: React.FC<GanttChartProps> = ({
     preStepsCount: 1,
     locale: "en-US",
     rtl: false,
+    // Enable today line
+    showToday: true,
   };
 
   // Handle view mode change

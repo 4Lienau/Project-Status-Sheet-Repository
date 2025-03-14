@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
 import Layout from "./layout/Layout";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import WelcomePage from "./welcome/WelcomePage";
 import ProjectList from "./projects/ProjectList";
+import ProjectsOverview from "./projects/ProjectsOverview";
 import ProjectForm from "./ProjectForm";
 import ProjectDashboard from "@/pages/ProjectDashboard";
 import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
+import { FileSpreadsheet } from "lucide-react";
 import ProfileSetupDialog from "./auth/ProfileSetupDialog";
 import { supabase } from "@/lib/supabase";
 import {
@@ -22,9 +24,12 @@ import {
 
 const Home = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, loading } = useAuth();
-  const [mode, setMode] = useState<"list" | "form" | "preview">("list");
+  const [mode, setMode] = useState<"list" | "form" | "preview" | "overview">(
+    "list",
+  );
   const [projectData, setProjectData] = useState(null);
   const [selectedManager, setSelectedManager] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -57,6 +62,32 @@ const Home = () => {
       checkUserProfile();
     }
   }, [user, profileChecked]);
+
+  // Handle navigation from ProjectsOverview
+  useEffect(() => {
+    if (location.state) {
+      const { projectId, mode: newMode } = location.state as {
+        projectId?: string;
+        mode?: "list" | "form" | "preview" | "overview";
+      };
+
+      if (projectId) {
+        // Load the project data and set the mode
+        const loadProject = async () => {
+          const project = await projectService.getProject(projectId);
+          if (project) {
+            setProjectData(project);
+            setMode(newMode || "preview");
+
+            // Clear the location state to prevent reloading on refresh
+            navigate("/", { replace: true, state: {} });
+          }
+        };
+
+        loadProject();
+      }
+    }
+  }, [location, navigate]);
 
   // Load unique project managers and departments
   useEffect(() => {
@@ -133,57 +164,66 @@ const Home = () => {
         <div className="max-w-7xl mx-auto space-y-6">
           {mode === "list" && (
             <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <Select
-                  value={selectedDepartment}
-                  onValueChange={setSelectedDepartment}
-                >
-                  <SelectTrigger className="w-[280px]">
-                    <SelectValue placeholder="Filter by Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <Select
+                    value={selectedDepartment}
+                    onValueChange={setSelectedDepartment}
+                  >
+                    <SelectTrigger className="w-[280px]">
+                      <SelectValue placeholder="Filter by Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-                <Select
-                  value={selectedManager}
-                  onValueChange={setSelectedManager}
-                >
-                  <SelectTrigger className="w-[280px]">
-                    <SelectValue placeholder="Filter by Project Manager" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Project Managers</SelectItem>
-                    {projectManagers.map((manager) => (
-                      <SelectItem key={manager} value={manager}>
-                        {manager}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Select
+                    value={selectedManager}
+                    onValueChange={setSelectedManager}
+                  >
+                    <SelectTrigger className="w-[280px]">
+                      <SelectValue placeholder="Filter by Project Manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Project Managers</SelectItem>
+                      {projectManagers.map((manager) => (
+                        <SelectItem key={manager} value={manager}>
+                          {manager}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-                <Select
-                  value={selectedStatus}
-                  onValueChange={setSelectedStatus}
+                  <Select
+                    value={selectedStatus}
+                    onValueChange={setSelectedStatus}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Filter by Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={() => setMode("overview")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
                 >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Filter by Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="on_hold">On Hold</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Projects Overview
+                </Button>
               </div>
               <ProjectList
                 onSelectProject={handleSelectProject}
@@ -204,6 +244,7 @@ const Home = () => {
                 </Button>
               </div>
               <ProjectForm
+                onBack={() => setMode("list")}
                 onSubmit={async (data) => {
                   if (!data.title.trim()) {
                     toast({
@@ -297,6 +338,15 @@ const Home = () => {
               project={projectData}
               onBack={() => setMode("list")}
               initialEditMode={true}
+            />
+          )}
+
+          {mode === "overview" && (
+            <ProjectsOverview
+              onBack={() => setMode("list")}
+              filterManager={selectedManager}
+              filterStatus={selectedStatus}
+              filterDepartment={selectedDepartment}
             />
           )}
         </div>
