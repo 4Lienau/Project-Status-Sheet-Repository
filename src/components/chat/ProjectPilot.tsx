@@ -7,6 +7,8 @@ import { Send, X, Minimize2, Maximize2, Bot, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { chatService } from "@/lib/services/chatService";
 import { useToast } from "@/components/ui/use-toast";
+import { projectService } from "@/lib/services/project";
+import type { ProjectWithRelations } from "@/lib/services/project";
 
 interface ProjectPilotProps {
   projectId?: string;
@@ -20,7 +22,7 @@ interface Message {
 }
 
 const ProjectPilot: React.FC<ProjectPilotProps> = ({
-  projectId = "default-project",
+  projectId = "",
   projectTitle = "Untitled Project",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,6 +32,9 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [projectData, setProjectData] = useState<ProjectWithRelations | null>(
+    null,
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -42,6 +47,59 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load project data when projectId changes
+  useEffect(() => {
+    const loadProjectData = async () => {
+      // Always attempt to load project data regardless of ID format
+      try {
+        console.log(
+          "[DEBUG] Loading project data for AI, projectId:",
+          projectId,
+        );
+        console.log("[DEBUG] ProjectId type:", typeof projectId);
+
+        // Skip loading if projectId is empty
+        if (!projectId) {
+          console.warn("[DEBUG] Empty project ID, skipping data load");
+          setProjectData(null);
+          return;
+        }
+
+        // Try to load project data
+        console.log(
+          "[DEBUG] Calling projectService.getProject with ID:",
+          projectId,
+        );
+        const project = await projectService.getProject(projectId);
+        console.log(
+          "[DEBUG] Project service returned:",
+          project ? "data" : "null",
+        );
+
+        if (project) {
+          console.log(
+            "[DEBUG] Project data loaded successfully:",
+            project.title,
+          );
+          console.log("[DEBUG] Project ID:", project.id);
+          console.log(
+            "[DEBUG] Project data structure:",
+            JSON.stringify(Object.keys(project)),
+          );
+          setProjectData(project);
+        } else {
+          console.warn("[DEBUG] No project data found for ID:", projectId);
+          setProjectData(null);
+        }
+      } catch (error) {
+        console.error("[DEBUG] Error loading project data for AI:", error);
+        setProjectData(null);
+      }
+    };
+
+    loadProjectData();
+  }, [projectId]);
 
   // Initialize position when chat opens
   useEffect(() => {
@@ -113,12 +171,86 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
     setIsLoading(true);
 
     try {
-      // Call OpenAI API
+      // Call OpenAI API with project data
+      console.log("[DEBUG] Sending message to AI with project data:", {
+        projectId,
+        projectTitle,
+        hasProjectData: !!projectData,
+        projectDataTitle: projectData?.title,
+        projectDataId: projectData?.id,
+        messageContent: userMessage,
+      });
+
+      // Log more detailed project data for debugging
+      if (projectData) {
+        console.log("[DEBUG] Project data being sent to AI:", {
+          id: projectData.id,
+          title: projectData.title,
+          description: projectData.description?.substring(0, 50) + "...",
+          status: projectData.status,
+          milestones: projectData.milestones?.length || 0,
+          risks: projectData.risks?.length || 0,
+          accomplishments: projectData.accomplishments?.length || 0,
+          next_activities: projectData.next_period_activities?.length || 0,
+        });
+
+        // Check if projectData has all expected properties
+        const expectedProps = [
+          "id",
+          "title",
+          "description",
+          "status",
+          "milestones",
+          "risks",
+          "accomplishments",
+          "next_period_activities",
+        ];
+        const missingProps = expectedProps.filter(
+          (prop) => !(prop in projectData),
+        );
+        if (missingProps.length > 0) {
+          console.warn(
+            "[DEBUG] Project data is missing expected properties:",
+            missingProps,
+          );
+        }
+
+        // Check if any arrays are undefined instead of empty
+        const arrayProps = [
+          "milestones",
+          "risks",
+          "accomplishments",
+          "next_period_activities",
+          "considerations",
+          "changes",
+        ];
+        arrayProps.forEach((prop) => {
+          if (projectData[prop] === undefined) {
+            console.warn(
+              `[DEBUG] Property ${prop} is undefined instead of an empty array`,
+            );
+          }
+        });
+      } else {
+        console.log("[DEBUG] No project data available to send to AI");
+        console.log("[DEBUG] Current projectId:", projectId);
+        console.log("[DEBUG] Current projectTitle:", projectTitle);
+      }
+
+      console.log("[DEBUG] About to call chatService.sendMessage");
+      console.log(
+        "[DEBUG] projectData before sending:",
+        projectData ? "exists" : "null/undefined",
+      );
+
       const response = await chatService.sendMessage(
         userMessage,
         projectId,
         projectTitle,
+        projectData,
       );
+
+      console.log("[DEBUG] Received response from chatService.sendMessage");
 
       // Add AI response to messages
       setMessages((prev) => [
@@ -191,6 +323,8 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
         userSelect: isDragging ? "none" : "auto",
       }}
       onMouseDown={handleMouseDown}
+      // Remove the key prop from being spread
+      tempoelementid={undefined}
     >
       {/* Header */}
       <div className="flex items-center justify-between bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-t-lg drag-handle cursor-grab">

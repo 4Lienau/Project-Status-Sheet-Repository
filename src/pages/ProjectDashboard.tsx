@@ -267,6 +267,7 @@ const ProjectDashboard = ({
       {isEditing ? (
         <ProjectForm
           initialData={formattedData}
+          projectId={currentProject.id}
           onSubmit={async (data) => {
             try {
               // Get current user's department if needed

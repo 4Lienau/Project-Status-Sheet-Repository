@@ -40,6 +40,7 @@ import DepartmentSelect from "@/components/DepartmentSelect";
 
 interface ProjectFormProps {
   onBack?: () => void;
+  projectId?: string;
   initialData?: {
     title: string;
     description?: string;
@@ -111,6 +112,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   initialData,
   onSubmit,
   onBack,
+  projectId = "",
 }) => {
   const [formData, setFormData] = React.useState(() => ({
     ...defaultFormData,
@@ -214,10 +216,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         className="max-w-[1200px] mx-auto space-y-3"
       >
         {/* Project Pilot Chat Assistant */}
-        <ProjectPilot
-          projectId={initialData?.id || ""}
-          projectTitle={formData.title}
-        />
+        <ProjectPilot projectId={projectId} projectTitle={formData.title} />
         {/* Project Title, Description and Value Statement */}
         <div className={cardClasses}>
           <div className="space-y-4">

@@ -325,53 +325,141 @@ export const projectService = {
   },
 
   async getProject(id: string): Promise<ProjectWithRelations | null> {
-    const { data: project, error: projectError } = await supabase
-      .from("projects")
-      .select("*")
-      .eq("id", id)
-      .single();
+    // Skip if id is empty
+    if (!id) {
+      console.log("[DEBUG] Skipping data fetch for empty project ID");
+      return null;
+    }
 
-    if (projectError || !project) return null;
+    // Validate that id is a valid UUID format to prevent errors
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      console.warn("[DEBUG] Invalid project ID format:", id);
+      return null;
+    }
 
-    const { data: milestones } = await supabase
-      .from("milestones")
-      .select("*")
-      .eq("project_id", id);
+    try {
+      console.log("[DEBUG] Fetching project from Supabase with ID:", id);
+      const { data: project, error: projectError } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-    const { data: accomplishments } = await supabase
-      .from("accomplishments")
-      .select("*")
-      .eq("project_id", id);
+      if (projectError) {
+        console.warn(
+          "[DEBUG] Supabase error fetching project:",
+          projectError.message,
+        );
+        return null;
+      }
 
-    const { data: activities } = await supabase
-      .from("next_period_activities")
-      .select("*")
-      .eq("project_id", id);
+      if (!project) {
+        console.warn("[DEBUG] No project found with ID:", id);
+        return null;
+      }
 
-    const { data: risks } = await supabase
-      .from("risks")
-      .select("*")
-      .eq("project_id", id);
+      console.log("[DEBUG] Successfully fetched project with ID:", id);
+      console.log("[DEBUG] Project data:", JSON.stringify(project, null, 2));
 
-    const { data: considerations } = await supabase
-      .from("considerations")
-      .select("*")
-      .eq("project_id", id);
+      // Fetch related data with more detailed logging
+      console.log("[DEBUG] Fetching milestones for project ID:", id);
+      const { data: milestones, error: milestonesError } = await supabase
+        .from("milestones")
+        .select("*")
+        .eq("project_id", id);
 
-    const { data: changes } = await supabase
-      .from("changes")
-      .select("*")
-      .eq("project_id", id);
+      if (milestonesError)
+        console.warn(
+          "[DEBUG] Error fetching milestones:",
+          milestonesError.message,
+        );
+      console.log("[DEBUG] Found", milestones?.length || 0, "milestones");
 
-    return {
-      ...project,
-      milestones: milestones || [],
-      accomplishments: accomplishments || [],
-      next_period_activities: activities || [],
-      risks: risks || [],
-      considerations: considerations || [],
-      changes: changes || [],
-    };
+      console.log("[DEBUG] Fetching accomplishments for project ID:", id);
+      const { data: accomplishments, error: accomplishmentsError } =
+        await supabase.from("accomplishments").select("*").eq("project_id", id);
+
+      if (accomplishmentsError)
+        console.warn(
+          "[DEBUG] Error fetching accomplishments:",
+          accomplishmentsError.message,
+        );
+      console.log(
+        "[DEBUG] Found",
+        accomplishments?.length || 0,
+        "accomplishments",
+      );
+
+      console.log("[DEBUG] Fetching activities for project ID:", id);
+      const { data: activities, error: activitiesError } = await supabase
+        .from("next_period_activities")
+        .select("*")
+        .eq("project_id", id);
+
+      if (activitiesError)
+        console.warn(
+          "[DEBUG] Error fetching activities:",
+          activitiesError.message,
+        );
+      console.log("[DEBUG] Found", activities?.length || 0, "activities");
+
+      console.log("[DEBUG] Fetching risks for project ID:", id);
+      const { data: risks, error: risksError } = await supabase
+        .from("risks")
+        .select("*")
+        .eq("project_id", id);
+
+      if (risksError)
+        console.warn("[DEBUG] Error fetching risks:", risksError.message);
+      console.log("[DEBUG] Found", risks?.length || 0, "risks");
+
+      console.log("[DEBUG] Fetching considerations for project ID:", id);
+      const { data: considerations, error: considerationsError } =
+        await supabase.from("considerations").select("*").eq("project_id", id);
+
+      if (considerationsError)
+        console.warn(
+          "[DEBUG] Error fetching considerations:",
+          considerationsError.message,
+        );
+      console.log(
+        "[DEBUG] Found",
+        considerations?.length || 0,
+        "considerations",
+      );
+
+      console.log("[DEBUG] Fetching changes for project ID:", id);
+      const { data: changes, error: changesError } = await supabase
+        .from("changes")
+        .select("*")
+        .eq("project_id", id);
+
+      if (changesError)
+        console.warn("[DEBUG] Error fetching changes:", changesError.message);
+      console.log("[DEBUG] Found", changes?.length || 0, "changes");
+
+      const result = {
+        ...project,
+        milestones: milestones || [],
+        accomplishments: accomplishments || [],
+        next_period_activities: activities || [],
+        risks: risks || [],
+        considerations: considerations || [],
+        changes: changes || [],
+      };
+
+      console.log(
+        "[DEBUG] Returning complete project data with",
+        Object.keys(result).length,
+        "top-level keys",
+      );
+      return result;
+    } catch (error) {
+      console.error("[DEBUG] Error fetching project data:", error);
+      return null;
+    }
   },
 
   async getAllProjects(): Promise<Project[]> {

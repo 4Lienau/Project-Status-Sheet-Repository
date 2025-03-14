@@ -51,6 +51,7 @@ const ProjectPilotStandalone: React.FC = () => {
         userMessage,
         "standalone-demo",
         "Project Management Demo",
+        null,
       );
 
       // Add AI response to messages
