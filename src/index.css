@@ -3,6 +3,44 @@
 @tailwind utilities;
 
 @layer base {
+  .prose {
+    @apply text-foreground;
+  }
+
+  .prose h1 {
+    @apply text-2xl font-bold;
+  }
+
+  .prose h2 {
+    @apply text-xl font-semibold;
+  }
+
+  .prose strong {
+    @apply font-bold;
+  }
+
+  .prose em {
+    @apply italic;
+  }
+
+  .prose ul {
+    @apply list-disc pl-6;
+  }
+
+  .prose ol {
+    @apply list-decimal pl-6;
+  }
+
+  .prose mark {
+    @apply bg-yellow-200;
+  }
+
+  .prose a {
+    @apply text-blue-600 underline;
+  }
+}
+
+@layer base {
   :root {
     --radius: 1rem;
 
@@ -91,5 +129,41 @@
       0 4px 4px hsl(0deg 0% 0% / 0.075),
       0 8px 8px hsl(0deg 0% 0% / 0.075),
       0 16px 16px hsl(0deg 0% 0% / 0.075);
+    transform: translateY(-2px);
+  }
+
+  /* TipTap editor custom styling */
+  .tiptap-editor {
+    /* General editor styling */
+    line-height: 1.5;
+  }
+
+  /* Tighter list spacing */
+  .tiptap-editor ul.tight-list,
+  .tiptap-editor ol.tight-list {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .tiptap-editor ul.tight-list li,
+  .tiptap-editor ol.tight-list li {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+  }
+
+  /* Adjust spacing between list items */
+  .tiptap-editor ul li p,
+  .tiptap-editor ol li p {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+  }
+
+  /* Adjust spacing for nested lists */
+  .tiptap-editor ul li ul,
+  .tiptap-editor ol li ol,
+  .tiptap-editor ul li ol,
+  .tiptap-editor ol li ul {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
   }
 }

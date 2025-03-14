@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Wand2, Info, BarChart2, ArrowLeft } from "lucide-react";
 import { MilestoneList } from "./MilestoneList";
 import { aiService } from "@/lib/services/aiService";
@@ -262,14 +263,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   View Gantt Chart
                 </Button>
               </div>
-              <Input
+              <RichTextEditor
                 id="title"
                 value={formData.title}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, title: e.target.value }))
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, title: value }))
                 }
                 placeholder="Enter project title"
                 className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                minHeight="50px"
               />
             </div>
 
@@ -302,17 +304,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   Use AI to Generate
                 </Button>
               </div>
-              <Textarea
+              <RichTextEditor
                 id="description"
                 value={formData.description}
-                onChange={(e) =>
+                onChange={(value) =>
                   setFormData((prev) => ({
                     ...prev,
-                    description: e.target.value,
+                    description: value,
                   }))
                 }
                 placeholder="Enter project description"
-                className="bg-white/50 backdrop-blur-sm border-gray-200/50 min-h-[120px] resize-y"
+                className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                minHeight="120px"
               />
             </div>
 
@@ -345,17 +348,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   Use AI to Generate
                 </Button>
               </div>
-              <Textarea
+              <RichTextEditor
                 id="valueStatement"
                 value={formData.valueStatement}
-                onChange={(e) =>
+                onChange={(value) =>
                   setFormData((prev) => ({
                     ...prev,
-                    valueStatement: e.target.value,
+                    valueStatement: value,
                   }))
                 }
                 placeholder="Enter value statement"
-                className="bg-white/50 backdrop-blur-sm border-gray-200/50 min-h-[120px] resize-y"
+                className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                minHeight="120px"
               />
             </div>
           </div>

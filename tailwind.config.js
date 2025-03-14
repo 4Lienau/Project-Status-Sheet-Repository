@@ -91,5 +91,17 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  safelist: [
+    "prose",
+    "prose-sm",
+    "prose-h1",
+    "prose-h2",
+    "prose-strong",
+    "prose-em",
+    "prose-ul",
+    "prose-ol",
+    "prose-li",
+    "prose-a",
+  ],
 };

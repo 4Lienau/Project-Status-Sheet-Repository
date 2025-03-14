@@ -213,7 +213,9 @@ const ProjectList = ({
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <div className="relative">
               <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-semibold">{project.title}</h3>
+                <h3 className="text-lg font-semibold">
+                  {project.title.replace(/<[^>]*>/g, "")}
+                </h3>
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${
                     {
@@ -236,7 +238,7 @@ const ProjectList = ({
               </div>
               {project.description && (
                 <p className="text-sm text-blue-800 mb-3 line-clamp-2">
-                  {project.description}
+                  {project.description.replace(/<[^>]*>/g, "")}
                 </p>
               )}
               <p className="text-sm text-blue-800 mb-4">

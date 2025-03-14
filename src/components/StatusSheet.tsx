@@ -188,12 +188,14 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
       <div id="status-sheet" className="bg-white dark:bg-white pb-4 w-full">
         {/* Title and Description */}
         <div className="bg-gradient-to-r from-blue-650 via-blue-600 to-blue-450 p-3 mb-2">
-          <h1 className="text-2xl font-bold text-white dark:text-white">
-            {data.title}
-          </h1>
-          <h2 className="text-xl text-blue-50 dark:text-blue-50">
-            {data.description}
-          </h2>
+          <h1
+            className="text-2xl font-bold text-white dark:text-white"
+            dangerouslySetInnerHTML={{ __html: data.title }}
+          ></h1>
+          <h2
+            className="text-xl text-blue-50 dark:text-blue-50"
+            dangerouslySetInnerHTML={{ __html: data.description }}
+          ></h2>
         </div>
 
         <div className="px-3">
