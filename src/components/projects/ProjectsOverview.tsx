@@ -276,7 +276,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                           }}
                         >
                           <TableCell className="font-medium text-blue-600 hover:text-blue-800 hover:underline">
-                            {project.title}
+                            {project.title.replace(/<[^>]*>/g, "")}
                           </TableCell>
                           <TableCell>{project.department || "—"}</TableCell>
                           <TableCell>
