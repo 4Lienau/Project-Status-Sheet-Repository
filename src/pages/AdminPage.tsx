@@ -3,6 +3,7 @@ import Layout from "@/components/layout/Layout";
 import KnowledgeManager from "@/components/admin/KnowledgeManager";
 import DepartmentManager from "@/components/admin/DepartmentManager";
 import PendingUsersManager from "@/components/admin/PendingUsersManager";
+import SupabaseMetrics from "@/components/admin/SupabaseMetrics";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -47,9 +48,10 @@ import {
   ShieldAlert,
   ShieldCheck,
   Activity,
+  Database,
 } from "lucide-react";
 
-// Admin emails
+// Admin emails - add your email here to get admin access
 const ADMIN_EMAILS = ["4lienau@gmail.com", "chrisl@re-wa.org"];
 
 const AdminPage = () => {
@@ -111,21 +113,93 @@ const AdminPage = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Try to get users from profiles table instead
+        // Get auth users data using service role key (if available)
+        // This is a workaround since we can't directly access auth.users in the free tier
+        const { data: authUsersData, error: authError } = await supabase.rpc(
+          "get_auth_users_data",
+        );
+
+        if (authError) {
+          console.error("Error fetching auth users data:", authError);
+          console.log("Auth error details:", {
+            message: authError.message,
+            details: authError.details,
+            hint: authError.hint,
+          });
+        } else {
+          console.log("Auth users data fetched successfully:", authUsersData);
+        }
+
+        // Fallback to profiles if RPC function is not available
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("*");
 
+        // Create a map of user IDs to auth data for quick lookup
+        const authUserMap = {};
+        if (authUsersData && Array.isArray(authUsersData)) {
+          console.log(
+            "Auth users data received:",
+            authUsersData.length,
+            "users",
+          );
+          authUsersData.forEach((user) => {
+            // Make sure we're using the correct ID format
+            authUserMap[user.id] = {
+              id: user.id,
+              email: user.email,
+              created_at: user.created_at,
+              last_sign_in_at: user.last_sign_in_at,
+              // Remove banned field as it doesn't exist in the function return
+            };
+            console.log(
+              `Mapping auth data for user ID: ${user.id}`,
+              authUserMap[user.id],
+            );
+          });
+        } else {
+          console.log("No auth users data received or not in expected format");
+        }
+
         if (profilesData) {
-          setUsers(
-            profilesData.map((profile) => ({
+          const mappedUsers = profilesData.map((profile) => {
+            // Try to get auth data for this user
+            const authData = authUserMap[profile.id] || {};
+
+            // Log for debugging
+            if (profile.id in authUserMap) {
+              console.log(
+                `Found auth data for user ${profile.email || profile.id}`,
+                authData,
+              );
+            } else {
+              console.log(
+                `No auth data found for user ${profile.email || profile.id}`,
+                profile,
+              );
+            }
+
+            // Ensure we have valid date strings
+            const createdAt = authData.created_at || profile.created_at || null;
+            const lastSignIn = authData.last_sign_in_at || null;
+
+            console.log(`User ${profile.email} dates:`, {
+              createdAt,
+              lastSignIn,
+              profileCreatedAt: profile.created_at,
+              authDataCreatedAt: authData.created_at,
+            });
+
+            return {
               id: profile.id,
               email: profile.email || profile.id,
-              created_at: profile.created_at,
-              last_sign_in_at: null,
-              banned: false,
-            })),
-          );
+              created_at: createdAt,
+              last_sign_in_at: lastSignIn,
+              banned: false, // Hardcoded to false since we removed this field from the function
+            };
+          });
+
+          setUsers(mappedUsers);
 
           setStats((prev) => ({
             ...prev,
@@ -414,6 +488,10 @@ const AdminPage = () => {
               <BarChart3 className="h-4 w-4" />
               Statistics
             </TabsTrigger>
+            <TabsTrigger value="supabase" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Supabase Metrics
+            </TabsTrigger>
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Security
@@ -502,14 +580,45 @@ const AdminPage = () => {
                               {user.email}
                             </TableCell>
                             <TableCell>
-                              {new Date(user.created_at).toLocaleDateString()}
+                              {user.created_at &&
+                              !isNaN(new Date(user.created_at).getTime())
+                                ? new Date(
+                                    user.created_at,
+                                  ).toLocaleDateString() +
+                                  " " +
+                                  new Date(user.created_at).toLocaleTimeString(
+                                    [],
+                                    { hour: "2-digit", minute: "2-digit" },
+                                  )
+                                : "Unknown"}
                             </TableCell>
                             <TableCell>
-                              {user.last_sign_in_at
+                              {user.last_sign_in_at &&
+                              !isNaN(new Date(user.last_sign_in_at).getTime())
                                 ? new Date(
                                     user.last_sign_in_at,
-                                  ).toLocaleDateString()
+                                  ).toLocaleDateString() +
+                                  " " +
+                                  new Date(
+                                    user.last_sign_in_at,
+                                  ).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
                                 : "Never"}
+                              {/* Add a hidden debug span to help troubleshoot */}
+                              <span className="hidden">
+                                {JSON.stringify({
+                                  rawLastSignIn: user.last_sign_in_at,
+                                  isValid: user.last_sign_in_at
+                                    ? !isNaN(
+                                        new Date(
+                                          user.last_sign_in_at,
+                                        ).getTime(),
+                                      )
+                                    : false,
+                                })}
+                              </span>
                             </TableCell>
                             <TableCell>
                               <span
@@ -700,6 +809,10 @@ const AdminPage = () => {
 
           <TabsContent value="knowledge" className="space-y-4">
             <KnowledgeManager />
+          </TabsContent>
+
+          <TabsContent value="supabase" className="space-y-4">
+            <SupabaseMetrics />
           </TabsContent>
 
           <TabsContent value="security" className="space-y-4">
