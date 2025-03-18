@@ -13,13 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/hooks/useAuth";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import DepartmentSelect from "@/components/DepartmentSelect";
 
 interface ProfileSetupDialogProps {
   open: boolean;
@@ -35,9 +29,7 @@ const ProfileSetupDialog: React.FC<ProfileSetupDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState("");
-  const [departments, setDepartments] = useState<
-    { id: string; name: string }[]
-  >([]);
+
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,37 +43,6 @@ const ProfileSetupDialog: React.FC<ProfileSetupDialogProps> = ({
         .join(" ");
       setFullName(properName);
     }
-
-    // Load departments
-    const loadDepartments = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("departments")
-          .select("id, name")
-          .order("name");
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          setDepartments(data);
-          // If there's only one department, auto-select it
-          if (data.length === 1) {
-            setDepartment(data[0].name);
-          }
-        } else {
-          // Fallback departments if none in database
-          setDepartments([{ id: "technology", name: "Technology" }]);
-          setDepartment("Technology");
-        }
-      } catch (err) {
-        console.error("Error loading departments:", err);
-        // Fallback departments
-        setDepartments([{ id: "technology", name: "Technology" }]);
-        setDepartment("Technology");
-      }
-    };
-
-    loadDepartments();
   }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,18 +118,11 @@ const ProfileSetupDialog: React.FC<ProfileSetupDialogProps> = ({
           </div>
           <div className="space-y-2">
             <Label htmlFor="setup-department">Department</Label>
-            <Select value={department} onValueChange={setDepartment} required>
-              <SelectTrigger id="setup-department">
-                <SelectValue placeholder="Select your department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.name}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DepartmentSelect
+              value={department}
+              onValueChange={setDepartment}
+              placeholder="Select your department"
+            />
           </div>
 
           {error && (

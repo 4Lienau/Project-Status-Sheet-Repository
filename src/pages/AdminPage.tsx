@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import KnowledgeManager from "@/components/admin/KnowledgeManager";
 import DepartmentManager from "@/components/admin/DepartmentManager";
+import PendingUsersManager from "@/components/admin/PendingUsersManager";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -398,6 +399,10 @@ const AdminPage = () => {
               <Users className="h-4 w-4" />
               Users Management
             </TabsTrigger>
+            <TabsTrigger value="pending" className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              Pending Approvals
+            </TabsTrigger>
             <TabsTrigger
               value="departments"
               className="flex items-center gap-2"
@@ -418,6 +423,10 @@ const AdminPage = () => {
               Project Pilot Knowledge
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="pending" className="space-y-4">
+            <PendingUsersManager />
+          </TabsContent>
 
           <TabsContent value="users" className="space-y-4">
             <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">

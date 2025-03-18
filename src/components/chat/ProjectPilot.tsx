@@ -418,25 +418,32 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
 
           {/* Input */}
           <div className="p-3 border-t">
-            <div className="flex gap-2">
-              <Textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Ask Project Pilot..."
-                className="min-h-[40px] max-h-[120px] resize-none"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-              />
+            <form
+              className="flex items-center gap-2 h-10"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
+            >
+              <div className="flex-1 h-full">
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Ask Project Pilot..."
+                  className="min-h-[40px] max-h-[120px] resize-none py-2 px-3 h-full w-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                />
+              </div>
               <Button
-                type="button"
+                type="submit"
                 size="icon"
-                onClick={handleSendMessage}
                 disabled={isLoading || !message.trim()}
-                className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                className="h-10 w-10 flex-shrink-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
               >
                 {isLoading ? (
                   <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -444,7 +451,7 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
                   <Send className="h-4 w-4" />
                 )}
               </Button>
-            </div>
+            </form>
           </div>
         </>
       )}
