@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Chrome, AlertCircle } from "lucide-react";
+import { Chrome, AlertCircle, Cloud } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
@@ -157,6 +157,36 @@ const AuthForm = () => {
 
       if (error) throw error;
       if (!data.url) throw new Error("No URL returned from Supabase");
+
+      // Redirect the user to the OAuth URL
+      window.location.href = data.url;
+    } catch (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  };
+
+  const handleAzureSignIn = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Use the tenant-specific endpoint directly instead of the /common endpoint
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "azure",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: "email profile openid",
+          flowType: "implicit",
+          skipBrowserRedirect: false,
+        },
+      });
+
+      if (error) throw error;
+      if (!data.url) throw new Error("No URL returned from Supabase");
+
+      // Redirect the user to the OAuth URL
+      window.location.href = data.url;
     } catch (error) {
       setError(error.message);
       setLoading(false);
@@ -182,16 +212,27 @@ const AuthForm = () => {
       )}
 
       <TabsContent value="signin" className="space-y-4">
-        <Button
-          type="button"
-          className="w-full flex items-center justify-center gap-2"
-          variant="outline"
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-        >
-          <Chrome className="h-4 w-4" />
-          Sign in with Google
-        </Button>
+        <div className="space-y-2">
+          <Button
+            type="button"
+            className="w-full flex items-center justify-center gap-2"
+            variant="outline"
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+          >
+            <Chrome className="h-4 w-4" />
+            Sign in with Google
+          </Button>
+          <Button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+            onClick={handleAzureSignIn}
+            disabled={loading}
+          >
+            <Cloud className="h-4 w-4" />
+            Sign in with Azure AD
+          </Button>
+        </div>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -245,16 +286,27 @@ const AuthForm = () => {
       </TabsContent>
 
       <TabsContent value="signup" className="space-y-4">
-        <Button
-          type="button"
-          className="w-full flex items-center justify-center gap-2"
-          variant="outline"
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-        >
-          <Chrome className="h-4 w-4" />
-          Sign up with Google
-        </Button>
+        <div className="space-y-2">
+          <Button
+            type="button"
+            className="w-full flex items-center justify-center gap-2"
+            variant="outline"
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+          >
+            <Chrome className="h-4 w-4" />
+            Sign up with Google
+          </Button>
+          <Button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+            onClick={handleAzureSignIn}
+            disabled={loading}
+          >
+            <Cloud className="h-4 w-4" />
+            Sign up with Azure AD
+          </Button>
+        </div>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
