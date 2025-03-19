@@ -54,6 +54,9 @@ export const aiService = {
 
       if (response.ok) {
         const data = await response.json();
+        if (type === "milestones") {
+          return this.processMilestones(data.content);
+        }
         return data.content;
       }
     } catch (e) {
@@ -77,6 +80,38 @@ export const aiService = {
       temperature: 0.7,
     });
 
-    return completion.choices[0].message?.content || "";
+    const content = completion.choices[0].message?.content || "";
+    if (type === "milestones") {
+      return this.processMilestones(content);
+    }
+    return content;
+  },
+
+  processMilestones(content: string) {
+    try {
+      // Parse the milestones from the AI response
+      const milestones = JSON.parse(content);
+
+      // Get current date
+      const today = new Date();
+
+      // Process each milestone to set dates and status
+      return JSON.stringify(
+        milestones.map((milestone: any, index: number) => {
+          // Calculate date: today + (index * 2 weeks)
+          const date = new Date(today);
+          date.setDate(today.getDate() + index * 14); // Add two weeks (14 days) for each subsequent milestone
+
+          return {
+            ...milestone,
+            date: date.toISOString().split("T")[0], // Format as YYYY-MM-DD
+            status: "green", // Set status to "On Track" (green)
+          };
+        }),
+      );
+    } catch (error) {
+      console.error("Error processing milestones:", error);
+      return content; // Return original content if processing fails
+    }
   },
 };
