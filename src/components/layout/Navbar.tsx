@@ -65,7 +65,7 @@ const Navbar = () => {
   }, [user?.id]);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-none bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-sm">
+    <nav className="sticky top-0 z-50 w-full border-none bg-white shadow-md">
       <div className="container flex h-16 items-center">
         <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center">

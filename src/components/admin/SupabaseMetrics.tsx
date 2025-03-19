@@ -198,7 +198,7 @@ const SupabaseMetrics: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <Users className="h-4 w-4 text-blue-600" />
@@ -214,7 +214,7 @@ const SupabaseMetrics: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
               Total Projects
@@ -232,7 +232,7 @@ const SupabaseMetrics: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Storage Used</CardTitle>
             <HardDrive className="h-4 w-4 text-blue-600" />
@@ -248,7 +248,7 @@ const SupabaseMetrics: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Database Size</CardTitle>
             <Database className="h-4 w-4 text-blue-600" />
@@ -266,7 +266,7 @@ const SupabaseMetrics: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-blue-800">Daily Active Users</CardTitle>
           </CardHeader>
@@ -292,7 +292,7 @@ const SupabaseMetrics: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-blue-800">
               Database Table Sizes

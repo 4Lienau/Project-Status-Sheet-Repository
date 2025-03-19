@@ -208,7 +208,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   };
 
   const cardClasses =
-    "p-4 bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm rounded-2xl border border-gray-100/50 shadow-sm";
+    "p-4 bg-white rounded-2xl border border-gray-200 shadow-sm";
 
   return (
     <TooltipProvider>

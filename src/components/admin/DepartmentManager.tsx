@@ -229,7 +229,7 @@ const DepartmentManager: React.FC = () => {
   };
 
   return (
-    <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+    <Card className="bg-white border border-gray-200 shadow-sm">
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="text-blue-800">Department Management</CardTitle>

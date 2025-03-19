@@ -41,6 +41,9 @@ module.exports = {
           650: "#1d4ed8", // Slightly darker than blue-600
           ...colors.blue,
         },
+        gray: {
+          ...colors.gray,
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
