@@ -137,6 +137,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submitting form data:", formData);
     onSubmit(formData);
   };
 
@@ -1067,7 +1068,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start"
               >
                 <Input
-                  value={typeof item === "string" ? item : item.description}
+                  value={
+                    typeof item === "string" ? item : item.description || ""
+                  }
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,

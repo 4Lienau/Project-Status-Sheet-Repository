@@ -266,7 +266,14 @@ const Home = () => {
                     const projectData = {
                       title: data.title,
                       description: data.description || "",
+                      valueStatement: data.valueStatement || "",
                       status: data.status || "active",
+                      health_calculation_type:
+                        data.health_calculation_type || "automatic",
+                      manual_health_percentage:
+                        data.health_calculation_type === "manual"
+                          ? data.manual_health_percentage
+                          : null,
                       budget_total: parseFloat(
                         data.budget.total.replace(/,/g, "") || "0",
                       ),
@@ -296,7 +303,20 @@ const Home = () => {
                           completion: a.completion,
                           assignee: a.assignee,
                         })),
-                      risks: data.risks.filter((r) => r.trim() !== ""),
+                      risks: data.risks
+                        .filter((r) =>
+                          typeof r === "string"
+                            ? r.trim() !== ""
+                            : r.description && r.description.trim() !== "",
+                        )
+                        .map((r) =>
+                          typeof r === "string"
+                            ? { description: r, impact: "" }
+                            : {
+                                description: r.description || "",
+                                impact: r.impact || "",
+                              },
+                        ),
                       considerations: data.considerations.filter(
                         (c) => c.trim() !== "",
                       ),
@@ -309,8 +329,17 @@ const Home = () => {
                         })),
                     };
 
+                    console.log(
+                      "Creating project with data:",
+                      JSON.stringify(projectData, null, 2),
+                    );
+                    console.log("Calling projectService.createProject");
                     const project =
                       await projectService.createProject(projectData);
+                    console.log(
+                      "Project creation result:",
+                      project ? "success" : "failed",
+                    );
                     if (project) {
                       toast({
                         title: "Success",
@@ -321,6 +350,7 @@ const Home = () => {
                       setMode("preview");
                     }
                   } catch (error) {
+                    console.error("Error creating project:", error);
                     toast({
                       title: "Error",
                       description:

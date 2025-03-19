@@ -199,129 +199,224 @@ export const projectService = {
       completion: number;
       assignee: string;
     }>;
-    risks: string[];
+    risks: Array<{ description: string; impact?: string }>;
     considerations: string[];
     department?: string;
+    changes?: Array<{
+      change: string;
+      impact: string;
+      disposition: string;
+    }>;
   }): Promise<ProjectWithRelations | null> {
-    // Get current user's profile to get department
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    let department = data.department;
+    try {
+      console.log(
+        "createProject called with data:",
+        JSON.stringify(data, null, 2),
+      );
 
-    if (!department && user) {
-      // If department not provided, get it from user profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("department")
-        .eq("id", user.id)
+      // Get current user's profile to get department
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      let department = data.department;
+
+      if (!department && user) {
+        // If department not provided, get it from user profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("department")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.department) {
+          department = profile.department;
+        }
+      }
+
+      console.log("Inserting project with department:", department);
+      const { data: project, error: projectError } = await supabase
+        .from("projects")
+        .insert({
+          title: data.title,
+          description: data.description,
+          value_statement: data.valueStatement,
+          status: data.status || "active",
+          budget_total: data.budget_total,
+          budget_actuals: data.budget_actuals,
+          budget_forecast: data.budget_forecast,
+          charter_link: data.charter_link,
+          sponsors: data.sponsors,
+          business_leads: data.business_leads,
+          project_manager: data.project_manager,
+          health_calculation_type: data.health_calculation_type || "automatic",
+          manual_health_percentage: data.manual_health_percentage,
+          department: department, // Add department to project
+        })
+        .select()
         .single();
 
-      if (profile?.department) {
-        department = profile.department;
+      if (projectError) {
+        console.error("Error inserting project:", projectError);
+        return null;
       }
-    }
+      if (!project) {
+        console.error("No project returned after insert");
+        return null;
+      }
 
-    const { data: project, error: projectError } = await supabase
-      .from("projects")
-      .insert({
-        title: data.title,
-        description: data.description,
-        value_statement: data.valueStatement,
-        status: data.status,
-        budget_total: data.budget_total,
-        budget_actuals: data.budget_actuals,
-        budget_forecast: data.budget_forecast,
-        charter_link: data.charter_link,
-        sponsors: data.sponsors,
-        business_leads: data.business_leads,
-        project_manager: data.project_manager,
-        health_calculation_type: data.health_calculation_type || "automatic",
-        manual_health_percentage: data.manual_health_percentage,
-        department: department, // Add department to project
-        created_by: user?.id, // Track who created the project
-      })
-      .select()
-      .single();
+      console.log("Project created successfully with ID:", project.id);
 
-    if (projectError || !project) return null;
+      // Insert milestones if any
+      if (data.milestones && data.milestones.length > 0) {
+        console.log(`Inserting ${data.milestones.length} milestones`);
+        try {
+          const { error: milestonesError } = await supabase
+            .from("milestones")
+            .insert(
+              data.milestones.map((m) => ({
+                project_id: project.id,
+                date: m.date,
+                milestone: m.milestone,
+                owner: m.owner,
+                completion: m.completion,
+                status: m.status,
+              })),
+            );
+          if (milestonesError) {
+            console.error("Error inserting milestones:", milestonesError);
+          }
+        } catch (error) {
+          console.error("Exception inserting milestones:", error);
+        }
+      }
 
-    // Insert milestones
-    const { error: milestonesError } = await supabase.from("milestones").insert(
-      data.milestones.map((m) => ({
-        project_id: project.id,
-        date: m.date,
-        milestone: m.milestone,
-        owner: m.owner,
-        completion: m.completion,
-        status: m.status,
-      })),
-    );
+      // Insert accomplishments if any
+      if (data.accomplishments && data.accomplishments.length > 0) {
+        console.log(`Inserting ${data.accomplishments.length} accomplishments`);
+        try {
+          const { error: accomplishmentsError } = await supabase
+            .from("accomplishments")
+            .insert(
+              data.accomplishments.map((a) => ({
+                project_id: project.id,
+                description: a,
+              })),
+            );
+          if (accomplishmentsError) {
+            console.error(
+              "Error inserting accomplishments:",
+              accomplishmentsError,
+            );
+          }
+        } catch (error) {
+          console.error("Exception inserting accomplishments:", error);
+        }
+      }
 
-    // Insert accomplishments
-    const { error: accomplishmentsError } = await supabase
-      .from("accomplishments")
-      .insert(
-        data.accomplishments.map((a) => ({
-          project_id: project.id,
-          description: a,
-        })),
+      // Insert next period activities if any
+      if (
+        data.next_period_activities &&
+        data.next_period_activities.length > 0
+      ) {
+        console.log(
+          `Inserting ${data.next_period_activities.length} activities`,
+        );
+        try {
+          const { error: activitiesError } = await supabase
+            .from("next_period_activities")
+            .insert(
+              data.next_period_activities.map((a) => ({
+                project_id: project.id,
+                description: a.description,
+                date: a.date || new Date().toISOString().split("T")[0],
+                completion: a.completion || 0,
+                assignee: a.assignee || "",
+              })),
+            );
+          if (activitiesError) {
+            console.error("Error inserting activities:", activitiesError);
+          }
+        } catch (error) {
+          console.error("Exception inserting activities:", error);
+        }
+      }
+
+      // Insert risks if any
+      if (data.risks && data.risks.length > 0) {
+        console.log(`Inserting ${data.risks.length} risks`);
+        try {
+          const { error: risksError } = await supabase.from("risks").insert(
+            data.risks.map((r) => ({
+              project_id: project.id,
+              description: r.description,
+              impact: r.impact || null,
+            })),
+          );
+          if (risksError) {
+            console.error("Error inserting risks:", risksError);
+          }
+        } catch (error) {
+          console.error("Exception inserting risks:", error);
+        }
+      }
+
+      // Insert considerations if any
+      if (data.considerations && data.considerations.length > 0) {
+        console.log(`Inserting ${data.considerations.length} considerations`);
+        try {
+          const { error: considerationsError } = await supabase
+            .from("considerations")
+            .insert(
+              data.considerations.map((c) => ({
+                project_id: project.id,
+                description: c,
+              })),
+            );
+          if (considerationsError) {
+            console.error(
+              "Error inserting considerations:",
+              considerationsError,
+            );
+          }
+        } catch (error) {
+          console.error("Exception inserting considerations:", error);
+        }
+      }
+
+      // Insert changes if any
+      if (data.changes && data.changes.length > 0) {
+        console.log(`Inserting ${data.changes.length} changes`);
+        try {
+          const { error: changesError } = await supabase.from("changes").insert(
+            data.changes.map((c) => ({
+              project_id: project.id,
+              change: c.change,
+              impact: c.impact,
+              disposition: c.disposition,
+            })),
+          );
+          if (changesError) {
+            console.error("Error inserting changes:", changesError);
+          }
+        } catch (error) {
+          console.error("Exception inserting changes:", error);
+        }
+      }
+
+      console.log(
+        "All related data inserted, fetching complete project with ID:",
+        project.id,
       );
-
-    // Insert next period activities
-    const { error: activitiesError } = await supabase
-      .from("next_period_activities")
-      .insert(
-        data.next_period_activities.map((a) => ({
-          project_id: project.id,
-          description: a.description,
-          date: a.date || new Date().toISOString().split("T")[0],
-          completion: a.completion || 0,
-          assignee: a.assignee || "",
-        })),
+      const completeProject = await this.getProject(project.id);
+      console.log(
+        "Complete project fetched:",
+        completeProject ? "success" : "failed",
       );
-
-    // Insert risks
-    const { error: risksError } = await supabase.from("risks").insert(
-      data.risks.map((r) => ({
-        project_id: project.id,
-        description: typeof r === "string" ? r : r.description,
-        impact: typeof r === "string" ? null : r.impact,
-      })),
-    );
-
-    // Insert considerations
-    const { error: considerationsError } = await supabase
-      .from("considerations")
-      .insert(
-        data.considerations.map((c) => ({
-          project_id: project.id,
-          description: c,
-        })),
-      );
-
-    // Insert changes
-    const { error: changesError } = await supabase.from("changes").insert(
-      data.changes.map((c) => ({
-        project_id: project.id,
-        change: c.change,
-        impact: c.impact,
-        disposition: c.disposition,
-      })),
-    );
-
-    if (
-      milestonesError ||
-      accomplishmentsError ||
-      activitiesError ||
-      risksError ||
-      considerationsError ||
-      changesError
-    ) {
+      return completeProject;
+    } catch (error) {
+      console.error("Unexpected error in createProject:", error);
       return null;
     }
-
-    return this.getProject(project.id);
   },
 
   async getProject(id: string): Promise<ProjectWithRelations | null> {
