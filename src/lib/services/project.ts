@@ -28,6 +28,15 @@ export type Change = {
   updated_at?: string;
 };
 
+export type DailyNote = {
+  id: string;
+  project_id: string;
+  date: string;
+  note: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export interface ProjectWithRelations extends Project {
   milestones: Milestone[];
   accomplishments: Accomplishment[];
@@ -35,6 +44,7 @@ export interface ProjectWithRelations extends Project {
   risks: Risk[];
   considerations: Consideration[];
   changes: Change[];
+  daily_notes: DailyNote[];
 }
 
 export const projectService = {
@@ -75,6 +85,10 @@ export const projectService = {
         impact: string;
         disposition: string;
       }>;
+      daily_notes?: Array<{
+        date: string;
+        note: string;
+      }>;
       department?: string;
     },
   ): Promise<ProjectWithRelations | null> {
@@ -110,6 +124,7 @@ export const projectService = {
       supabase.from("risks").delete().eq("project_id", id),
       supabase.from("considerations").delete().eq("project_id", id),
       supabase.from("changes").delete().eq("project_id", id),
+      supabase.from("daily_notes").delete().eq("project_id", id),
     ]);
 
     // Insert new records
@@ -160,6 +175,18 @@ export const projectService = {
           disposition: c.disposition,
         })),
       ),
+      // Insert daily notes if they exist
+      ...(data.daily_notes && data.daily_notes.length > 0
+        ? [
+            supabase.from("daily_notes").insert(
+              data.daily_notes.map((note) => ({
+                project_id: id,
+                date: note.date,
+                note: note.note,
+              })),
+            ),
+          ]
+        : []),
     ]);
 
     return this.getProject(id);
@@ -206,6 +233,10 @@ export const projectService = {
       change: string;
       impact: string;
       disposition: string;
+    }>;
+    daily_notes?: Array<{
+      date: string;
+      note: string;
     }>;
   }): Promise<ProjectWithRelations | null> {
     try {
@@ -403,6 +434,27 @@ export const projectService = {
         }
       }
 
+      // Insert daily notes if any
+      if (data.daily_notes && data.daily_notes.length > 0) {
+        console.log(`Inserting ${data.daily_notes.length} daily notes`);
+        try {
+          const { error: notesError } = await supabase
+            .from("daily_notes")
+            .insert(
+              data.daily_notes.map((note) => ({
+                project_id: project.id,
+                date: note.date,
+                note: note.note,
+              })),
+            );
+          if (notesError) {
+            console.error("Error inserting daily notes:", notesError);
+          }
+        } catch (error) {
+          console.error("Exception inserting daily notes:", error);
+        }
+      }
+
       console.log(
         "All related data inserted, fetching complete project with ID:",
         project.id,
@@ -535,6 +587,19 @@ export const projectService = {
         console.warn("[DEBUG] Error fetching changes:", changesError.message);
       console.log("[DEBUG] Found", changes?.length || 0, "changes");
 
+      console.log("[DEBUG] Fetching daily notes for project ID:", id);
+      const { data: dailyNotes, error: dailyNotesError } = await supabase
+        .from("daily_notes")
+        .select("*")
+        .eq("project_id", id);
+
+      if (dailyNotesError)
+        console.warn(
+          "[DEBUG] Error fetching daily notes:",
+          dailyNotesError.message,
+        );
+      console.log("[DEBUG] Found", dailyNotes?.length || 0, "daily notes");
+
       const result = {
         ...project,
         milestones: milestones || [],
@@ -543,6 +608,7 @@ export const projectService = {
         risks: risks || [],
         considerations: considerations || [],
         changes: changes || [],
+        daily_notes: dailyNotes || [],
       };
 
       console.log(
@@ -653,6 +719,19 @@ export const projectService = {
             event: "*",
             schema: "public",
             table: "changes",
+            filter: `project_id=eq.${id}`,
+          },
+          () => this.getProject(id).then((p) => p && callback(p)),
+        )
+        .subscribe(),
+      supabase
+        .channel(`daily_notes:${id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "daily_notes",
             filter: `project_id=eq.${id}`,
           },
           () => this.getProject(id).then((p) => p && callback(p)),

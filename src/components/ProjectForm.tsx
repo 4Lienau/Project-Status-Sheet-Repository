@@ -79,6 +79,10 @@ interface ProjectFormProps {
       impact: string;
       disposition: string;
     }>;
+    dailyNotes?: Array<{
+      date: string;
+      note: string;
+    }>;
   };
   onSubmit: (data: any) => void;
 }
@@ -106,6 +110,7 @@ const defaultFormData = {
   risks: [],
   considerations: [],
   changes: [],
+  dailyNotes: [],
 };
 
 const ProjectForm: React.FC<ProjectFormProps> = ({
@@ -1299,6 +1304,94 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
             >
               Add Change
+            </Button>
+          </div>
+        </div>
+
+        {/* Daily Notes Section */}
+        <div className={cardClasses}>
+          <div className="flex items-center gap-1 mb-4">
+            <h3 className="text-2xl font-bold text-blue-800">Daily Notes</h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs">
+                  Add daily notes to track project progress and important
+                  updates.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="space-y-4">
+            {/* Column Headers */}
+            <div className="grid grid-cols-[140px_1fr_auto] gap-2 items-start">
+              <div className="font-medium text-sm text-blue-800">Date</div>
+              <div className="font-medium text-sm text-blue-800">Note</div>
+              <div></div>
+            </div>
+            {formData.dailyNotes.map((item, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[140px_1fr_auto] gap-2 items-start"
+              >
+                <Input
+                  type="date"
+                  value={item.date}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      dailyNotes: prev.dailyNotes.map((n, i) =>
+                        i === index ? { ...n, date: e.target.value } : n,
+                      ),
+                    }))
+                  }
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                />
+                <Textarea
+                  value={item.note}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      dailyNotes: prev.dailyNotes.map((n, i) =>
+                        i === index ? { ...n, note: e.target.value } : n,
+                      ),
+                    }))
+                  }
+                  placeholder="Enter note"
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50 min-h-[80px]"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      dailyNotes: prev.dailyNotes.filter((_, i) => i !== index),
+                    }))
+                  }
+                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  dailyNotes: [
+                    ...prev.dailyNotes,
+                    { date: new Date().toISOString().split("T")[0], note: "" },
+                  ],
+                }))
+              }
+              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+            >
+              Add Daily Note
             </Button>
           </div>
         </div>
