@@ -153,11 +153,6 @@ const ProjectDashboard = ({
         impact: c.impact || "",
         disposition: c.disposition || "",
       })) || [],
-    dailyNotes:
-      currentProject?.daily_notes?.map((n) => ({
-        date: n.date || new Date().toISOString().split("T")[0],
-        note: n.note || "",
-      })) || [],
   };
 
   return (
