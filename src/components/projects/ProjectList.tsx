@@ -152,7 +152,7 @@ const ProjectList = ({
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold">Your Projects</h2>
+          <h2 className="text-2xl font-semibold">Projects</h2>
           <Button
             variant="outline"
             size="sm"
