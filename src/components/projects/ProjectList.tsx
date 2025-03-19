@@ -133,7 +133,7 @@ const ProjectList = ({
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-semibold">Your Projects</h2>
+            <h2 className="text-2xl font-semibold">Projects</h2>
             <Button variant="outline" size="sm" disabled>
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Export to Excel
