@@ -422,6 +422,7 @@ export type Database = {
           health_calculation_type: string | null
           id: string
           manual_health_percentage: number | null
+          project_analysis: string | null
           project_manager: string
           sponsors: string
           status: string | null
@@ -441,6 +442,7 @@ export type Database = {
           health_calculation_type?: string | null
           id?: string
           manual_health_percentage?: number | null
+          project_analysis?: string | null
           project_manager: string
           sponsors: string
           status?: string | null
@@ -460,6 +462,7 @@ export type Database = {
           health_calculation_type?: string | null
           id?: string
           manual_health_percentage?: number | null
+          project_analysis?: string | null
           project_manager?: string
           sponsors?: string
           status?: string | null

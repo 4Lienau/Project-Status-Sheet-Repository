@@ -36,7 +36,9 @@ export const handler: Handler = async (event) => {
       throw new Error("OPENAI_API_KEY is not set");
     }
 
-    const { type, title, description } = JSON.parse(event.body || "{}");
+    const { type, title, description, projectData } = JSON.parse(
+      event.body || "{}",
+    );
 
     if (!type || !title) {
       return {
@@ -75,22 +77,41 @@ export const handler: Handler = async (event) => {
 Ensure dates are realistic starting from current date. Status should be one of: green, yellow, red.`;
         maxTokens = 1000;
         break;
+      case "analysis":
+        prompt = `You are a professional project manager creating an executive summary. Analyze the provided project data and generate a comprehensive executive summary that highlights:
+
+1. Overall project health and status
+2. Budget performance (comparing actuals vs forecast vs total)
+3. Key milestone progress and any at-risk items
+4. Major accomplishments to date
+5. Critical risks and their potential impact
+6. Upcoming key activities
+7. Any considerations that need executive attention
+
+Format your response as HTML with appropriate headings, paragraphs, and bullet points for readability. Be concise but thorough, focusing on the most important aspects an executive would need to understand about the current state of the project.`;
+        maxTokens = 1500;
+        break;
       default:
         throw new Error("Invalid generation type");
     }
 
     console.log("Making OpenAI request..."); // Debug log
 
+    // Prepare the content for the AI based on the type
+    let userContent =
+      title + (description ? "\n\nProject Description: " + description : "");
+
+    // For analysis, include all project data
+    if (type === "analysis" && projectData) {
+      userContent +=
+        "\n\nProject Data: " + JSON.stringify(projectData, null, 2);
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: prompt },
-        {
-          role: "user",
-          content:
-            title +
-            (description ? "\n\nProject Description: " + description : ""),
-        },
+        { role: "user", content: userContent },
       ],
       max_tokens: maxTokens,
       temperature: 0.7,

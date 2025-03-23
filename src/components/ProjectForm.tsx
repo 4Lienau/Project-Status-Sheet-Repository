@@ -2,6 +2,7 @@ import React, { useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import ProjectPilot from "@/components/chat/ProjectPilot";
 import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,6 +97,7 @@ const defaultFormData = {
   title: "",
   description: "",
   valueStatement: "",
+  projectAnalysis: "",
   status: "active" as const,
   health_calculation_type: "automatic" as const,
   manual_health_percentage: 0,
@@ -242,6 +244,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const [pendingGenerationType, setPendingGenerationType] = React.useState<
     "description" | "value" | null
   >(null);
+  const [isAnalysisExpanded, setIsAnalysisExpanded] = React.useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -255,7 +258,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   };
 
   const handleGenerateContent = async (
-    type: "description" | "value" | "milestones",
+    type: "description" | "value" | "milestones" | "analysis",
   ) => {
     // Check if we need to show the overwrite dialog
     if (type === "description" && formData.description?.trim()) {
@@ -269,12 +272,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       return;
     }
 
-    // If no existing content or it's milestones, proceed with generation
+    // If no existing content or it's milestones or analysis, proceed with generation
     await generateContent(type);
   };
 
   const generateContent = async (
-    type: "description" | "value" | "milestones",
+    type: "description" | "value" | "milestones" | "analysis",
   ) => {
     try {
       if (!formData.title) {
@@ -286,10 +289,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         return;
       }
 
+      // For analysis, we need to pass the entire form data to get a comprehensive analysis
       const content = await aiService.generateContent(
         type,
         formData.title,
         formData.description,
+        type === "analysis" ? formData : undefined,
       );
 
       if (type === "milestones") {
@@ -305,6 +310,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             variant: "destructive",
           });
         }
+      } else if (type === "analysis") {
+        setFormData((prev) => ({
+          ...prev,
+          projectAnalysis: content,
+        }));
       } else {
         setFormData((prev) => ({
           ...prev,
@@ -565,6 +575,60 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   }
                 }}
               />
+            </div>
+
+            {/* Project Analysis Section */}
+            <div className="space-y-2 mt-4 border-t pt-4">
+              <div
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => setIsAnalysisExpanded(!isAnalysisExpanded)}
+              >
+                <div className="flex items-center gap-1">
+                  {isAnalysisExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-purple-600" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-purple-600" />
+                  )}
+                  <Label htmlFor="projectAnalysis" className="cursor-pointer">
+                    Project Analysis
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        Generate an executive summary of the current project
+                        status based on all project data.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGenerateContent("analysis");
+                    setIsAnalysisExpanded(true);
+                  }}
+                  className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200"
+                >
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  AI Executive Summary
+                </Button>
+              </div>
+              {isAnalysisExpanded && formData.projectAnalysis && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mt-2 transition-all duration-300">
+                  <div
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: formData.projectAnalysis,
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

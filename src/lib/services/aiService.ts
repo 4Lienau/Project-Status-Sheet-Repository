@@ -5,7 +5,9 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true,
 });
 
-const getPrompt = (type: "description" | "value" | "milestones") => {
+const getPrompt = (
+  type: "description" | "value" | "milestones" | "analysis",
+) => {
   switch (type) {
     case "description":
       return "You are a professional project manager. Generate a concise but detailed project description focusing on purpose, goals, and expected outcomes based on the project title. Return ONLY the description text, no other content or formatting.";
@@ -24,14 +26,30 @@ const getPrompt = (type: "description" | "value" | "milestones") => {
 ]
 
 Ensure dates are realistic starting from current date. Status should be one of: green, yellow, red.`;
+    case "analysis":
+      return `You are a professional project manager creating an executive summary. Analyze the provided project data and generate a concise executive summary in paragraph form that highlights:
+
+- Do not list all of the milestones in the summary
+- Do not create runon sentences
+- Break the summary down into multiple paragraphs so it is easy to read
+- Current project health and overall status
+- Key observations about the project's progress and performance
+- Any red flags, risks, or issues that executives should be aware of
+- Budget performance concerns (if any)
+- Critical milestones that are at risk
+
+Format your response as a few concise paragraphs with minimal HTML formatting. Be direct and to the point, focusing only on the most important aspects an executive would need to know. Avoid bullet points, headings, or technical details. Write as if you're briefly summarizing the project status to a busy executive who has only 1 minute to read your summary.`;
+    default:
+      throw new Error("Invalid generation type");
   }
 };
 
 export const aiService = {
   async generateContent(
-    type: "description" | "value" | "milestones",
+    type: "description" | "value" | "milestones" | "analysis",
     title: string,
     description?: string,
+    projectData?: any,
   ) {
     // Try using Netlify function first
     try {
@@ -48,6 +66,7 @@ export const aiService = {
             type,
             title,
             description,
+            projectData,
           }),
         },
       );
@@ -65,18 +84,23 @@ export const aiService = {
     }
 
     // Direct OpenAI call as fallback
+    // Prepare the content for the AI based on the type
+    let userContent =
+      title + (description ? "\n\nProject Description: " + description : "");
+
+    // For analysis, include all project data
+    if (type === "analysis" && projectData) {
+      userContent +=
+        "\n\nProject Data: " + JSON.stringify(projectData, null, 2);
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: getPrompt(type) },
-        {
-          role: "user",
-          content:
-            title +
-            (description ? "\n\nProject Description: " + description : ""),
-        },
+        { role: "user", content: userContent },
       ],
-      max_tokens: type === "milestones" ? 1000 : 500,
+      max_tokens: type === "milestones" || type === "analysis" ? 1500 : 500,
       temperature: 0.7,
     });
 

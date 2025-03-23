@@ -132,6 +132,7 @@ const ProjectDashboard = ({
     title: currentProject?.title || "",
     description: currentProject?.description || "",
     valueStatement: currentProject?.value_statement || "",
+    projectAnalysis: currentProject?.project_analysis || "",
     status: currentProject?.status || "active",
     health_calculation_type:
       currentProject?.health_calculation_type || "automatic",
@@ -315,6 +316,7 @@ const ProjectDashboard = ({
                   title: data.title,
                   description: data.description || null,
                   valueStatement: data.valueStatement || null,
+                  project_analysis: data.projectAnalysis || null,
                   status: data.status || "active",
                   health_calculation_type:
                     data.health_calculation_type || "automatic",
@@ -477,6 +479,7 @@ const ProjectDashboard = ({
                     title: newProjectTitle,
                     description: currentProject.description,
                     valueStatement: currentProject.value_statement,
+                    project_analysis: currentProject.project_analysis,
                     status: currentProject.status,
                     budget_total: currentProject.budget_total,
                     budget_actuals: currentProject.budget_actuals,

@@ -117,6 +117,7 @@ export const projectService = {
           title: data.title,
           description: data.description,
           value_statement: data.valueStatement,
+          project_analysis: data.project_analysis, // Add project_analysis field
           status: data.status,
           budget_total: data.budget_total,
           budget_actuals: data.budget_actuals,
@@ -380,6 +381,7 @@ export const projectService = {
           title: data.title,
           description: data.description,
           value_statement: data.valueStatement,
+          project_analysis: data.project_analysis, // Add project_analysis field
           status: data.status || "active",
           budget_total: data.budget_total,
           budget_actuals: data.budget_actuals,
