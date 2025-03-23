@@ -32,8 +32,29 @@ const AuthForm = () => {
     };
 
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [navigate]);
+
+    // Set up a fallback mechanism to check for authentication
+    // in case the message passing fails
+    let authCheckInterval: number | null = null;
+
+    if (loading) {
+      authCheckInterval = window.setInterval(async () => {
+        console.log("Checking authentication status...");
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          console.log("Session detected in main window, redirecting");
+          clearInterval(authCheckInterval);
+          setLoading(false);
+          navigate("/");
+        }
+      }, 1000) as unknown as number;
+    }
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      if (authCheckInterval) clearInterval(authCheckInterval);
+    };
+  }, [navigate, loading]);
 
   const handleAzureSignIn = async () => {
     try {
@@ -76,6 +97,9 @@ const AuthForm = () => {
         );
       }
 
+      // Store popup reference globally to help with debugging
+      (window as any).authPopup = popup;
+
       // Poll for authentication completion
       const checkPopup = setInterval(() => {
         try {
@@ -94,6 +118,34 @@ const AuthForm = () => {
                 setError("Authentication was not completed. Please try again.");
               }
             });
+          } else {
+            // Check if popup has navigated to our domain
+            try {
+              // This will throw an error if popup has navigated to a different origin
+              const popupUrl = popup.location.href;
+
+              // If we can access the URL, check if it's on our callback page
+              if (popupUrl.includes("/auth/callback")) {
+                console.log("Popup is on callback page, checking for session");
+                // Check for session in main window
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                  if (session) {
+                    console.log("Session found while popup on callback page");
+                    // Try to close the popup
+                    try {
+                      popup.close();
+                    } catch (closeError) {
+                      console.error("Error closing popup:", closeError);
+                    }
+                    clearInterval(checkPopup);
+                    navigate("/");
+                  }
+                });
+              }
+            } catch (locationError) {
+              // Expected error when popup navigates to different origin (Azure AD)
+              // Just continue polling
+            }
           }
         } catch (e) {
           // Handle cross-origin errors

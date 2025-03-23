@@ -65,11 +65,23 @@ const AuthCallback = () => {
                 window.location.origin,
               );
 
-              // Add a small delay before closing to ensure the message is sent
-              setTimeout(() => {
-                console.log("Closing popup window");
-                window.close(); // Close the popup
-              }, 300);
+              // IMPORTANT: Prevent any navigation in this window
+              // This prevents the landing page from loading in the popup
+              e.preventDefault && e.preventDefault();
+
+              console.log("Closing popup window immediately");
+              // Try multiple approaches to close the window
+              try {
+                window.close();
+                // If window.close() doesn't work, try these alternatives
+                window.open("", "_self").close();
+                window.location.href = "about:blank";
+              } catch (closeError) {
+                console.error("Error closing popup:", closeError);
+              }
+
+              // Return early to prevent any further code execution
+              return;
             } catch (e) {
               console.error("Error communicating with opener:", e);
               // If we can't access the opener, just redirect this window
