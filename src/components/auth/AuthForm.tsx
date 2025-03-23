@@ -78,7 +78,55 @@ const AuthForm = () => {
         localStorage.removeItem("auth_in_progress");
         localStorage.removeItem("auth_started_at");
         setLoading(false);
-        navigate("/");
+
+        // Try to close any remaining popup windows
+        try {
+          if ((window as any).authPopup && !(window as any).authPopup.closed) {
+            console.log("Attempting to close lingering popup from parent");
+            (window as any).authPopup.close();
+          }
+        } catch (e) {
+          console.log("Error closing popup from parent:", e);
+        }
+
+        // Force a session check before redirecting
+        console.log("Checking session before redirecting");
+        supabase.auth.getSession().then(({ data }) => {
+          if (data.session) {
+            console.log("Valid session confirmed, redirecting to home");
+            // Clear any beforeunload listeners that might be causing the "Leave site?" dialog
+            window.onbeforeunload = null;
+
+            // Use a small timeout to ensure the UI has time to update
+            setTimeout(() => {
+              // Force a clean navigation without the leave site dialog
+              const cleanNavigation = () => {
+                window.removeEventListener("beforeunload", cleanNavigation);
+                return undefined;
+              };
+              window.addEventListener("beforeunload", cleanNavigation);
+
+              window.location.href = "/";
+            }, 100);
+          } else {
+            console.log("No valid session found after AUTH_COMPLETE message");
+            // Try one more time with a delay
+            setTimeout(async () => {
+              const { data: retryData } = await supabase.auth.getSession();
+              if (retryData.session) {
+                console.log("Session found on retry, redirecting");
+                // Clear any beforeunload listeners
+                window.onbeforeunload = null;
+                window.location.href = "/";
+              } else {
+                console.log("Still no session after retry, showing error");
+                setError(
+                  "Authentication completed but session not found. Please try again.",
+                );
+              }
+            }, 1000);
+          }
+        });
       } else if (event.data?.type === "AUTH_FAILED") {
         console.log("Received AUTH_FAILED message");
         localStorage.removeItem("auth_in_progress");
@@ -107,9 +155,53 @@ const AuthForm = () => {
           localStorage.removeItem("auth_in_progress");
           localStorage.removeItem("auth_started_at");
           setLoading(false);
-          navigate("/");
+
+          // Try to close any remaining popup windows
+          try {
+            if (
+              (window as any).authPopup &&
+              !(window as any).authPopup.closed
+            ) {
+              console.log("Attempting to close lingering popup from interval");
+              (window as any).authPopup.close();
+            }
+          } catch (e) {
+            console.log("Error closing popup from interval:", e);
+          }
+
+          // Clear any beforeunload listeners that might be causing the "Leave site?" dialog
+          window.onbeforeunload = null;
+
+          // Use a small timeout to ensure the UI has time to update
+          setTimeout(() => {
+            console.log("Navigating to home page after session check");
+            // Force a clean navigation without the leave site dialog
+            const cleanNavigation = () => {
+              window.removeEventListener("beforeunload", cleanNavigation);
+              return undefined;
+            };
+            window.addEventListener("beforeunload", cleanNavigation);
+
+            window.location.href = "/";
+          }, 100);
         } else {
           console.log("No valid session yet, continuing to wait...");
+
+          // Check if popup is still open
+          try {
+            if ((window as any).authPopup) {
+              if ((window as any).authPopup.closed) {
+                console.log("Popup closed without completing auth");
+                clearInterval(authCheckInterval);
+                localStorage.removeItem("auth_in_progress");
+                localStorage.removeItem("auth_started_at");
+                setLoading(false);
+                setError("Authentication window was closed. Please try again.");
+              }
+            }
+          } catch (e) {
+            console.log("Error checking popup status:", e);
+          }
         }
       }, 1000) as unknown as number;
     }
@@ -162,8 +254,13 @@ const AuthForm = () => {
 
         // Open a new popup with a unique name (timestamp) to avoid caching issues
         const popupName = `azure-auth-popup-${Date.now()}`;
+
+        // Add a special parameter to the URL to indicate this is a popup
+        const urlWithParam = new URL(data.url);
+        urlWithParam.searchParams.append("popup", "true");
+
         popup = window.open(
-          data.url,
+          urlWithParam.toString(),
           popupName,
           `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,toolbar=no,menubar=no,location=no`,
         );
@@ -178,6 +275,13 @@ const AuthForm = () => {
               "If a login window opened, please complete authentication there. If not, please enable popups for this site.",
             duration: 6000,
           });
+        } else {
+          // Try to set a flag on the popup window to identify it as an auth popup
+          try {
+            popup.isAuthPopup = true;
+          } catch (e) {
+            console.log("Could not set isAuthPopup flag on popup window");
+          }
         }
       } catch (popupError) {
         console.error("Error opening popup:", popupError);
@@ -235,7 +339,21 @@ const AuthForm = () => {
                 console.log("User ID:", session.user.id);
                 localStorage.removeItem("auth_in_progress");
                 localStorage.removeItem("auth_started_at");
-                navigate("/"); // Use navigate instead of direct location change
+
+                // Clear any beforeunload listeners that might be causing the "Leave site?" dialog
+                window.onbeforeunload = null;
+
+                // Use window.location for a more forceful navigation
+                setTimeout(() => {
+                  // Force a clean navigation without the leave site dialog
+                  const cleanNavigation = () => {
+                    window.removeEventListener("beforeunload", cleanNavigation);
+                    return undefined;
+                  };
+                  window.addEventListener("beforeunload", cleanNavigation);
+
+                  window.location.href = "/";
+                }, 100);
               } else {
                 console.log("No valid session found after popup closed");
                 localStorage.removeItem("auth_in_progress");
@@ -295,7 +413,23 @@ const AuthForm = () => {
                     clearInterval(checkPopup);
                     localStorage.removeItem("auth_in_progress");
                     localStorage.removeItem("auth_started_at");
-                    navigate("/");
+
+                    // Clear any beforeunload listeners that might be causing the "Leave site?" dialog
+                    window.onbeforeunload = null;
+
+                    // Use window.location for a more forceful navigation
+                    console.log("Forcefully redirecting to home page");
+                    // Force a clean navigation without the leave site dialog
+                    const cleanNavigation = () => {
+                      window.removeEventListener(
+                        "beforeunload",
+                        cleanNavigation,
+                      );
+                      return undefined;
+                    };
+                    window.addEventListener("beforeunload", cleanNavigation);
+
+                    window.location.href = "/";
                   } else {
                     console.log("No valid session yet, continuing to wait...");
                   }

@@ -6,6 +6,38 @@ import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import queryString from "query-string";
 
+// Immediately check if we're in a popup window to prevent any rendering
+if (window.opener || window.location.search.includes("popup=true")) {
+  console.log("POPUP DETECTED: Immediate action to prevent rendering");
+  // Try to notify parent window immediately
+  try {
+    window.opener?.postMessage(
+      { type: "AUTH_CALLBACK_LOADED" },
+      window.location.origin,
+    );
+  } catch (e) {
+    console.error("Error sending initial message to opener:", e);
+  }
+
+  // Block navigation only if this is actually a popup (not the main window)
+  const isPopup = window.opener && window !== window.opener;
+  if (isPopup) {
+    // Block navigation
+    window.onbeforeunload = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    };
+
+    // Disable history navigation
+    try {
+      history.pushState = function () {};
+      history.replaceState = function () {};
+      history.go = function () {};
+    } catch (e) {}
+  }
+}
+
 const AuthCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -14,6 +46,30 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // CRITICAL: Immediately prevent any navigation or page rendering
+        // This is the most important step to prevent the app from loading in the popup
+        if (window.opener) {
+          console.log("POPUP DETECTED: Immediately blocking navigation");
+          // Block all navigation attempts - but only in the popup window
+          const isPopup = window.opener && window !== window.opener;
+          if (isPopup) {
+            // Block all navigation attempts
+            window.onbeforeunload = (e) => {
+              e.preventDefault();
+              e.returnValue = "";
+              return "";
+            };
+            window.onpopstate = (e) => {
+              e.preventDefault();
+              return false;
+            };
+            // Disable history navigation
+            history.pushState = function () {};
+            history.replaceState = function () {};
+            history.go = function () {};
+          }
+        }
+
         // Check if there's an error in the URL (both in search params and hash fragment)
         const params = new URLSearchParams(location.search);
         // Parse the hash fragment manually since query-string is having issues
@@ -60,20 +116,6 @@ const AuthCallback = () => {
             try {
               console.log("In popup, attempting to notify opener and close");
 
-              // IMPORTANT: Prevent any navigation in this window
-              // This prevents the landing page from loading in the popup
-              window.onbeforeunload = (e) => {
-                e.preventDefault();
-                e.returnValue = "";
-                return "";
-              };
-
-              // Block all navigation attempts
-              window.onpopstate = (e) => {
-                e.preventDefault();
-                return false;
-              };
-
               // Try to access the opener to check if it's from the same origin
               window.opener.postMessage(
                 { type: "AUTH_COMPLETE", success: true },
@@ -82,10 +124,11 @@ const AuthCallback = () => {
 
               console.log("Closing popup window immediately");
 
-              // Force the document to be blank to prevent any content from loading
+              // CRITICAL: Force the document to be blank with ONLY a self-closing script
+              // This prevents any React rendering or navigation from happening
               document.open();
               document.write(
-                '<html><head><title>Authentication Complete</title><script>window.close();</script></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;background:#f0f4f8;"><div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);"><h2 style="margin-bottom:10px;color:#2563eb;">Authentication Successful!</h2><p>This window will close automatically...</p><button onclick="window.close();" style="margin-top:15px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;">Close Window</button></div></body></html>',
+                "<!DOCTYPE html><html><head><title>Authentication Complete</title><script>try{window.opener.postMessage({type:\"AUTH_COMPLETE\",success:true},window.location.origin);window.close();}catch(e){console.error(e);}setTimeout(function(){window.close();},100);setTimeout(function(){document.body.innerHTML=\"<div style='text-align:center;padding:20px;font-family:sans-serif;'><h2>Authentication Complete</h2><p>This window should close automatically.</p><button onclick='window.close()' style='padding:10px;margin-top:20px;'>Close Window</button></div>\";},500);</script></head><body style=\"background:#f0f4f8;\"></body></html>",
               );
               document.close();
 
@@ -199,16 +242,19 @@ const AuthCallback = () => {
               // Force the document to be blank with self-closing script
               document.open();
               document.write(
-                '<html><head><title>Authentication Complete</title><script>window.close();</script></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;background:#f0f4f8;"><div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);"><h2 style="margin-bottom:10px;color:#2563eb;">Authentication Successful!</h2><p>This window will close automatically...</p><button onclick="window.close();" style="margin-top:15px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;">Close Window</button></div></body></html>',
+                "<!DOCTYPE html><html><head><title>Authentication Complete</title><script>try{window.opener.postMessage({type:\"AUTH_COMPLETE\",success:true},window.location.origin);window.close();}catch(e){console.error(e);}setTimeout(function(){window.close();},100);setTimeout(function(){document.body.innerHTML=\"<div style='text-align:center;padding:20px;font-family:sans-serif;'><h2>Authentication Complete</h2><p>This window should close automatically.</p><button onclick='window.close()' style='padding:10px;margin-top:20px;'>Close Window</button></div>\";},500);</script></head><body style=\"background:#f0f4f8;\"></body></html>",
               );
               document.close();
 
-              // Block all navigation
-              window.onbeforeunload = (e) => {
-                e.preventDefault();
-                e.returnValue = "";
-                return "";
-              };
+              // Block all navigation - but only in the popup window
+              const isPopup = window.opener && window !== window.opener;
+              if (isPopup) {
+                window.onbeforeunload = (e) => {
+                  e.preventDefault();
+                  e.returnValue = "";
+                  return "";
+                };
+              }
 
               window.opener.postMessage(
                 { type: "AUTH_COMPLETE", success: true },
