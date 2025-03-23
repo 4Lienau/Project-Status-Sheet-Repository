@@ -48,9 +48,23 @@ export const useAuth = () => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(
+        "Auth state changed:",
+        event,
+        session ? "session exists" : "no session",
+      );
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Handle sign out event
+      if (event === "SIGNED_OUT") {
+        console.log("User signed out, clearing state");
+        setProfile(null);
+        setIsApproved(null);
+        setIsPendingApproval(false);
+        // No need to navigate here as it's handled in the Navbar component
+      }
     });
 
     return () => subscription.unsubscribe();

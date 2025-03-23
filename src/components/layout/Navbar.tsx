@@ -127,7 +127,19 @@ const Navbar = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
-                    onClick={() => supabase.auth.signOut()}
+                    onClick={async () => {
+                      try {
+                        await supabase.auth.signOut();
+                        navigate("/login");
+                      } catch (error) {
+                        console.error("Error signing out:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to sign out. Please try again.",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
