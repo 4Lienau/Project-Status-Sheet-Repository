@@ -12,6 +12,31 @@ const AuthForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Clear any existing auth session on component mount
+  useEffect(() => {
+    const clearExistingSession = async () => {
+      // Check if we're on the login page directly (not from a sign-out)
+      if (
+        window.location.pathname === "/login" &&
+        !window.location.search.includes("signout=true")
+      ) {
+        console.log("Login page loaded, checking for existing session");
+        const { data } = await supabase.auth.getSession();
+
+        // If there's an existing session but we're on the login page, sign out
+        if (data.session) {
+          console.log("Found existing session on login page, signing out");
+          await supabase.auth.signOut({ scope: "global" });
+          // Clear any local storage items
+          localStorage.removeItem("supabase.auth.token");
+          localStorage.removeItem("supabase.auth.refreshToken");
+        }
+      }
+    };
+
+    clearExistingSession();
+  }, []);
+
   // Listen for messages from the popup window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -41,11 +66,16 @@ const AuthForm = () => {
       authCheckInterval = window.setInterval(async () => {
         console.log("Checking authentication status...");
         const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          console.log("Session detected in main window, redirecting");
+
+        // Only redirect if we have both a session and a user
+        if (data.session && data.session.user) {
+          console.log("Valid session detected in main window, redirecting");
+          console.log("User ID:", data.session.user.id);
           clearInterval(authCheckInterval);
           setLoading(false);
           navigate("/");
+        } else {
+          console.log("No valid session yet, continuing to wait...");
         }
       }, 1000) as unknown as number;
     }
@@ -109,11 +139,15 @@ const AuthForm = () => {
             console.log("Popup closed, checking authentication status");
             // Check if user is authenticated after popup closes
             supabase.auth.getSession().then(({ data: { session } }) => {
-              if (session) {
-                console.log("Session found after popup closed, redirecting");
+              // Only redirect if we have both a session and a user
+              if (session && session.user) {
+                console.log(
+                  "Valid session found after popup closed, redirecting",
+                );
+                console.log("User ID:", session.user.id);
                 navigate("/"); // Use navigate instead of direct location change
               } else {
-                console.log("No session found after popup closed");
+                console.log("No valid session found after popup closed");
                 setLoading(false); // Reset loading state if not authenticated
                 setError("Authentication was not completed. Please try again.");
               }
@@ -129,8 +163,12 @@ const AuthForm = () => {
                 console.log("Popup is on callback page, checking for session");
                 // Check for session in main window
                 supabase.auth.getSession().then(({ data: { session } }) => {
-                  if (session) {
-                    console.log("Session found while popup on callback page");
+                  // Only redirect if we have both a session and a user
+                  if (session && session.user) {
+                    console.log(
+                      "Valid session found while popup on callback page",
+                    );
+                    console.log("User ID:", session.user.id);
                     // Try to close the popup
                     try {
                       popup.close();
@@ -139,6 +177,8 @@ const AuthForm = () => {
                     }
                     clearInterval(checkPopup);
                     navigate("/");
+                  } else {
+                    console.log("No valid session yet, continuing to wait...");
                   }
                 });
               }

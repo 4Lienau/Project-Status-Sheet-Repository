@@ -146,17 +146,29 @@ const Home = () => {
     );
   }
 
+  // This check is now redundant since we have route protection in App.tsx,
+  // but we'll keep it as an additional security measure with enhanced logging
   if (!user) {
-    return (
-      <Layout>
-        <WelcomePage
-          onGetStarted={() => {
-            navigate("/login");
-          }}
-        />
-      </Layout>
+    console.log(
+      "Home component: No authenticated user detected, redirecting to login",
     );
+    // Redirect to login page
+    navigate("/login");
+    return null;
   }
+
+  // Additional check to ensure we have a valid user with an ID
+  if (!user.id) {
+    console.log(
+      "Home component: User object exists but has no ID, redirecting to login",
+    );
+    navigate("/login");
+    return null;
+  }
+
+  console.log(
+    "Home component: Authenticated user confirmed, rendering home page",
+  );
 
   return (
     <Layout>

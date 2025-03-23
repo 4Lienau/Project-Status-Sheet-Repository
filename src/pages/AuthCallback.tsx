@@ -67,15 +67,25 @@ const AuthCallback = () => {
 
               // IMPORTANT: Prevent any navigation in this window
               // This prevents the landing page from loading in the popup
-              e.preventDefault && e.preventDefault();
+              window.onbeforeunload = (e) => {
+                e.preventDefault();
+                e.returnValue = "";
+                return "";
+              };
 
               console.log("Closing popup window immediately");
               // Try multiple approaches to close the window
               try {
-                window.close();
-                // If window.close() doesn't work, try these alternatives
-                window.open("", "_self").close();
-                window.location.href = "about:blank";
+                // Set a timeout to ensure the message is sent before closing
+                setTimeout(() => {
+                  window.close();
+                  // If window.close() doesn't work, try these alternatives
+                  window.open("", "_self").close();
+                  window.location.href = "about:blank";
+                  // As a last resort, make the window very small and move it off-screen
+                  window.resizeTo(1, 1);
+                  window.moveTo(-10000, -10000);
+                }, 100);
               } catch (closeError) {
                 console.error("Error closing popup:", closeError);
               }
@@ -144,6 +154,9 @@ const AuthCallback = () => {
               setTimeout(() => {
                 console.log("Closing popup after auth state change");
                 window.close();
+                // Try alternative methods if window.close() doesn't work
+                window.open("", "_self").close();
+                window.location.href = "about:blank";
               }, 300);
             } catch (e) {
               console.error("Error in auth state change handler:", e);

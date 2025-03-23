@@ -26,6 +26,7 @@ export const useAuth = () => {
     const initAuth = async () => {
       try {
         setLoading(true);
+        console.log("Checking initial authentication state...");
         const { data, error } = await supabase.auth.getSession();
         if (error) {
           console.error("Error getting session:", error);
@@ -34,10 +35,51 @@ export const useAuth = () => {
             description: error.message,
             variant: "destructive",
           });
+          setUser(null);
+          // Redirect to login on error
+          if (
+            window.location.pathname !== "/login" &&
+            !window.location.pathname.includes("/auth/callback")
+          ) {
+            navigate("/login");
+          }
+          setLoading(false);
+          return;
         }
-        setUser(data.session?.user ?? null);
+
+        // Check if we have a valid session with a user
+        const currentUser = data.session?.user ?? null;
+        const hasValidSession = !!data.session && !!currentUser;
+
+        console.log(
+          "Initial auth check:",
+          hasValidSession ? "User is authenticated" : "No authenticated user",
+          "User ID:",
+          currentUser?.id || "none",
+        );
+
+        setUser(currentUser);
+
+        // If no valid session, redirect to login unless already on login or callback page
+        if (!hasValidSession) {
+          if (
+            window.location.pathname !== "/login" &&
+            !window.location.pathname.includes("/auth/callback")
+          ) {
+            console.log("No authenticated user, redirecting to login");
+            navigate("/login");
+          }
+        }
       } catch (err) {
         console.error("Unexpected auth error:", err);
+        setUser(null);
+        // Redirect to login on error
+        if (
+          window.location.pathname !== "/login" &&
+          !window.location.pathname.includes("/auth/callback")
+        ) {
+          navigate("/login");
+        }
       } finally {
         setLoading(false);
       }
@@ -60,15 +102,25 @@ export const useAuth = () => {
       // Handle sign out event
       if (event === "SIGNED_OUT") {
         console.log("User signed out, clearing state");
+        setUser(null);
         setProfile(null);
         setIsApproved(null);
         setIsPendingApproval(false);
-        // No need to navigate here as it's handled in the Navbar component
+
+        // Clear any cached data
+        localStorage.removeItem("supabase.auth.token");
+        localStorage.removeItem("supabase.auth.refreshToken");
+
+        // Force navigation to login page
+        if (window.location.pathname !== "/login") {
+          console.log("Redirecting to login after sign out");
+          navigate("/login");
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [toast]);
+  }, [toast, navigate]);
 
   // Load user profile when user changes
   useEffect(() => {
