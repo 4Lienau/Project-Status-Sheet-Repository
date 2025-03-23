@@ -18,9 +18,12 @@ const AuthForm = () => {
       // Verify the origin of the message
       if (event.origin !== window.location.origin) return;
 
+      console.log("Received message from popup:", event.data);
+
       // Handle authentication completion message
       if (event.data?.type === "AUTH_COMPLETE" && event.data?.success) {
         // Redirect to home page
+        setLoading(false);
         navigate("/");
       } else if (event.data?.type === "AUTH_FAILED") {
         setLoading(false);
@@ -60,10 +63,11 @@ const AuthForm = () => {
       const left = window.innerWidth / 2 - width / 2;
       const top = window.innerHeight / 2 - height / 2;
 
+      // Force the popup to open in a new window, not a new tab
       const popup = window.open(
         data.url,
         "azure-auth-popup",
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,toolbar=no,menubar=no,location=no`,
       );
 
       if (!popup) {
@@ -78,18 +82,24 @@ const AuthForm = () => {
           // Check if popup is closed
           if (popup.closed) {
             clearInterval(checkPopup);
+            console.log("Popup closed, checking authentication status");
             // Check if user is authenticated after popup closes
             supabase.auth.getSession().then(({ data: { session } }) => {
               if (session) {
-                window.location.href = "/"; // Redirect to home page if authenticated
+                console.log("Session found after popup closed, redirecting");
+                navigate("/"); // Use navigate instead of direct location change
               } else {
+                console.log("No session found after popup closed");
                 setLoading(false); // Reset loading state if not authenticated
+                setError("Authentication was not completed. Please try again.");
               }
             });
           }
         } catch (e) {
           // Handle cross-origin errors
           console.error("Popup check error:", e);
+          clearInterval(checkPopup);
+          setLoading(false);
         }
       }, 500);
     } catch (error) {

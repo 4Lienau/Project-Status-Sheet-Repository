@@ -58,12 +58,18 @@ const AuthCallback = () => {
           // If this is in a popup, close it and redirect the parent
           if (window.opener && !window.opener.closed) {
             try {
+              console.log("In popup, attempting to notify opener and close");
               // Try to access the opener to check if it's from the same origin
               window.opener.postMessage(
                 { type: "AUTH_COMPLETE", success: true },
                 window.location.origin,
               );
-              window.close(); // Close the popup
+
+              // Add a small delay before closing to ensure the message is sent
+              setTimeout(() => {
+                console.log("Closing popup window");
+                window.close(); // Close the popup
+              }, 300);
             } catch (e) {
               console.error("Error communicating with opener:", e);
               // If we can't access the opener, just redirect this window
@@ -71,21 +77,32 @@ const AuthCallback = () => {
             }
           } else {
             // Not in a popup or opener is closed/inaccessible, redirect this window
+            console.log(
+              "Not in popup or opener inaccessible, redirecting this window",
+            );
             navigate("/");
           }
         } else {
           // No session and no error, redirect to login
           if (window.opener && !window.opener.closed) {
             try {
+              console.log("No session found, sending AUTH_FAILED to opener");
               window.opener.postMessage(
                 { type: "AUTH_FAILED" },
                 window.location.origin,
               );
-              window.close();
+
+              // Add a small delay before closing
+              setTimeout(() => {
+                console.log("Closing popup after auth failure");
+                window.close();
+              }, 300);
             } catch (e) {
+              console.error("Error sending AUTH_FAILED message:", e);
               navigate("/login");
             }
           } else {
+            console.log("No session and not in popup, redirecting to login");
             navigate("/login");
           }
         }
@@ -105,15 +122,23 @@ const AuthCallback = () => {
           // If in a popup, try to close it and notify the opener
           if (window.opener && !window.opener.closed) {
             try {
+              console.log("Auth state change: SIGNED_IN, notifying opener");
               window.opener.postMessage(
                 { type: "AUTH_COMPLETE", success: true },
                 window.location.origin,
               );
-              window.close();
+
+              // Add a small delay before closing to ensure the message is sent
+              setTimeout(() => {
+                console.log("Closing popup after auth state change");
+                window.close();
+              }, 300);
             } catch (e) {
+              console.error("Error in auth state change handler:", e);
               navigate("/");
             }
           } else {
+            console.log("Auth state change: not in popup, redirecting");
             navigate("/");
           }
         } else if (event === "SIGNED_OUT") {
