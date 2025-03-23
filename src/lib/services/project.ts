@@ -28,10 +28,22 @@ export type Change = {
   updated_at?: string;
 };
 
+export type Task = {
+  id: string;
+  project_id: string;
+  milestone_id: string;
+  description: string;
+  assignee: string;
+  date: string;
+  completion: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
 // Daily Notes type removed
 
 export interface ProjectWithRelations extends Project {
-  milestones: Milestone[];
+  milestones: (Milestone & { tasks?: Task[] })[];
   accomplishments: Accomplishment[];
   next_period_activities: NextPeriodActivity[];
   risks: Risk[];
@@ -62,6 +74,13 @@ export const projectService = {
         owner: string;
         completion: number;
         status: "green" | "yellow" | "red";
+        tasks?: Array<{
+          id?: string;
+          description: string;
+          assignee: string;
+          date: string;
+          completion: number;
+        }>;
       }>;
       accomplishments: string[];
       next_period_activities: Array<{
@@ -80,6 +99,17 @@ export const projectService = {
       department?: string;
     },
   ): Promise<ProjectWithRelations | null> {
+    console.log(
+      "[DEBUG] updateProject called with data:",
+      JSON.stringify(
+        data.milestones.map((m) => ({
+          milestone: m.milestone,
+          tasks: m.tasks?.length || 0,
+        })),
+        null,
+        2,
+      ),
+    );
     try {
       const { data: project, error: projectError } = await supabase
         .from("projects")
@@ -113,6 +143,20 @@ export const projectService = {
         "[DEBUG] Deleting existing related records for project ID:",
         id,
       );
+
+      // First delete tasks since they depend on milestones
+      const { error: tasksDeleteError } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("project_id", id);
+
+      if (tasksDeleteError) {
+        console.error("[DEBUG] Error deleting tasks:", tasksDeleteError);
+      } else {
+        console.log("[DEBUG] Successfully deleted tasks for project ID:", id);
+      }
+
+      // Then delete other related records
       await Promise.all([
         supabase.from("milestones").delete().eq("project_id", id),
         supabase.from("accomplishments").delete().eq("project_id", id),
@@ -123,17 +167,96 @@ export const projectService = {
       ]);
 
       // Insert new records
+      // First insert milestones to get their IDs for tasks
+      const { data: insertedMilestones, error: milestonesInsertError } =
+        await supabase
+          .from("milestones")
+          .insert(
+            data.milestones.map((m) => ({
+              project_id: id,
+              date: m.date,
+              milestone: m.milestone,
+              owner: m.owner,
+              completion: m.completion,
+              status: m.status,
+            })),
+          )
+          .select();
+
+      if (milestonesInsertError) {
+        console.error(
+          "[DEBUG] Error inserting milestones:",
+          milestonesInsertError,
+        );
+        throw milestonesInsertError;
+      }
+
+      // Insert tasks for each milestone
+      const tasksToInsert = [];
+      data.milestones.forEach((milestone, index) => {
+        console.log(
+          `[DEBUG] Processing milestone ${index} (${milestone.milestone}) for tasks:`,
+          milestone.tasks ? `${milestone.tasks.length} tasks` : "no tasks",
+        );
+
+        if (
+          milestone.tasks &&
+          milestone.tasks.length > 0 &&
+          insertedMilestones &&
+          insertedMilestones[index]
+        ) {
+          const milestoneId = insertedMilestones[index].id;
+          console.log(`[DEBUG] Milestone ID for tasks: ${milestoneId}`);
+
+          milestone.tasks.forEach((task, taskIndex) => {
+            const taskData = {
+              project_id: id,
+              milestone_id: milestoneId,
+              description: task.description,
+              assignee: task.assignee || milestone.owner, // Default to milestone owner if not specified
+              date: task.date || milestone.date, // Default to milestone date if not specified
+              completion: task.completion || 0,
+            };
+            console.log(
+              `[DEBUG] Adding task ${taskIndex} to insert list:`,
+              taskData,
+            );
+            tasksToInsert.push(taskData);
+          });
+        }
+      });
+
+      console.log(
+        "[DEBUG] Tasks to insert:",
+        tasksToInsert.length,
+        tasksToInsert,
+      );
+
+      if (tasksToInsert.length > 0) {
+        console.log(
+          `[DEBUG] Inserting ${tasksToInsert.length} tasks into database:`,
+          JSON.stringify(tasksToInsert, null, 2),
+        );
+
+        const { data: insertedTasks, error: tasksInsertError } = await supabase
+          .from("tasks")
+          .insert(tasksToInsert)
+          .select();
+
+        if (tasksInsertError) {
+          console.error("[DEBUG] Error inserting tasks:", tasksInsertError);
+          throw tasksInsertError;
+        } else {
+          console.log(
+            `[DEBUG] Successfully inserted ${insertedTasks?.length || 0} tasks:`,
+            JSON.stringify(insertedTasks, null, 2),
+          );
+        }
+      } else {
+        console.log("[DEBUG] No tasks to insert");
+      }
+
       const insertPromises = [
-        supabase.from("milestones").insert(
-          data.milestones.map((m) => ({
-            project_id: id,
-            date: m.date,
-            milestone: m.milestone,
-            owner: m.owner,
-            completion: m.completion,
-            status: m.status,
-          })),
-        ),
         supabase.from("accomplishments").insert(
           data.accomplishments.map((a) => ({
             project_id: id,
@@ -489,6 +612,47 @@ export const projectService = {
         );
       console.log("[DEBUG] Found", milestones?.length || 0, "milestones");
 
+      // First, fetch all tasks for this project in a single query
+      console.log("[DEBUG] Fetching all tasks for project ID:", id);
+      const { data: allTasks, error: allTasksError } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("project_id", id);
+
+      if (allTasksError) {
+        console.warn(
+          "[DEBUG] Error fetching all tasks:",
+          allTasksError.message,
+        );
+      }
+
+      console.log(
+        "[DEBUG] Found",
+        allTasks?.length || 0,
+        "total tasks for project",
+      );
+      console.log("[DEBUG] All tasks:", JSON.stringify(allTasks, null, 2));
+
+      // Map tasks to their respective milestones
+      const milestonesWithTasks = (milestones || []).map((milestone) => {
+        const milestoneTasks = (allTasks || []).filter(
+          (task) => task.milestone_id === milestone.id,
+        );
+
+        console.log(
+          "[DEBUG] Milestone",
+          milestone.id,
+          "has",
+          milestoneTasks.length,
+          "tasks",
+        );
+
+        return {
+          ...milestone,
+          tasks: milestoneTasks || [],
+        };
+      });
+
       console.log("[DEBUG] Fetching accomplishments for project ID:", id);
       const { data: accomplishments, error: accomplishmentsError } =
         await supabase.from("accomplishments").select("*").eq("project_id", id);
@@ -554,7 +718,7 @@ export const projectService = {
 
       const result = {
         ...project,
-        milestones: milestones || [],
+        milestones: milestonesWithTasks || [],
         accomplishments: accomplishments || [],
         next_period_activities: activities || [],
         risks: risks || [],
@@ -605,6 +769,19 @@ export const projectService = {
             event: "*",
             schema: "public",
             table: "milestones",
+            filter: `project_id=eq.${id}`,
+          },
+          () => this.getProject(id).then((p) => p && callback(p)),
+        )
+        .subscribe(),
+      supabase
+        .channel(`tasks:${id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "tasks",
             filter: `project_id=eq.${id}`,
           },
           () => this.getProject(id).then((p) => p && callback(p)),

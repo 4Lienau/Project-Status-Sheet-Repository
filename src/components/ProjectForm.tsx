@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import ProjectPilot from "@/components/chat/ProjectPilot";
 import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
@@ -37,6 +37,8 @@ import {
 import { useAuth } from "@/lib/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import DepartmentSelect from "@/components/DepartmentSelect";
+import { useNavigate } from "react-router-dom";
+import { useUnsavedChangesWarning } from "@/lib/hooks/useUnsavedChangesWarning";
 
 interface ProjectFormProps {
   onBack?: () => void;
@@ -64,6 +66,13 @@ interface ProjectFormProps {
       owner: string;
       completion: number;
       status: "green" | "yellow" | "red";
+      tasks?: Array<{
+        id?: string;
+        description: string;
+        assignee: string;
+        date: string;
+        completion: number;
+      }>;
     }>;
     accomplishments: string[];
     nextPeriodActivities: Array<{
@@ -118,11 +127,112 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     ...defaultFormData,
     ...initialData,
   }));
+  const [hasChanges, setHasChanges] = React.useState(false);
+  const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] =
+    React.useState(false);
+  const [pendingNavigationAction, setPendingNavigationAction] =
+    React.useState<() => void | null>(null);
+  const navigate = useNavigate();
 
   // For debugging
   React.useEffect(() => {
     console.log("Form data department:", formData.department);
   }, [formData.department]);
+
+  // Track changes by comparing current form data with initial data
+  useEffect(() => {
+    if (!initialData) return;
+
+    // Deep comparison function for nested objects
+    const isEqual = (obj1: any, obj2: any): boolean => {
+      if (obj1 === obj2) return true;
+      if (
+        typeof obj1 !== "object" ||
+        typeof obj2 !== "object" ||
+        obj1 === null ||
+        obj2 === null
+      )
+        return false;
+
+      const keys1 = Object.keys(obj1);
+      const keys2 = Object.keys(obj2);
+
+      if (keys1.length !== keys2.length) return false;
+
+      for (const key of keys1) {
+        if (!keys2.includes(key)) return false;
+
+        // Handle arrays specially
+        if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
+          if (obj1[key].length !== obj2[key].length) return false;
+
+          // For simple arrays of primitives
+          if (typeof obj1[key][0] !== "object") {
+            if (
+              !obj1[key].every(
+                (item: any, index: number) => item === obj2[key][index],
+              )
+            )
+              return false;
+          } else {
+            // For arrays of objects, we need to compare each object
+            if (
+              !obj1[key].every((item: any, index: number) =>
+                isEqual(item, obj2[key][index]),
+              )
+            )
+              return false;
+          }
+        } else if (typeof obj1[key] === "object" && obj1[key] !== null) {
+          if (!isEqual(obj1[key], obj2[key])) return false;
+        } else if (obj1[key] !== obj2[key]) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    // Compare current form data with initial data
+    const formHasChanges = !isEqual(formData, initialData);
+    console.log("Form has changes:", formHasChanges);
+    setHasChanges(formHasChanges);
+  }, [formData, initialData]);
+
+  // Reset hasChanges when initialData changes (after a successful save)
+  useEffect(() => {
+    if (initialData) {
+      setHasChanges(false);
+    }
+  }, [initialData]);
+
+  // Handler for showing the unsaved changes dialog
+  const handleShowUnsavedChangesDialog = useCallback(
+    (continueCallback: () => void) => {
+      setPendingNavigationAction(() => continueCallback);
+      setShowUnsavedChangesDialog(true);
+    },
+    [],
+  );
+
+  // Use our custom hook to handle navigation with unsaved changes
+  const { navigateSafely } = useUnsavedChangesWarning(
+    hasChanges,
+    handleShowUnsavedChangesDialog,
+  );
+
+  // Custom navigation handler to show dialog when needed
+  const handleNavigation = useCallback(
+    (action: () => void) => {
+      if (hasChanges) {
+        setPendingNavigationAction(() => action);
+        setShowUnsavedChangesDialog(true);
+      } else {
+        action();
+      }
+    },
+    [hasChanges],
+  );
 
   const [showSuggestedMilestones, setShowSuggestedMilestones] =
     React.useState(false);
@@ -138,7 +248,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Submitting form data:", formData);
-    onSubmit(formData);
+    const success = await onSubmit(formData);
+    if (success) {
+      setHasChanges(false);
+    }
   };
 
   const handleGenerateContent = async (
@@ -215,6 +328,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       <form
         onSubmit={handleSubmit}
         className="max-w-[1200px] mx-auto space-y-3"
+        data-has-changes={hasChanges ? "true" : "false"}
       >
         {/* Project Pilot Chat Assistant */}
         <ProjectPilot projectId={projectId} projectTitle={formData.title} />
@@ -230,7 +344,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   {onBack && (
                     <Button
                       type="button"
-                      onClick={onBack}
+                      onClick={() => handleNavigation(onBack)}
                       variant="ghost"
                       size="sm"
                       className="flex items-center gap-2"
@@ -822,6 +936,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                       owner: "",
                       completion: 0,
                       status: "green",
+                      tasks: [], // Initialize with empty tasks array
                     },
                   ],
                 }))
@@ -1369,6 +1484,56 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           milestones={formData.milestones}
           projectTitle={formData.title}
         />
+
+        {/* Unsaved Changes Dialog */}
+        <AlertDialog
+          open={showUnsavedChangesDialog}
+          onOpenChange={setShowUnsavedChangesDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have unsaved changes. Are you sure you want to leave without
+                saving?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setPendingNavigationAction(null);
+                  setShowUnsavedChangesDialog(false);
+                }}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowUnsavedChangesDialog(false);
+                  if (pendingNavigationAction) {
+                    pendingNavigationAction();
+                  }
+                }}
+              >
+                Leave Without Saving
+              </AlertDialogAction>
+              <Button
+                onClick={() => {
+                  handleSubmit(
+                    new Event("submit") as unknown as React.FormEvent,
+                  );
+                  setShowUnsavedChangesDialog(false);
+                  if (pendingNavigationAction) {
+                    pendingNavigationAction();
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Save and Leave
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </form>
     </TooltipProvider>
   );

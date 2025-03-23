@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { useRoutes, Routes, Route } from "react-router-dom";
+import { useRoutes, Routes, Route, useLocation } from "react-router-dom";
 import Home from "./components/home";
 import StatusSheetView from "./pages/StatusSheetView";
 import ProfilePage from "./pages/ProfilePage";
@@ -9,6 +9,8 @@ import LoginPage from "./pages/LoginPage";
 import routes from "tempo-routes";
 
 function App() {
+  const location = useLocation();
+
   return (
     <Suspense fallback={<p>Loading...</p>}>
       <>

@@ -16,6 +16,14 @@ import {
 } from "@dnd-kit/sortable";
 import { MilestoneSortableItem } from "./MilestoneSortableItem";
 
+interface Task {
+  id?: string;
+  description: string;
+  assignee: string;
+  date: string;
+  completion: number;
+}
+
 interface Milestone {
   id?: string;
   date: string;
@@ -23,6 +31,7 @@ interface Milestone {
   owner: string;
   completion: number;
   status: "green" | "yellow" | "red";
+  tasks?: Task[];
 }
 
 interface MilestoneListProps {

@@ -85,6 +85,12 @@ const ProjectDashboard = ({
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Function to check for unsaved changes
+  const checkUnsavedChanges = React.useCallback(() => {
+    const formElement = document.querySelector("form");
+    return formElement?.getAttribute("data-has-changes") === "true";
+  }, []);
+
   React.useEffect(() => {
     const loadVersions = async () => {
       const versions = await projectVersionsService.getVersions(
@@ -96,7 +102,22 @@ const ProjectDashboard = ({
       setLatestProject(initialProject);
     };
     loadVersions();
-  }, [initialProject.id]);
+
+    // Add beforeunload event listener to catch browser navigation/refresh
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isEditing && checkUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [initialProject.id, isEditing, checkUnsavedChanges]);
 
   const formatCurrency = (value: number) => {
     return value
@@ -161,10 +182,11 @@ const ProjectDashboard = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={onBack}
+          onClick={isEditing ? onBack : onBack}
           className="flex items-center gap-2"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Projects
+          <ArrowLeft className="h-4 w-4" />
+          Back to Projects
         </Button>
 
         {/* Version controls */}
@@ -227,6 +249,16 @@ const ProjectDashboard = ({
           <Button
             onClick={() => {
               if (isEditing) {
+                // Check for unsaved changes before switching to view mode
+                if (checkUnsavedChanges()) {
+                  // Show confirmation dialog
+                  const confirmExit = window.confirm(
+                    "You have unsaved changes. Are you sure you want to leave without saving?",
+                  );
+                  if (!confirmExit) {
+                    return; // Stay in edit mode
+                  }
+                }
                 setIsEditing(false);
               } else {
                 setIsEditing(true);
@@ -315,6 +347,7 @@ const ProjectDashboard = ({
                       owner: m.owner,
                       completion: m.completion,
                       status: m.status,
+                      tasks: m.tasks, // Make sure to include tasks
                     })),
                   accomplishments: data.accomplishments.filter(
                     (a) => a.trim() !== "",
@@ -367,6 +400,9 @@ const ProjectDashboard = ({
                 );
                 setVersions(versions);
                 setCurrentVersionIndex(-1);
+
+                // Return true to indicate successful save to the form component
+                return true;
               }
             } catch (error) {
               toast({
@@ -374,6 +410,7 @@ const ProjectDashboard = ({
                 description: "Failed to update project",
                 variant: "destructive",
               });
+              return false;
             }
           }}
         />

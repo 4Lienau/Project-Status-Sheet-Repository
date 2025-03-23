@@ -178,41 +178,6 @@ export type Database = {
           },
         ]
       }
-      daily_notes: {
-        Row: {
-          created_at: string | null
-          date: string
-          id: string
-          note: string
-          project_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          date: string
-          id?: string
-          note: string
-          project_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          date?: string
-          id?: string
-          note?: string
-          project_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "daily_notes_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       departments: {
         Row: {
           created_at: string | null
@@ -532,6 +497,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "risks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assignee: string | null
+          completion: number | null
+          created_at: string | null
+          date: string | null
+          description: string
+          id: string
+          milestone_id: string | null
+          project_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assignee?: string | null
+          completion?: number | null
+          created_at?: string | null
+          date?: string | null
+          description: string
+          id?: string
+          milestone_id?: string | null
+          project_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assignee?: string | null
+          completion?: number | null
+          created_at?: string | null
+          date?: string | null
+          description?: string
+          id?: string
+          milestone_id?: string | null
+          project_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"

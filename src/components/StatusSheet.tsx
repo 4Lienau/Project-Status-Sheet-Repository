@@ -39,6 +39,13 @@ interface StatusSheetProps {
       owner: string;
       completion: number;
       status: "green" | "yellow" | "red";
+      tasks?: Array<{
+        id?: string;
+        description: string;
+        assignee: string;
+        date: string;
+        completion: number;
+      }>;
     }>;
     risks: string[];
     considerations: string[];
@@ -494,24 +501,27 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                   </thead>
                   <tbody>
                     {data.milestones.map((milestone, index) => (
-                      <tr key={index} className="border-b border-gray-300">
-                        <td className="py-1 pr-4">
-                          <div
-                            className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion, milestone.status)}`}
-                          >
-                            {milestone.completion}%
-                          </div>
-                        </td>
-                        <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                          {milestone.date}
-                        </td>
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {milestone.milestone}
-                        </td>
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {milestone.owner}
-                        </td>
-                      </tr>
+                      <React.Fragment key={index}>
+                        <tr className="border-b border-gray-300">
+                          <td className="py-1 pr-4">
+                            <div
+                              className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion, milestone.status)}`}
+                            >
+                              {milestone.completion}%
+                            </div>
+                          </td>
+                          <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
+                            {milestone.date}
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
+                            {milestone.milestone}
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {milestone.owner}
+                          </td>
+                        </tr>
+                        {/* Tasks are hidden from Status Sheet view */}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
