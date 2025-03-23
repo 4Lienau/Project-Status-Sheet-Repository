@@ -37,6 +37,30 @@ const AuthForm = () => {
     clearExistingSession();
   }, []);
 
+  // Check for existing auth-in-progress flag on component mount
+  useEffect(() => {
+    const checkExistingAuthProcess = async () => {
+      const authInProgress = localStorage.getItem("auth_in_progress");
+      if (authInProgress === "true") {
+        console.log(
+          "Found existing auth-in-progress flag, checking for session",
+        );
+        // Check if we actually have a valid session
+        const { data } = await supabase.auth.getSession();
+        if (data.session && data.session.user) {
+          console.log("Valid session found, redirecting to home");
+          localStorage.removeItem("auth_in_progress");
+          navigate("/");
+        } else {
+          console.log("No valid session found, clearing auth-in-progress flag");
+          localStorage.removeItem("auth_in_progress");
+        }
+      }
+    };
+
+    checkExistingAuthProcess();
+  }, [navigate]);
+
   // Listen for messages from the popup window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -48,9 +72,13 @@ const AuthForm = () => {
       // Handle authentication completion message
       if (event.data?.type === "AUTH_COMPLETE" && event.data?.success) {
         // Redirect to home page
+        console.log("Received AUTH_COMPLETE message, redirecting to home");
+        localStorage.removeItem("auth_in_progress");
         setLoading(false);
         navigate("/");
       } else if (event.data?.type === "AUTH_FAILED") {
+        console.log("Received AUTH_FAILED message");
+        localStorage.removeItem("auth_in_progress");
         setLoading(false);
         setError("Authentication failed. Please try again.");
       }
@@ -72,6 +100,7 @@ const AuthForm = () => {
           console.log("Valid session detected in main window, redirecting");
           console.log("User ID:", data.session.user.id);
           clearInterval(authCheckInterval);
+          localStorage.removeItem("auth_in_progress");
           setLoading(false);
           navigate("/");
         } else {
@@ -115,21 +144,41 @@ const AuthForm = () => {
       const top = window.innerHeight / 2 - height / 2;
 
       // Force the popup to open in a new window, not a new tab
-      // Add noopener to prevent the popup from navigating the opener
-      const popup = window.open(
-        data.url,
-        "azure-auth-popup",
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,toolbar=no,menubar=no,location=no,noopener=yes`,
-      );
-
-      if (!popup) {
-        throw new Error(
-          "Popup blocked. Please allow popups for this site and try again.",
+      let popup;
+      try {
+        popup = window.open(
+          data.url,
+          "azure-auth-popup",
+          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,toolbar=no,menubar=no,location=no`,
         );
+
+        // Check if popup was actually created and accessible
+        if (!popup || popup.closed || typeof popup.closed === "undefined") {
+          console.log("Popup appears to be blocked, but continuing anyway");
+          // Don't throw an error, just show a message and continue
+          toast({
+            title: "Popup Notice",
+            description:
+              "If a login window opened, please complete authentication there. If not, please enable popups for this site.",
+            duration: 6000,
+          });
+        }
+      } catch (popupError) {
+        console.error("Error opening popup:", popupError);
+        // Don't throw an error, just show a message and continue
+        toast({
+          title: "Authentication Notice",
+          description:
+            "If a login window opened, please complete authentication there. If not, please enable popups for this site.",
+          duration: 6000,
+        });
       }
 
       // Store popup reference globally to help with debugging
       (window as any).authPopup = popup;
+
+      // Set a flag to indicate authentication is in progress
+      localStorage.setItem("auth_in_progress", "true");
 
       // Poll for authentication completion
       const checkPopup = setInterval(() => {
@@ -146,9 +195,11 @@ const AuthForm = () => {
                   "Valid session found after popup closed, redirecting",
                 );
                 console.log("User ID:", session.user.id);
+                localStorage.removeItem("auth_in_progress");
                 navigate("/"); // Use navigate instead of direct location change
               } else {
                 console.log("No valid session found after popup closed");
+                localStorage.removeItem("auth_in_progress");
                 setLoading(false); // Reset loading state if not authenticated
                 setError("Authentication was not completed. Please try again.");
               }
@@ -177,6 +228,7 @@ const AuthForm = () => {
                       console.error("Error closing popup:", closeError);
                     }
                     clearInterval(checkPopup);
+                    localStorage.removeItem("auth_in_progress");
                     navigate("/");
                   } else {
                     console.log("No valid session yet, continuing to wait...");
@@ -192,11 +244,13 @@ const AuthForm = () => {
           // Handle cross-origin errors
           console.error("Popup check error:", e);
           clearInterval(checkPopup);
+          localStorage.removeItem("auth_in_progress");
           setLoading(false);
         }
       }, 500);
     } catch (error) {
       console.error("Auth error:", error);
+      localStorage.removeItem("auth_in_progress");
       setError(error.message);
       setLoading(false);
     }
