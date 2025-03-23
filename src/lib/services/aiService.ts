@@ -27,18 +27,22 @@ const getPrompt = (
 
 Ensure dates are realistic starting from current date. Status should be one of: green, yellow, red.`;
     case "analysis":
-      return `You are a professional project manager creating an executive summary. Analyze the provided project data and generate a concise executive summary in paragraph form that highlights:
+      return `You are a professional project manager creating a project status summary. Analyze the provided project data and generate a concise summary in paragraph form that highlights:
 
-- Do not list all of the milestones in the summary
-- Do not create runon sentences
-- Break the summary down into multiple paragraphs so it is easy to read
-- Current project health and overall status
-- Key observations about the project's progress and performance
-- Any red flags, risks, or issues that executives should be aware of
-- Budget performance concerns (if any)
-- Critical milestones that are at risk
+- Overall project health (based primarily on milestone completion percentages, not status fields)
+- Budget context (note that zero actuals may simply indicate a new project, not a problem)
+- Key milestone progress (use the completion percentage as the primary indicator of progress)
+- Major accomplishments to date
+- Critical risks and their potential impact
+- Upcoming key activities
 
-Format your response as a few concise paragraphs with minimal HTML formatting. Be direct and to the point, focusing only on the most important aspects an executive would need to know. Avoid bullet points, headings, or technical details. Write as if you're briefly summarizing the project status to a busy executive who has only 1 minute to read your summary.`;
+Interpretation guidelines:
+- Milestone completion percentage (0-100%) is the true measure of progress, not the status field
+- A milestone with 0% completion has NOT been achieved, regardless of status
+- Budget actuals of zero are normal for new projects and not necessarily concerning
+- Focus on measurable data rather than making assumptions
+
+Format your response as HTML with 2-3 concise paragraphs (<p> tags). Use bullet points (<ul><li>) sparingly and only when absolutely necessary for clarity. The entire summary should be brief enough to read in under a minute. Focus on key insights rather than comprehensive details. Use a neutral, factual tone without addressing any specific audience (avoid phrases like "executives should"). Be direct and to the point, highlighting only the most critical information about the current state of the project.`;
     default:
       throw new Error("Invalid generation type");
   }
@@ -88,10 +92,36 @@ export const aiService = {
     let userContent =
       title + (description ? "\n\nProject Description: " + description : "");
 
-    // For analysis, include all project data
+    // For analysis, include filtered project data with explanations
     if (type === "analysis" && projectData) {
+      // Create a simplified version of the project data with explanations
+      const filteredData = {
+        title: projectData.title,
+        status: projectData.status,
+        description: projectData.description,
+        budget: {
+          total: projectData.budget?.total || 0,
+          actuals: projectData.budget?.actuals || 0,
+          forecast: projectData.budget?.forecast || 0,
+          note: "Zero actuals may indicate a new project, not necessarily a problem",
+        },
+        milestones:
+          projectData.milestones?.map((m) => ({
+            milestone: m.milestone,
+            completion: m.completion, // This is the primary indicator of progress (0-100%)
+            status: m.status, // This is secondary to completion percentage
+            date: m.date,
+            owner: m.owner,
+          })) || [],
+        accomplishments: projectData.accomplishments || [],
+        risks: projectData.risks || [],
+        next_period_activities: projectData.nextPeriodActivities || [],
+      };
+
       userContent +=
-        "\n\nProject Data: " + JSON.stringify(projectData, null, 2);
+        "\n\nProject Data: " +
+        JSON.stringify(filteredData, null, 2) +
+        "\n\nIMPORTANT: Milestone completion percentage (0-100%) is the true measure of progress. A milestone with 0% completion has NOT been achieved, regardless of status.";
     }
 
     const completion = await openai.chat.completions.create({
