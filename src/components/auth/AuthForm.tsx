@@ -115,10 +115,11 @@ const AuthForm = () => {
       const top = window.innerHeight / 2 - height / 2;
 
       // Force the popup to open in a new window, not a new tab
+      // Add noopener to prevent the popup from navigating the opener
       const popup = window.open(
         data.url,
         "azure-auth-popup",
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,toolbar=no,menubar=no,location=no`,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,toolbar=no,menubar=no,location=no,noopener=yes`,
       );
 
       if (!popup) {
