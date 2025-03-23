@@ -83,8 +83,11 @@ const AuthCallback = () => {
               console.log("Closing popup window immediately");
 
               // Force the document to be blank to prevent any content from loading
-              document.body.innerHTML =
-                '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;"><p>Authentication successful! This window will close automatically...</p></div>';
+              document.open();
+              document.write(
+                '<html><head><title>Authentication Complete</title><script>window.close();</script></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;background:#f0f4f8;"><div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);"><h2 style="margin-bottom:10px;color:#2563eb;">Authentication Successful!</h2><p>This window will close automatically...</p><button onclick="window.close();" style="margin-top:15px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;">Close Window</button></div></body></html>',
+              );
+              document.close();
 
               // Try multiple approaches to close the window with increased delay
               const closeWindow = () => {
@@ -105,12 +108,21 @@ const AuthCallback = () => {
                     } catch (e) {
                       console.log("Method 2 failed");
                     }
+                    try {
+                      window.location.replace("about:blank");
+                    } catch (e) {
+                      console.log("Method 3 failed");
+                    }
 
                     // As a last resort, make the window very small and move it off-screen
                     try {
                       window.resizeTo(1, 1);
                       window.moveTo(-10000, -10000);
                       console.log("Window minimized and moved off-screen");
+
+                      // Add a close button that users can click
+                      document.body.innerHTML =
+                        '<div style="padding:5px;text-align:center;"><p style="font-size:10px;">Please click to close:</p><button onclick="window.close();" style="padding:2px 5px;font-size:10px;">Close Window</button></div>';
                     } catch (e) {
                       console.log("Window resize/move failed");
                     }
@@ -120,11 +132,13 @@ const AuthCallback = () => {
                 }
               };
 
-              // First attempt after a short delay to ensure message is sent
-              setTimeout(closeWindow, 300);
+              // First attempt immediately
+              closeWindow();
 
-              // Second attempt with longer delay as backup
+              // Additional attempts with increasing delays
+              setTimeout(closeWindow, 300);
               setTimeout(closeWindow, 1000);
+              setTimeout(closeWindow, 3000);
 
               // Return early to prevent any further code execution
               return;
@@ -182,9 +196,12 @@ const AuthCallback = () => {
             try {
               console.log("Auth state change: SIGNED_IN, notifying opener");
 
-              // Force the document to be blank
-              document.body.innerHTML =
-                '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;"><p>Authentication successful! This window will close automatically...</p></div>';
+              // Force the document to be blank with self-closing script
+              document.open();
+              document.write(
+                '<html><head><title>Authentication Complete</title><script>window.close();</script></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;background:#f0f4f8;"><div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);"><h2 style="margin-bottom:10px;color:#2563eb;">Authentication Successful!</h2><p>This window will close automatically...</p><button onclick="window.close();" style="margin-top:15px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;">Close Window</button></div></body></html>',
+              );
+              document.close();
 
               // Block all navigation
               window.onbeforeunload = (e) => {
@@ -210,6 +227,9 @@ const AuthCallback = () => {
                   } catch (e) {}
                   try {
                     window.location.href = "about:blank";
+                  } catch (e) {}
+                  try {
+                    window.location.replace("about:blank");
                   } catch (e) {}
                   try {
                     window.resizeTo(1, 1);

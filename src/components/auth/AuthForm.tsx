@@ -50,10 +50,12 @@ const AuthForm = () => {
         if (data.session && data.session.user) {
           console.log("Valid session found, redirecting to home");
           localStorage.removeItem("auth_in_progress");
+          localStorage.removeItem("auth_started_at");
           navigate("/");
         } else {
           console.log("No valid session found, clearing auth-in-progress flag");
           localStorage.removeItem("auth_in_progress");
+          localStorage.removeItem("auth_started_at");
         }
       }
     };
@@ -74,11 +76,13 @@ const AuthForm = () => {
         // Redirect to home page
         console.log("Received AUTH_COMPLETE message, redirecting to home");
         localStorage.removeItem("auth_in_progress");
+        localStorage.removeItem("auth_started_at");
         setLoading(false);
         navigate("/");
       } else if (event.data?.type === "AUTH_FAILED") {
         console.log("Received AUTH_FAILED message");
         localStorage.removeItem("auth_in_progress");
+        localStorage.removeItem("auth_started_at");
         setLoading(false);
         setError("Authentication failed. Please try again.");
       }
@@ -101,6 +105,7 @@ const AuthForm = () => {
           console.log("User ID:", data.session.user.id);
           clearInterval(authCheckInterval);
           localStorage.removeItem("auth_in_progress");
+          localStorage.removeItem("auth_started_at");
           setLoading(false);
           navigate("/");
         } else {
@@ -146,9 +151,20 @@ const AuthForm = () => {
       // Force the popup to open in a new window, not a new tab
       let popup;
       try {
+        // First close any existing popup with the same name
+        try {
+          if ((window as any).authPopup && !(window as any).authPopup.closed) {
+            (window as any).authPopup.close();
+          }
+        } catch (e) {
+          console.log("Error closing existing popup:", e);
+        }
+
+        // Open a new popup with a unique name (timestamp) to avoid caching issues
+        const popupName = `azure-auth-popup-${Date.now()}`;
         popup = window.open(
           data.url,
-          "azure-auth-popup",
+          popupName,
           `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,toolbar=no,menubar=no,location=no`,
         );
 
@@ -177,8 +193,30 @@ const AuthForm = () => {
       // Store popup reference globally to help with debugging
       (window as any).authPopup = popup;
 
-      // Set a flag to indicate authentication is in progress
+      // Set a flag to indicate authentication is in progress with timestamp
       localStorage.setItem("auth_in_progress", "true");
+      localStorage.setItem("auth_started_at", Date.now().toString());
+
+      // Set up a cleanup timeout in case authentication gets stuck
+      setTimeout(
+        () => {
+          const authStartedAt = localStorage.getItem("auth_started_at");
+          if (authStartedAt) {
+            const startTime = parseInt(authStartedAt, 10);
+            const now = Date.now();
+            // If auth has been in progress for more than 5 minutes, clean up
+            if (now - startTime > 5 * 60 * 1000) {
+              console.log(
+                "Auth process timed out after 5 minutes, cleaning up",
+              );
+              localStorage.removeItem("auth_in_progress");
+              localStorage.removeItem("auth_started_at");
+              setLoading(false);
+            }
+          }
+        },
+        5 * 60 * 1000,
+      ); // 5 minute timeout
 
       // Poll for authentication completion
       const checkPopup = setInterval(() => {
@@ -196,10 +234,12 @@ const AuthForm = () => {
                 );
                 console.log("User ID:", session.user.id);
                 localStorage.removeItem("auth_in_progress");
+                localStorage.removeItem("auth_started_at");
                 navigate("/"); // Use navigate instead of direct location change
               } else {
                 console.log("No valid session found after popup closed");
                 localStorage.removeItem("auth_in_progress");
+                localStorage.removeItem("auth_started_at");
                 setLoading(false); // Reset loading state if not authenticated
                 setError("Authentication was not completed. Please try again.");
               }
@@ -221,14 +261,40 @@ const AuthForm = () => {
                       "Valid session found while popup on callback page",
                     );
                     console.log("User ID:", session.user.id);
-                    // Try to close the popup
+                    // Try to close the popup with multiple methods
                     try {
+                      // First try to replace the content with a self-closing script
+                      try {
+                        popup.document.open();
+                        popup.document.write(
+                          "<html><head><script>window.close();</script></head><body></body></html>",
+                        );
+                        popup.document.close();
+                      } catch (e) {
+                        console.log("Error replacing popup content:", e);
+                      }
+
+                      // Then try standard close
                       popup.close();
+
+                      // Try additional methods
+                      setTimeout(() => {
+                        try {
+                          popup.open("", "_self").close();
+                        } catch (e) {}
+                        try {
+                          popup.location.href = "about:blank";
+                        } catch (e) {}
+                        try {
+                          popup.location.replace("about:blank");
+                        } catch (e) {}
+                      }, 100);
                     } catch (closeError) {
                       console.error("Error closing popup:", closeError);
                     }
                     clearInterval(checkPopup);
                     localStorage.removeItem("auth_in_progress");
+                    localStorage.removeItem("auth_started_at");
                     navigate("/");
                   } else {
                     console.log("No valid session yet, continuing to wait...");
@@ -245,12 +311,14 @@ const AuthForm = () => {
           console.error("Popup check error:", e);
           clearInterval(checkPopup);
           localStorage.removeItem("auth_in_progress");
+          localStorage.removeItem("auth_started_at");
           setLoading(false);
         }
       }, 500);
     } catch (error) {
       console.error("Auth error:", error);
       localStorage.removeItem("auth_in_progress");
+      localStorage.removeItem("auth_started_at");
       setError(error.message);
       setLoading(false);
     }
