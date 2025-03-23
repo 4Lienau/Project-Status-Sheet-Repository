@@ -23,10 +23,27 @@ export const useAuth = () => {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const initAuth = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Error getting session:", error);
+          toast({
+            title: "Authentication Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+        setUser(data.session?.user ?? null);
+      } catch (err) {
+        console.error("Unexpected auth error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
 
     // Listen for auth changes
     const {
@@ -37,7 +54,7 @@ export const useAuth = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [toast]);
 
   // Load user profile when user changes
   useEffect(() => {

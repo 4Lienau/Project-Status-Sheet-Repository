@@ -21,16 +21,15 @@ const AuthForm = () => {
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
           scopes: "email profile openid",
-          flowType: "implicit",
+          // Use pkce flow instead of implicit to avoid popup issues
+          flowType: "pkce",
           skipBrowserRedirect: false,
         },
       });
 
       if (error) throw error;
-      if (!data.url) throw new Error("No URL returned from Supabase");
-
-      // Redirect the user to the OAuth URL
-      window.location.href = data.url;
+      // No need to manually redirect - Supabase will handle it automatically
+      // when skipBrowserRedirect is false
     } catch (error) {
       setError(error.message);
       setLoading(false);

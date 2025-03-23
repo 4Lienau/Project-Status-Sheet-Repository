@@ -12,36 +12,63 @@ const AuthCallback = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if there's an error in the URL (both in search params and hash fragment)
-    const params = new URLSearchParams(location.search);
-    // Parse the hash fragment manually since query-string is having issues
-    const hashFragment = location.hash.substring(1); // Remove the # character
-    const hashParams = {};
+    const handleAuthCallback = async () => {
+      try {
+        // Check if there's an error in the URL (both in search params and hash fragment)
+        const params = new URLSearchParams(location.search);
+        // Parse the hash fragment manually since query-string is having issues
+        const hashFragment = location.hash.substring(1); // Remove the # character
+        const hashParams = {};
 
-    if (hashFragment) {
-      const pairs = hashFragment.split("&");
-      pairs.forEach((pair) => {
-        const [key, value] = pair.split("=");
-        if (key && value) {
-          hashParams[key] = decodeURIComponent(value);
+        if (hashFragment) {
+          const pairs = hashFragment.split("&");
+          pairs.forEach((pair) => {
+            const [key, value] = pair.split("=");
+            if (key && value) {
+              hashParams[key] = decodeURIComponent(value);
+            }
+          });
         }
-      });
-    }
 
-    const errorParam = params.get("error") || hashParams.error;
-    const errorDescription =
-      params.get("error_description") || hashParams.error_description;
+        const errorParam = params.get("error") || hashParams.error;
+        const errorDescription =
+          params.get("error_description") || hashParams.error_description;
 
-    if (errorParam) {
-      setError(
-        typeof errorDescription === "string"
-          ? decodeURIComponent(errorDescription)
-          : "Authentication error",
-      );
-      return;
-    }
+        if (errorParam) {
+          setError(
+            typeof errorDescription === "string"
+              ? decodeURIComponent(errorDescription)
+              : "Authentication error",
+          );
+          return;
+        }
 
-    // Check for the auth callback
+        // For PKCE flow, we need to exchange the code for a session
+        // This is handled automatically by Supabase, but we need to wait for it
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          setError(error.message);
+          return;
+        }
+
+        if (data.session) {
+          // Successfully authenticated, redirect to home
+          navigate("/");
+        } else {
+          // No session and no error, redirect to login
+          navigate("/login");
+        }
+      } catch (err) {
+        console.error("Auth callback error:", err);
+        setError("An unexpected error occurred during authentication");
+      }
+    };
+
+    // Handle the auth callback when the component mounts
+    handleAuthCallback();
+
+    // Set up auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === "SIGNED_IN" && session) {
@@ -51,18 +78,6 @@ const AuthCallback = () => {
         }
       },
     );
-
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/");
-      } else {
-        // If no session and no error, redirect to login
-        if (!errorParam) {
-          navigate("/login");
-        }
-      }
-    });
 
     return () => {
       authListener?.subscription.unsubscribe();
