@@ -432,6 +432,7 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
                   placeholder="Ask Project Pilot..."
                   className="min-h-[40px] max-h-[120px] resize-none py-2 px-3 h-full w-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                   onKeyDown={(e) => {
+                    // Only handle Enter key if it's in the chat textarea
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleSendMessage();

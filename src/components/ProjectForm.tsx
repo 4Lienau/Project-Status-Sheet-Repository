@@ -329,6 +329,24 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         onSubmit={handleSubmit}
         className="max-w-[1200px] mx-auto space-y-3"
         data-has-changes={hasChanges ? "true" : "false"}
+        onKeyDown={(e) => {
+          // Prevent form submission on Enter key press
+          if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+            e.preventDefault();
+            // Find the next focusable element
+            const focusableElements =
+              'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+            const form = e.currentTarget;
+            const elements = Array.from(
+              form.querySelectorAll(focusableElements),
+            );
+            const index = elements.indexOf(e.target as HTMLElement);
+            if (index > -1 && index < elements.length - 1) {
+              const nextElement = elements[index + 1] as HTMLElement;
+              nextElement.focus();
+            }
+          }
+        }}
       >
         {/* Project Pilot Chat Assistant */}
         <ProjectPilot projectId={projectId} projectTitle={formData.title} />
@@ -386,6 +404,30 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 placeholder="Enter project title"
                 className="bg-white/50 backdrop-blur-sm border-gray-200/50"
                 minHeight="50px"
+                onKeyDown={(e) => {
+                  // Handle tab navigation in rich text editor
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    // Find the next focusable element
+                    const focusableElements =
+                      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+                    const form = document.querySelector("form");
+                    if (form) {
+                      const elements = Array.from(
+                        form.querySelectorAll(focusableElements),
+                      );
+                      const index = elements.findIndex(
+                        (el) =>
+                          el.id === "title" ||
+                          el.contains(document.activeElement),
+                      );
+                      if (index > -1 && index < elements.length - 1) {
+                        const nextElement = elements[index + 1] as HTMLElement;
+                        nextElement.focus();
+                      }
+                    }
+                  }
+                }}
               />
             </div>
 
@@ -430,6 +472,30 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 placeholder="Enter project description"
                 className="bg-white/50 backdrop-blur-sm border-gray-200/50"
                 minHeight="120px"
+                onKeyDown={(e) => {
+                  // Handle tab navigation in rich text editor
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    // Find the next focusable element
+                    const focusableElements =
+                      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+                    const form = document.querySelector("form");
+                    if (form) {
+                      const elements = Array.from(
+                        form.querySelectorAll(focusableElements),
+                      );
+                      const index = elements.findIndex(
+                        (el) =>
+                          el.id === "description" ||
+                          el.contains(document.activeElement),
+                      );
+                      if (index > -1 && index < elements.length - 1) {
+                        const nextElement = elements[index + 1] as HTMLElement;
+                        nextElement.focus();
+                      }
+                    }
+                  }
+                }}
               />
             </div>
 
@@ -474,6 +540,30 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 placeholder="Enter value statement"
                 className="bg-white/50 backdrop-blur-sm border-gray-200/50"
                 minHeight="120px"
+                onKeyDown={(e) => {
+                  // Handle tab navigation in rich text editor
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    // Find the next focusable element
+                    const focusableElements =
+                      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+                    const form = document.querySelector("form");
+                    if (form) {
+                      const elements = Array.from(
+                        form.querySelectorAll(focusableElements),
+                      );
+                      const index = elements.findIndex(
+                        (el) =>
+                          el.id === "valueStatement" ||
+                          el.contains(document.activeElement),
+                      );
+                      if (index > -1 && index < elements.length - 1) {
+                        const nextElement = elements[index + 1] as HTMLElement;
+                        nextElement.focus();
+                      }
+                    }
+                  }
+                }}
               />
             </div>
           </div>
