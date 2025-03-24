@@ -278,13 +278,14 @@ const ProjectDashboard = ({
       {isEditing ? (
         <ProjectForm
           initialData={formattedData}
-          projectId={id}
+          projectId={project?.id || id || ""}
           onBack={handleBack}
           onSubmit={async (data) => {
             try {
               setLoading(true);
               console.log("Submitting project update with data:", data);
               const projectId = id || (project && project.id);
+              console.log("Project ID for update:", projectId);
 
               if (!projectId) {
                 console.error("No project ID available for update");

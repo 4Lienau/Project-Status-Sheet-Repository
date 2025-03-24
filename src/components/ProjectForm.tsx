@@ -2,7 +2,7 @@ import React, { useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import ProjectPilot from "@/components/chat/ProjectPilot";
 import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
-import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +40,7 @@ import { supabase } from "@/lib/supabase";
 import DepartmentSelect from "@/components/DepartmentSelect";
 import { useNavigate } from "react-router-dom";
 import { useUnsavedChangesWarning } from "@/lib/hooks/useUnsavedChangesWarning";
+import { projectService } from "@/lib/services/project";
 
 interface ProjectFormProps {
   onBack?: () => void;
@@ -123,8 +124,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   initialData,
   onSubmit,
   onBack,
-  projectId = "",
+  projectId,
 }) => {
+  // Log the projectId for debugging
+  console.log("ProjectForm received projectId:", projectId);
+  // Ensure projectId is a string and has a default value
+  const safeProjectId = projectId || "";
   const [formData, setFormData] = React.useState(() => ({
     ...defaultFormData,
     ...initialData,
@@ -408,6 +413,43 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const cardClasses =
     "p-4 bg-white rounded-2xl border border-gray-200 shadow-sm";
 
+  const handleDeleteProject = async () => {
+    try {
+      console.log("Attempting to delete project with ID:", safeProjectId);
+      if (!safeProjectId || safeProjectId.trim() === "") {
+        toast({
+          title: "Error",
+          description: "No project ID found. Cannot delete project.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const success = await projectService.deleteProject(safeProjectId);
+      if (success) {
+        toast({
+          title: "Project Deleted",
+          description: "The project has been successfully deleted.",
+          className: "bg-green-50 border-green-200",
+        });
+        if (onBack) onBack();
+        else navigate("/");
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the project.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting the project.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <TooltipProvider>
       <form
@@ -438,7 +480,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         }}
       >
         {/* Project Pilot Chat Assistant */}
-        <ProjectPilot projectId={projectId} projectTitle={formData.title} />
+        <ProjectPilot projectId={safeProjectId} projectTitle={formData.title} />
         {/* Project Title, Description and Value Statement */}
         <div className={cardClasses}>
           <div className="space-y-4">
@@ -474,15 +516,30 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                     </Tooltip>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  onClick={() => setShowGanttChart(true)}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <BarChart2 className="h-4 w-4" />
-                  View Gantt Chart
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* Delete Project Button */}
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setPendingNavigationAction(() => handleDeleteProject);
+                      setShowUnsavedChangesDialog(true);
+                    }}
+                    variant="outline"
+                    className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Project
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setShowGanttChart(true)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <BarChart2 className="h-4 w-4" />
+                    View Gantt Chart
+                  </Button>
+                </div>
               </div>
               <RichTextEditor
                 id="title"
@@ -1735,10 +1792,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+              <AlertDialogTitle>
+                {pendingNavigationAction &&
+                pendingNavigationAction.toString().includes("deleteProject")
+                  ? "Delete Project"
+                  : "Unsaved Changes"}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                You have unsaved changes. Are you sure you want to leave without
-                saving?
+                {pendingNavigationAction &&
+                pendingNavigationAction.toString().includes("deleteProject")
+                  ? "Are you sure you want to delete this project? This action cannot be undone."
+                  : "You have unsaved changes. Are you sure you want to leave without saving?"}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1757,23 +1821,36 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                     pendingNavigationAction();
                   }
                 }}
+                className={
+                  pendingNavigationAction &&
+                  pendingNavigationAction.toString().includes("deleteProject")
+                    ? "bg-red-600 hover:bg-red-700 text-white"
+                    : ""
+                }
               >
-                Leave Without Saving
+                {pendingNavigationAction &&
+                pendingNavigationAction.toString().includes("deleteProject")
+                  ? "Delete Project"
+                  : "Leave Without Saving"}
               </AlertDialogAction>
-              <Button
-                onClick={() => {
-                  handleSubmit(
-                    new Event("submit") as unknown as React.FormEvent,
-                  );
-                  setShowUnsavedChangesDialog(false);
-                  if (pendingNavigationAction) {
-                    pendingNavigationAction();
-                  }
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                Save and Leave
-              </Button>
+              {!pendingNavigationAction
+                ?.toString()
+                .includes("deleteProject") && (
+                <Button
+                  onClick={() => {
+                    handleSubmit(
+                      new Event("submit") as unknown as React.FormEvent,
+                    );
+                    setShowUnsavedChangesDialog(false);
+                    if (pendingNavigationAction) {
+                      pendingNavigationAction();
+                    }
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Save and Leave
+                </Button>
+              )}
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
