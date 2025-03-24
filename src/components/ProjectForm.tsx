@@ -141,6 +141,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     console.log("Form data department:", formData.department);
   }, [formData.department]);
 
+  // Track user interaction with the form
+  const [hasUserInteracted, setHasUserInteracted] = React.useState(false);
+
   // Track changes by comparing current form data with initial data
   useEffect(() => {
     if (!initialData) return;
@@ -199,12 +202,23 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     const formHasChanges = !isEqual(formData, initialData);
     console.log("Form has changes:", formHasChanges);
     setHasChanges(formHasChanges);
+
+    // Set the data-has-changes attribute on the form element
+    const formElement = document.querySelector("form");
+    if (formElement) {
+      formElement.setAttribute("data-has-changes", formHasChanges.toString());
+      formElement.setAttribute(
+        "data-user-interaction",
+        hasUserInteracted.toString(),
+      );
+    }
   }, [formData, initialData]);
 
-  // Reset hasChanges when initialData changes (after a successful save)
+  // Reset hasChanges and hasUserInteracted when initialData changes (after a successful save)
   useEffect(() => {
     if (initialData) {
       setHasChanges(false);
+      setHasUserInteracted(false);
     }
   }, [initialData]);
 
@@ -339,6 +353,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         onSubmit={handleSubmit}
         className="max-w-[1200px] mx-auto space-y-3"
         data-has-changes={hasChanges ? "true" : "false"}
+        data-user-interaction={hasUserInteracted ? "true" : "false"}
+        onClick={() => !hasUserInteracted && setHasUserInteracted(true)}
+        onChange={() => !hasUserInteracted && setHasUserInteracted(true)}
         onKeyDown={(e) => {
           // Prevent form submission on Enter key press
           if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {

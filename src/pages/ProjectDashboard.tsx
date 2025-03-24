@@ -88,7 +88,11 @@ const ProjectDashboard = ({
   // Function to check for unsaved changes
   const checkUnsavedChanges = React.useCallback(() => {
     const formElement = document.querySelector("form");
-    return formElement?.getAttribute("data-has-changes") === "true";
+    // Only consider changes if the form has been interacted with
+    const hasChanges = formElement?.getAttribute("data-has-changes") === "true";
+    const hasInteracted =
+      formElement?.getAttribute("data-user-interaction") === "true";
+    return hasChanges && hasInteracted;
   }, []);
 
   React.useEffect(() => {
@@ -106,9 +110,11 @@ const ProjectDashboard = ({
     // Add beforeunload event listener to catch browser navigation/refresh
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isEditing && checkUnsavedChanges()) {
+        // Standard way to show a confirmation dialog before unloading
         e.preventDefault();
-        e.returnValue = "";
-        return "";
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave without saving?";
+        return "You have unsaved changes. Are you sure you want to leave without saving?";
       }
     };
 
@@ -183,7 +189,22 @@ const ProjectDashboard = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={isEditing ? onBack : onBack}
+          onClick={() => {
+            // Only check for unsaved changes if in editing mode
+            if (isEditing) {
+              // Only show dialog if there are actual changes
+              if (checkUnsavedChanges()) {
+                // Show confirmation dialog
+                const confirmExit = window.confirm(
+                  "You have unsaved changes. Are you sure you want to leave without saving?",
+                );
+                if (!confirmExit) {
+                  return; // Stay on current page
+                }
+              }
+            }
+            onBack();
+          }}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -505,15 +526,27 @@ const ProjectDashboard = ({
                         (a) => a.description,
                       ) || [],
                     next_period_activities:
-                      currentProject.next_period_activities?.map(
-                        (a) => a.description,
-                      ) || [],
+                      currentProject.next_period_activities?.map((a) => ({
+                        description: a.description || "",
+                        date: a.date || new Date().toISOString().split("T")[0],
+                        completion: a.completion || 0,
+                        assignee: a.assignee || "",
+                      })) || [],
                     risks:
-                      currentProject.risks?.map((r) => r.description) || [],
+                      currentProject.risks?.map((r) => ({
+                        description: r.description,
+                        impact: r.impact,
+                      })) || [],
                     considerations:
                       currentProject.considerations?.map(
                         (c) => c.description,
                       ) || [],
+                    changes:
+                      currentProject.changes?.map((c) => ({
+                        change: c.change || "",
+                        impact: c.impact || "",
+                        disposition: c.disposition || "",
+                      })) || [],
                   });
 
                   if (newProject) {
@@ -539,30 +572,40 @@ const ProjectDashboard = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <AlertDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              project and all its data.
+              Are you sure you want to delete this project? This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={async () => {
                 try {
-                  await projectService.deleteProject(currentProject.id);
-                  toast({
-                    title: "Project deleted",
-                    description: "The project has been successfully deleted.",
-                  });
-                  onBack();
+                  const success = await projectService.deleteProject(
+                    currentProject.id,
+                  );
+                  if (success) {
+                    toast({
+                      title: "Project deleted",
+                      description: "The project has been successfully deleted.",
+                    });
+                    navigate("/");
+                  } else {
+                    toast({
+                      title: "Error",
+                      description: "Failed to delete project",
+                      variant: "destructive",
+                    });
+                  }
                 } catch (error) {
                   toast({
                     title: "Error",
@@ -571,12 +614,14 @@ const ProjectDashboard = ({
                   });
                 }
               }}
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       <Toaster />
     </div>
   );

@@ -27,6 +27,8 @@ export function useUnsavedChangesWarning(
       (event) => {
         if (hasUnsavedChanges) {
           event.preventDefault();
+          event.returnValue =
+            "You have unsaved changes. Are you sure you want to leave?";
           return "You have unsaved changes. Are you sure you want to leave?";
         }
       },
@@ -49,8 +51,9 @@ export function useUnsavedChangesWarning(
       const onBeforeUnload = (e: BeforeUnloadEvent) => {
         if (hasUnsavedChanges) {
           e.preventDefault();
-          e.returnValue = "";
-          return "";
+          e.returnValue =
+            "You have unsaved changes. Are you sure you want to leave?";
+          return "You have unsaved changes. Are you sure you want to leave?";
         }
       };
 
