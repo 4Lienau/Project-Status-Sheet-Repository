@@ -323,8 +323,8 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
         userSelect: isDragging ? "none" : "auto",
       }}
       onMouseDown={handleMouseDown}
-      // Remove the key prop from being spread
-      tempoelementid={undefined}
+      // Don't spread any props that might include 'key'
+      // Just set the specific props we need
     >
       {/* Header */}
       <div className="flex items-center justify-between bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-t-lg drag-handle cursor-grab">

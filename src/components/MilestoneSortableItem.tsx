@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -114,11 +115,21 @@ export function MilestoneSortableItem({
                 <ChevronRight className="h-4 w-4" />
               )}
             </Button>
-            <Input
-              placeholder="Milestone"
-              value={milestone.milestone}
-              onChange={(e) => onUpdate({ milestone: e.target.value })}
-            />
+            <div className="relative flex-1">
+              <Input
+                placeholder="Milestone"
+                value={milestone.milestone}
+                onChange={(e) => onUpdate({ milestone: e.target.value })}
+              />
+              {milestone.tasks && milestone.tasks.length > 0 && (
+                <div
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500"
+                  title={`${milestone.tasks.length} task${milestone.tasks.length > 1 ? "s" : ""}`}
+                >
+                  <ListChecks className="h-4 w-4" />
+                </div>
+              )}
+            </div>
           </div>
           <Input
             placeholder="Owner"
