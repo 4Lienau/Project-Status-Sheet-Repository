@@ -2,7 +2,7 @@ import React, { useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import ProjectPilot from "@/components/chat/ProjectPilot";
 import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -258,6 +258,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const [pendingGenerationType, setPendingGenerationType] = React.useState<
     "description" | "value" | null
   >(null);
+  const [isGeneratingAnalysis, setIsGeneratingAnalysis] = React.useState(false);
   const [isAnalysisExpanded, setIsAnalysisExpanded] = React.useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -303,6 +304,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         return;
       }
 
+      // Show loading toast for analysis
+      if (type === "analysis") {
+        setIsGeneratingAnalysis(true);
+        toast({
+          title: "Analyzing Project",
+          description: "Generating executive summary based on project data...",
+          duration: 10000, // 10 seconds or until dismissed
+        });
+      }
+
       // For analysis, we need to pass the entire form data to get a comprehensive analysis
       const content = await aiService.generateContent(
         type,
@@ -329,6 +340,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           ...prev,
           projectAnalysis: content,
         }));
+        setIsGeneratingAnalysis(false);
+        toast({
+          title: "Analysis Complete",
+          description: "Executive summary has been generated",
+          className: "bg-green-50 border-green-200",
+        });
       } else {
         setFormData((prev) => ({
           ...prev,
@@ -336,6 +353,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         }));
       }
     } catch (error) {
+      if (type === "analysis") {
+        setIsGeneratingAnalysis(false);
+      }
       toast({
         title: "Error",
         description: `Failed to generate ${type}`,
@@ -630,10 +650,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                     handleGenerateContent("analysis");
                     setIsAnalysisExpanded(true);
                   }}
+                  disabled={isGeneratingAnalysis}
                   className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200"
                 >
-                  <Wand2 className="h-4 w-4 mr-2" />
-                  AI Executive Summary
+                  {isGeneratingAnalysis ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="h-4 w-4 mr-2" />
+                      AI Executive Summary
+                    </>
+                  )}
                 </Button>
               </div>
               {isAnalysisExpanded && formData.projectAnalysis && (
