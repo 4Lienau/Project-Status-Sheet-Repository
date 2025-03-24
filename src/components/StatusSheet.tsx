@@ -232,7 +232,9 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                           ? "Project on Hold"
                           : data.status === "cancelled"
                             ? "Project Cancelled"
-                            : "In Progress"}
+                            : data.status === "draft"
+                              ? "Project Draft"
+                              : "In Progress"}
                     </div>
                   </div>
                 </div>

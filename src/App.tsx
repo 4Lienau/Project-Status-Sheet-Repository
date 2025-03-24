@@ -12,6 +12,7 @@ import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
 import AuthCallback from "./pages/AuthCallback";
 import LoginPage from "./pages/LoginPage";
+import ProjectDashboard from "./pages/ProjectDashboard";
 import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
 
@@ -59,51 +60,55 @@ function App() {
 
   return (
     <Suspense fallback={<p>Loading...</p>}>
-      <>
-        {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
+      {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
-          {/* Protected routes */}
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/status-sheet/:id"
-            element={
-              <ProtectedRoute>
-                <StatusSheetView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
+        {/* Protected routes */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/status-sheet/:id"
+          element={
+            <ProtectedRoute>
+              <StatusSheetView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:id"
+          element={
+            <ProtectedRoute>
+              <ProjectDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
+            </ProtectedRoute>
+          }
+        />
 
-          {import.meta.env.VITE_TEMPO === "true" && (
-            <Route path="/tempobook/*" />
-          )}
-        </Routes>
-      </>
+        {import.meta.env.VITE_TEMPO === "true" && <Route path="/tempobook/*" />}
+      </Routes>
     </Suspense>
   );
 }

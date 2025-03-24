@@ -1,209 +1,242 @@
-import React from "react";
-import { Button } from "@/components/ui/button";
-import html2canvas from "html2canvas";
-import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
-import {
-  Edit,
-  ArrowLeft,
-  Trash2,
-  Download,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  BarChart2,
-} from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { Toaster } from "@/components/ui/toaster";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { projectService } from "@/lib/services/project";
-import {
-  projectVersionsService,
-  type ProjectVersion,
-} from "@/lib/services/projectVersions";
-import StatusSheet from "@/components/StatusSheet";
+import { Button } from "@/components/ui/button";
+import { Loader2, ArrowLeft } from "lucide-react";
 import ProjectForm from "@/components/ProjectForm";
-import type { Project } from "@/lib/services/project";
-import { useNavigate } from "react-router-dom";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/lib/hooks/useAuth";
+import StatusSheet from "@/components/StatusSheet";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ProjectDashboardProps {
-  project: Project & {
-    milestones?: Array<{
-      date: string;
-      milestone: string;
-      owner: string;
-      completion: number;
-      status: "green" | "yellow" | "red";
-    }>;
-    accomplishments?: Array<{ description: string }>;
-    next_period_activities?: Array<{ description: string }>;
-    risks?: Array<{ description: string }>;
-    considerations?: Array<{ description: string }>;
-    changes?: Array<{ change: string; impact: string; disposition: string }>;
-  };
-  onBack: () => void;
+  project?: any;
+  onBack?: () => void;
+  initialEditMode?: boolean;
 }
-
-type ProjectState = ProjectDashboardProps["project"];
 
 const ProjectDashboard = ({
   project: initialProject,
   onBack,
   initialEditMode = false,
-}: ProjectDashboardProps & { initialEditMode?: boolean }) => {
-  const [currentProject, setCurrentProject] =
-    React.useState<ProjectState>(initialProject);
-  const [latestProject, setLatestProject] =
-    React.useState<ProjectState>(initialProject);
-  const { toast } = useToast();
-  const [isEditing, setIsEditing] = React.useState(initialEditMode);
-  const [versions, setVersions] = React.useState<ProjectVersion[]>([]);
-  const [currentVersionIndex, setCurrentVersionIndex] = React.useState(-1);
-  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] =
-    React.useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [showGanttChart, setShowGanttChart] = React.useState(false);
-  const [newProjectTitle, setNewProjectTitle] = React.useState("");
+}: ProjectDashboardProps) => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { toast } = useToast();
+  const [project, setProject] = useState<any>(initialProject || null);
+  const [loading, setLoading] = useState(!initialProject);
+  const [error, setError] = useState("");
+  const [isEditing, setIsEditing] = useState(initialEditMode);
 
-  // Function to check for unsaved changes
-  const checkUnsavedChanges = React.useCallback(() => {
-    const formElement = document.querySelector("form");
-    // Only consider changes if the form has been interacted with
-    const hasChanges = formElement?.getAttribute("data-has-changes") === "true";
-    const hasInteracted =
-      formElement?.getAttribute("data-user-interaction") === "true";
-    return hasChanges && hasInteracted;
-  }, []);
+  useEffect(() => {
+    // Skip fetching if project was provided as a prop
+    if (initialProject) {
+      console.log("Using project from props, skipping fetch");
+      setProject(initialProject);
+      setLoading(false);
+      return;
+    }
 
-  React.useEffect(() => {
-    const loadVersions = async () => {
-      const versions = await projectVersionsService.getVersions(
-        initialProject.id,
-      );
-      setVersions(versions);
-      setCurrentVersionIndex(-1); // -1 means current version
-      setCurrentProject(initialProject);
-      setLatestProject(initialProject);
-    };
-    loadVersions();
+    const fetchProject = async () => {
+      if (!id) {
+        setLoading(false);
+        setError("No project ID provided");
+        return;
+      }
 
-    // Add beforeunload event listener to catch browser navigation/refresh
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isEditing && checkUnsavedChanges()) {
-        // Standard way to show a confirmation dialog before unloading
-        e.preventDefault();
-        e.returnValue =
-          "You have unsaved changes. Are you sure you want to leave without saving?";
-        return "You have unsaved changes. Are you sure you want to leave without saving?";
+      try {
+        setLoading(true);
+        console.log("Fetching project with ID:", id);
+        const projectData = await projectService.getProject(id);
+        console.log("Project data received:", projectData ? "success" : "null");
+        if (projectData) {
+          setProject(projectData);
+        } else {
+          setError("Project not found");
+        }
+      } catch (err) {
+        console.error("Error fetching project:", err);
+        setError("Failed to load project: " + (err.message || String(err)));
+      } finally {
+        setLoading(false);
       }
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    fetchProject();
+  }, [id, initialProject]);
 
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [initialProject.id, isEditing, checkUnsavedChanges]);
-
-  const formatCurrency = (value: number) => {
-    return value
-      .toLocaleString("en-US", {
-        style: "currency",
-        currency: "USD",
-      })
-      .replace("$", "");
+  const handleBack = () => {
+    if (onBack) {
+      // Use the callback from props if provided
+      onBack();
+    } else {
+      // Otherwise navigate directly
+      navigate("/");
+    }
   };
 
-  const formattedData = {
-    title: currentProject?.title || "",
-    description: currentProject?.description || "",
-    valueStatement: currentProject?.value_statement || "",
-    projectAnalysis: currentProject?.project_analysis || "",
-    status: currentProject?.status || "active",
-    health_calculation_type:
-      currentProject?.health_calculation_type || "automatic",
-    manual_health_percentage: currentProject?.manual_health_percentage || 0,
-    budget: {
-      total: currentProject?.budget_total
-        ? formatCurrency(currentProject.budget_total)
-        : "0.00",
-      actuals: currentProject?.budget_actuals
-        ? formatCurrency(currentProject.budget_actuals)
-        : "0.00",
-      forecast: currentProject?.budget_forecast
-        ? formatCurrency(currentProject.budget_forecast)
-        : "0.00",
-    },
-    charterLink: currentProject?.charter_link || "",
-    sponsors: currentProject?.sponsors || "",
-    businessLeads: currentProject?.business_leads || "",
-    projectManager: currentProject?.project_manager || "",
-    milestones: currentProject?.milestones || [],
-    accomplishments:
-      currentProject?.accomplishments?.map((a) => a.description) || [],
-    nextPeriodActivities:
-      currentProject?.next_period_activities?.map((a) => ({
-        description: a.description || "",
-        date: a.date || new Date().toISOString().split("T")[0],
-        completion: a.completion || 0,
-        assignee: a.assignee || "",
-      })) || [],
-    risks:
-      currentProject?.risks?.map((r) => ({
-        description: r.description,
-        impact: r.impact,
-      })) || [],
-    considerations:
-      currentProject?.considerations?.map((c) => c.description) || [],
-    changes:
-      currentProject?.changes?.map((c) => ({
-        change: c.change || "",
-        impact: c.impact || "",
-        disposition: c.disposition || "",
-      })) || [],
+  const formatCurrency = (value: number | null | undefined) => {
+    return value
+      ? value
+          .toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD",
+          })
+          .replace("$", "")
+      : "0.00";
+  };
+
+  // Format project data for the form
+  const getFormattedData = () => {
+    if (!project) {
+      console.log("No project data available for formatting");
+      return {
+        title: "",
+        description: "",
+        valueStatement: "",
+        projectAnalysis: "",
+        status: "active",
+        health_calculation_type: "automatic",
+        manual_health_percentage: 0,
+        budget: { total: "0.00", actuals: "0.00", forecast: "0.00" },
+        charterLink: "",
+        sponsors: "",
+        businessLeads: "",
+        projectManager: "",
+        department: "",
+        milestones: [],
+        accomplishments: [],
+        nextPeriodActivities: [],
+        risks: [],
+        considerations: [],
+        changes: [],
+      };
+    }
+
+    return {
+      title: project.title || "",
+      description: project.description || "",
+      valueStatement: project.value_statement || "",
+      projectAnalysis: project.project_analysis || "",
+      status: project.status || "active",
+      health_calculation_type: project.health_calculation_type || "automatic",
+      manual_health_percentage: project.manual_health_percentage || 0,
+      budget: {
+        total: project.budget_total
+          ? formatCurrency(project.budget_total)
+          : "0.00",
+        actuals: project.budget_actuals
+          ? formatCurrency(project.budget_actuals)
+          : "0.00",
+        forecast: project.budget_forecast
+          ? formatCurrency(project.budget_forecast)
+          : "0.00",
+      },
+      charterLink: project.charter_link || "",
+      sponsors: project.sponsors || "",
+      businessLeads: project.business_leads || "",
+      projectManager: project.project_manager || "",
+      department: project.department || "",
+      milestones: project.milestones || [],
+      accomplishments: project.accomplishments?.map((a) => a.description) || [],
+      nextPeriodActivities:
+        project.next_period_activities?.map((a) => ({
+          description: a.description || "",
+          date: a.date || new Date().toISOString().split("T")[0],
+          completion: a.completion || 0,
+          assignee: a.assignee || "",
+        })) || [],
+      risks:
+        project.risks?.map((r) => ({
+          description: r.description || "",
+          impact: r.impact || "",
+        })) || [],
+      considerations: project.considerations?.map((c) => c.description) || [],
+      changes:
+        project.changes?.map((c) => ({
+          change: c.change || "",
+          impact: c.impact || "",
+          disposition: c.disposition || "",
+        })) || [],
+    };
+  };
+
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        if (loading) {
+          console.log("Loading timeout reached, forcing state update");
+          setLoading(false);
+          if (!project && !error) {
+            setError("Loading timed out. Please try refreshing the page.");
+          }
+        }
+      }, 10000); // 10 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, project, error]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-muted-foreground">Loading project data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <p className="text-red-500">{error}</p>
+        <Link to="/">
+          <Button onClick={handleBack}>Back to Projects</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const formattedData = getFormattedData();
+
+  // Function to check for unsaved changes
+  const checkUnsavedChanges = (callback: () => void) => {
+    if (isEditing) {
+      const formElement = document.querySelector("form");
+      const formHasChanges =
+        formElement?.getAttribute("data-has-changes") === "true";
+      const formHasInteraction =
+        formElement?.getAttribute("data-user-interaction") === "true";
+
+      if (formHasChanges && formHasInteraction) {
+        const confirmLeave = window.confirm(
+          "You have unsaved changes. Are you sure you want to leave without saving?",
+        );
+        if (confirmLeave) {
+          callback();
+        }
+      } else {
+        callback();
+      }
+    } else {
+      callback();
+    }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
+        {/* Use navigateSafely from ProjectForm when in edit mode */}
         <Button
           variant="ghost"
-          size="sm"
           onClick={() => {
-            // Only check for unsaved changes if in editing mode
             if (isEditing) {
-              // Only show dialog if there are actual changes
-              if (checkUnsavedChanges()) {
-                // Show confirmation dialog
-                const confirmExit = window.confirm(
-                  "You have unsaved changes. Are you sure you want to leave without saving?",
-                );
-                if (!confirmExit) {
-                  return; // Stay on current page
-                }
-              }
+              // Check for unsaved changes before navigating back
+              checkUnsavedChanges(handleBack);
+            } else {
+              handleBack();
             }
-            onBack();
           }}
           className="flex items-center gap-2"
         >
@@ -211,128 +244,61 @@ const ProjectDashboard = ({
           Back to Projects
         </Button>
 
-        {/* Version controls */}
-        {versions.length > 0 && !isEditing && (
-          <div className="flex items-center gap-2 bg-muted/30 px-3 py-1.5 rounded-md">
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={currentVersionIndex === versions.length - 1}
-              onClick={() => {
-                if (currentVersionIndex < versions.length - 1) {
-                  const nextIndex = currentVersionIndex + 1;
-                  setCurrentVersionIndex(nextIndex);
-                  setCurrentProject(versions[nextIndex].data);
-                }
-              }}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm text-muted-foreground space-y-1 min-w-[120px] text-center">
-              <div>
-                {currentVersionIndex === -1
-                  ? "Current Version"
-                  : `Version ${versions.length - currentVersionIndex}/${versions.length}`}
-              </div>
-              {currentVersionIndex !== -1 && versions[currentVersionIndex] && (
-                <div className="text-xs opacity-70">
-                  {new Date(
-                    versions[currentVersionIndex].created_at,
-                  ).toLocaleDateString()}{" "}
-                  {new Date(
-                    versions[currentVersionIndex].created_at,
-                  ).toLocaleTimeString()}
-                </div>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={currentVersionIndex === -1}
-              onClick={() => {
-                if (currentVersionIndex > -1) {
-                  const prevIndex = currentVersionIndex - 1;
-                  setCurrentVersionIndex(prevIndex);
-                  if (prevIndex === -1) {
-                    setCurrentProject(latestProject);
-                  } else {
-                    setCurrentProject(versions[prevIndex].data);
-                  }
-                }
-              }}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        <Button
+          onClick={() => {
+            if (isEditing) {
+              // Check for unsaved changes before switching to Status Sheet view
+              const formElement = document.querySelector("form");
+              const formHasChanges =
+                formElement?.getAttribute("data-has-changes") === "true";
+              const formHasInteraction =
+                formElement?.getAttribute("data-user-interaction") === "true";
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-4">
-          <Button
-            onClick={() => {
-              if (isEditing) {
-                // Check for unsaved changes before switching to view mode
-                if (checkUnsavedChanges()) {
-                  // Show confirmation dialog
-                  const confirmExit = window.confirm(
-                    "You have unsaved changes. Are you sure you want to leave without saving?",
-                  );
-                  if (!confirmExit) {
-                    return; // Stay in edit mode
-                  }
+              if (formHasChanges && formHasInteraction) {
+                // Show confirmation dialog
+                const confirmLeave = window.confirm(
+                  "You have unsaved changes. Are you sure you want to leave without saving?",
+                );
+                if (confirmLeave) {
+                  setIsEditing(false);
                 }
-                setIsEditing(false);
               } else {
-                setIsEditing(true);
+                setIsEditing(false);
               }
-            }}
-            variant="outline"
-            className="flex items-center gap-2"
-            disabled={currentVersionIndex !== -1}
-          >
-            <Edit className="h-4 w-4" />
-            {isEditing ? "View Status Sheet" : "Edit Project"}
-          </Button>
-
-          {isEditing && (
-            <>
-              <Button
-                onClick={() => {
-                  setNewProjectTitle(`${currentProject.title} (Copy)`);
-                  setIsDuplicateDialogOpen(true);
-                }}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Copy className="h-4 w-4" /> Duplicate Project
-              </Button>
-              <Button
-                onClick={() => setIsDeleteDialogOpen(true)}
-                variant="destructive"
-                className="flex items-center gap-2"
-              >
-                <Trash2 className="h-4 w-4" /> Delete Project
-              </Button>
-            </>
-          )}
-        </div>
+            } else {
+              setIsEditing(true);
+            }
+          }}
+          variant="outline"
+        >
+          {isEditing ? "View Status Sheet" : "Edit Project"}
+        </Button>
       </div>
 
       {isEditing ? (
         <ProjectForm
           initialData={formattedData}
-          projectId={currentProject.id}
+          projectId={id}
+          onBack={handleBack}
           onSubmit={async (data) => {
             try {
-              // Get current user's department if needed
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("department")
-                .eq("id", user?.id)
-                .single();
+              setLoading(true);
+              console.log("Submitting project update with data:", data);
+              const projectId = id || (project && project.id);
+
+              if (!projectId) {
+                console.error("No project ID available for update");
+                toast({
+                  title: "Error",
+                  description: "No project ID available for update",
+                  variant: "destructive",
+                });
+                setLoading(false);
+                return false;
+              }
 
               const updatedProject = await projectService.updateProject(
-                currentProject.id,
+                projectId,
                 {
                   title: data.title,
                   description: data.description || null,
@@ -358,10 +324,7 @@ const ProjectDashboard = ({
                   sponsors: data.sponsors,
                   business_leads: data.businessLeads,
                   project_manager: data.projectManager,
-                  department:
-                    data.department ||
-                    currentProject.department ||
-                    profile?.department,
+                  department: data.department,
                   milestones: data.milestones
                     .filter((m) => m.milestone.trim() !== "")
                     .map((m) => ({
@@ -370,7 +333,7 @@ const ProjectDashboard = ({
                       owner: m.owner,
                       completion: m.completion,
                       status: m.status,
-                      tasks: m.tasks, // Make sure to include tasks
+                      tasks: m.tasks,
                     })),
                   accomplishments: data.accomplishments.filter(
                     (a) => a.trim() !== "",
@@ -383,11 +346,20 @@ const ProjectDashboard = ({
                       completion: a.completion,
                       assignee: a.assignee,
                     })),
-                  risks: data.risks.filter((r) =>
-                    typeof r === "string"
-                      ? r.trim() !== ""
-                      : r.description.trim() !== "",
-                  ),
+                  risks: data.risks
+                    .filter((r) =>
+                      typeof r === "string"
+                        ? r.trim() !== ""
+                        : r.description && r.description.trim() !== "",
+                    )
+                    .map((r) =>
+                      typeof r === "string"
+                        ? { description: r, impact: "" }
+                        : {
+                            description: r.description || "",
+                            impact: r.impact || "",
+                          },
+                    ),
                   considerations: data.considerations.filter(
                     (c) => c.trim() !== "",
                   ),
@@ -401,228 +373,43 @@ const ProjectDashboard = ({
                 },
               );
 
+              console.log(
+                "Update project response:",
+                updatedProject ? "success" : "failed",
+              );
               if (updatedProject) {
-                // Create a new version
-                await projectVersionsService.createVersion(
-                  currentProject.id,
-                  updatedProject,
-                );
-
-                setCurrentProject(updatedProject);
-                setLatestProject(updatedProject);
+                setProject(updatedProject);
                 toast({
                   title: "Changes saved",
                   description: "Your changes have been saved successfully",
                   className: "bg-green-50 border-green-200",
                 });
-                // Stay in edit mode
-
-                // Refresh versions
-                const versions = await projectVersionsService.getVersions(
-                  currentProject.id,
-                );
-                setVersions(versions);
-                setCurrentVersionIndex(-1);
-
-                // Return true to indicate successful save to the form component
+                // Removed automatic switch to Status Sheet view
                 return true;
               }
+              toast({
+                title: "Error",
+                description:
+                  "Failed to update project. No response from server.",
+                variant: "destructive",
+              });
+              return false;
             } catch (error) {
+              console.error("Error updating project:", error);
               toast({
                 title: "Error",
                 description: "Failed to update project",
                 variant: "destructive",
               });
               return false;
+            } finally {
+              setLoading(false);
             }
           }}
         />
       ) : (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setShowGanttChart(true)}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <BarChart2 className="h-4 w-4" />
-              View Gantt Chart
-            </Button>
-          </div>
-          <StatusSheet data={formattedData} />
-        </div>
+        <StatusSheet data={formattedData} />
       )}
-
-      {/* Gantt Chart Dialog */}
-      <GanttChartDialog
-        open={showGanttChart}
-        onOpenChange={setShowGanttChart}
-        milestones={formattedData.milestones}
-        projectTitle={formattedData.title}
-      />
-
-      <Dialog
-        open={isDuplicateDialogOpen}
-        onOpenChange={setIsDuplicateDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Duplicate Project</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={newProjectTitle}
-              onChange={(e) => setNewProjectTitle(e.target.value)}
-              placeholder="Enter new project title"
-              className="w-full"
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDuplicateDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!newProjectTitle.trim()) {
-                  toast({
-                    title: "Error",
-                    description: "Please enter a project title",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-
-                try {
-                  const newProject = await projectService.createProject({
-                    title: newProjectTitle,
-                    description: currentProject.description,
-                    valueStatement: currentProject.value_statement,
-                    project_analysis: currentProject.project_analysis,
-                    status: currentProject.status,
-                    budget_total: currentProject.budget_total,
-                    budget_actuals: currentProject.budget_actuals,
-                    budget_forecast: currentProject.budget_forecast,
-                    charter_link: currentProject.charter_link,
-                    sponsors: currentProject.sponsors,
-                    business_leads: currentProject.business_leads,
-                    project_manager: currentProject.project_manager,
-                    health_calculation_type:
-                      currentProject.health_calculation_type,
-                    manual_health_percentage:
-                      currentProject.manual_health_percentage,
-                    milestones:
-                      currentProject.milestones?.map((m) => ({
-                        date: m.date,
-                        milestone: m.milestone,
-                        owner: m.owner,
-                        completion: m.completion,
-                        status: m.status,
-                      })) || [],
-                    accomplishments:
-                      currentProject.accomplishments?.map(
-                        (a) => a.description,
-                      ) || [],
-                    next_period_activities:
-                      currentProject.next_period_activities?.map((a) => ({
-                        description: a.description || "",
-                        date: a.date || new Date().toISOString().split("T")[0],
-                        completion: a.completion || 0,
-                        assignee: a.assignee || "",
-                      })) || [],
-                    risks:
-                      currentProject.risks?.map((r) => ({
-                        description: r.description,
-                        impact: r.impact,
-                      })) || [],
-                    considerations:
-                      currentProject.considerations?.map(
-                        (c) => c.description,
-                      ) || [],
-                    changes:
-                      currentProject.changes?.map((c) => ({
-                        change: c.change || "",
-                        impact: c.impact || "",
-                        disposition: c.disposition || "",
-                      })) || [],
-                  });
-
-                  if (newProject) {
-                    toast({
-                      title: "Project duplicated",
-                      description:
-                        "The project has been successfully duplicated.",
-                    });
-                    setIsDuplicateDialogOpen(false);
-                    navigate(`/status-sheet/${newProject.id}`);
-                  }
-                } catch (error) {
-                  toast({
-                    title: "Error",
-                    description: "Failed to duplicate project",
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              Duplicate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Project</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this project? This action cannot
-              be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                try {
-                  const success = await projectService.deleteProject(
-                    currentProject.id,
-                  );
-                  if (success) {
-                    toast({
-                      title: "Project deleted",
-                      description: "The project has been successfully deleted.",
-                    });
-                    navigate("/");
-                  } else {
-                    toast({
-                      title: "Error",
-                      description: "Failed to delete project",
-                      variant: "destructive",
-                    });
-                  }
-                } catch (error) {
-                  toast({
-                    title: "Error",
-                    description: "Failed to delete project",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Toaster />
     </div>
   );
 };

@@ -68,7 +68,27 @@ export function useUnsavedChangesWarning(
   // Custom navigation function that checks for unsaved changes
   const navigateSafely = useCallback(
     (to: string | number, options?: { replace?: boolean }) => {
-      if (hasUnsavedChanges) {
+      // Double-check the form element directly to ensure we have the latest state
+      const formElement = document.querySelector("form");
+      const formHasChanges =
+        formElement?.getAttribute("data-has-changes") === "true";
+      const formHasInteraction =
+        formElement?.getAttribute("data-user-interaction") === "true";
+      const shouldCheckChanges = formHasChanges && formHasInteraction;
+
+      // Check for a special flag that indicates we just saved
+      const justSaved = formElement?.getAttribute("data-just-saved") === "true";
+
+      console.log("Navigation check:", {
+        hasUnsavedChanges,
+        formHasChanges,
+        formHasInteraction,
+        shouldCheckChanges,
+        justSaved,
+      });
+
+      // Only show warning if there are unsaved changes and we didn't just save
+      if ((hasUnsavedChanges || shouldCheckChanges) && !justSaved) {
         handleShowWarning(() => {
           if (typeof to === "string") {
             navigate(to, options);
@@ -77,6 +97,11 @@ export function useUnsavedChangesWarning(
           }
         });
       } else {
+        // If we just saved, clear the flag
+        if (justSaved && formElement) {
+          formElement.setAttribute("data-just-saved", "false");
+        }
+
         if (typeof to === "string") {
           navigate(to, options);
         } else if (typeof to === "number") {

@@ -211,14 +211,37 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         "data-user-interaction",
         hasUserInteracted.toString(),
       );
+      // Log the current state for debugging
+      console.log("Form attributes updated:", {
+        "data-has-changes": formElement.getAttribute("data-has-changes"),
+        "data-user-interaction": formElement.getAttribute(
+          "data-user-interaction",
+        ),
+        "data-just-saved": formElement.getAttribute("data-just-saved"),
+      });
     }
-  }, [formData, initialData]);
+  }, [formData, initialData, hasUserInteracted]);
 
   // Reset hasChanges and hasUserInteracted when initialData changes (after a successful save)
   useEffect(() => {
     if (initialData) {
       setHasChanges(false);
       setHasUserInteracted(false);
+
+      // Also reset the form data to match initialData
+      setFormData({
+        ...defaultFormData,
+        ...initialData,
+      });
+
+      // Reset form attributes
+      const formElement = document.querySelector("form");
+      if (formElement) {
+        formElement.setAttribute("data-has-changes", "false");
+        formElement.setAttribute("data-user-interaction", "false");
+        formElement.setAttribute("data-just-saved", "false");
+        console.log("Form attributes reset after initialData change");
+      }
     }
   }, [initialData]);
 
@@ -266,9 +289,27 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Submitting form data:", formData);
+
+    // Set the form as just saved before submitting to prevent navigation warnings
+    const formElement = document.querySelector("form");
+    if (formElement) {
+      formElement.setAttribute("data-just-saved", "true");
+    }
+
     const success = await onSubmit(formData);
     if (success) {
+      // Don't try to modify the initialData prop directly as it's read-only
+      // Instead, we'll rely on the parent component to pass updated initialData
+
       setHasChanges(false);
+      setHasUserInteracted(false);
+
+      // Update the form element attributes to reflect saved state
+      if (formElement) {
+        formElement.setAttribute("data-has-changes", "false");
+        formElement.setAttribute("data-user-interaction", "false");
+        formElement.setAttribute("data-just-saved", "true");
+      }
     }
   };
 
@@ -374,6 +415,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         className="max-w-[1200px] mx-auto space-y-3"
         data-has-changes={hasChanges ? "true" : "false"}
         data-user-interaction={hasUserInteracted ? "true" : "false"}
+        data-just-saved="false"
         onClick={() => !hasUserInteracted && setHasUserInteracted(true)}
         onChange={() => !hasUserInteracted && setHasUserInteracted(true)}
         onKeyDown={(e) => {
