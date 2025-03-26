@@ -203,7 +203,7 @@ const ProjectList = ({
           <Card
             key={project.id}
             onClick={() => onSelectProject(project)}
-            className="group p-6 cursor-pointer bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+            className="group p-6 pb-6 cursor-pointer bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
             style={{
               borderRadius: "1rem",
             }}
@@ -247,6 +247,53 @@ const ProjectList = ({
                   Department: {project.department}
                 </p>
               )}
+
+              {/* Health Indicator */}
+              {(() => {
+                // Calculate overall health percentage
+                const overallCompletion =
+                  project.health_calculation_type === "manual"
+                    ? project.manual_health_percentage
+                    : Math.round(
+                        project.milestones.reduce(
+                          (acc, m) => acc + m.completion,
+                          0,
+                        ) / Math.max(project.milestones.length, 1),
+                      );
+
+                // Determine background color based on status (same logic as StatusSheet)
+                let bgColor = "bg-green-500";
+                if (project.status === "draft") bgColor = "bg-yellow-500";
+                else if (project.status === "completed")
+                  bgColor = "bg-blue-500";
+                else if (project.status === "on_hold")
+                  bgColor = "bg-yellow-500";
+                else if (project.status === "cancelled") bgColor = "bg-red-500";
+                // For active projects, use green by default
+
+                // Determine status text
+                let statusText = "In Progress";
+                if (project.status === "completed")
+                  statusText = "Project Complete";
+                else if (project.status === "on_hold")
+                  statusText = "Project on Hold";
+                else if (project.status === "cancelled")
+                  statusText = "Project Cancelled";
+                else if (project.status === "draft")
+                  statusText = "Project Draft";
+
+                return (
+                  <div className="absolute bottom-0 right-0 flex items-center">
+                    <div className="flex items-start">
+                      <div
+                        className={`w-16 h-10 flex items-center justify-center text-white text-lg font-bold ${bgColor} rounded-full shadow-md border border-gray-700`}
+                      >
+                        {overallCompletion}%
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </Card>
         ))}

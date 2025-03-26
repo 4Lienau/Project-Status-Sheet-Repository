@@ -336,7 +336,10 @@ const ProjectPilot: React.FC<ProjectPilotProps> = ({
               ?
             </span>
           </div>
-          <h3 className="font-medium">Project Pilot</h3>
+          <h3 className="font-medium">
+            Project Pilot{" "}
+            <span className="text-xs opacity-70">(GPT-3.5 Turbo)</span>
+          </h3>
         </div>
         <div className="flex items-center gap-1">
           <Button
