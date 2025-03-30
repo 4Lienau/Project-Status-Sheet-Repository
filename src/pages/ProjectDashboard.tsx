@@ -23,8 +23,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { projectService } from "@/lib/services/project";
+import { projectVersionsService } from "@/lib/services/projectVersions";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import ProjectForm from "@/components/ProjectForm";
 import StatusSheet from "@/components/StatusSheet";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,20 +34,26 @@ interface ProjectDashboardProps {
   project?: any;
   onBack?: () => void;
   initialEditMode?: boolean;
+  id?: string;
 }
 
 const ProjectDashboard = ({
   project: initialProject,
   onBack,
   initialEditMode = false,
+  id: propId,
 }: ProjectDashboardProps) => {
-  const { id } = useParams<{ id: string }>();
+  const { id: paramId } = useParams<{ id: string }>();
+  const id = propId || paramId;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [project, setProject] = useState<any>(initialProject || null);
   const [loading, setLoading] = useState(!initialProject);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(initialEditMode);
+  const [versions, setVersions] = useState([]);
+  const [currentVersionIndex, setCurrentVersionIndex] = useState(-1); // -1 means current
+  const [isLoadingVersion, setIsLoadingVersion] = useState(false);
 
   // Add a ref to track if we're in a drag operation to prevent loading screen
   const isDraggingRef = React.useRef(false);
@@ -57,28 +64,205 @@ const ProjectDashboard = ({
     isDraggingRef.current = dragging;
   };
 
+  // Load project versions
   useEffect(() => {
-    // Skip fetching if project was provided as a prop
-    if (initialProject) {
-      console.log("Using project from props, skipping fetch");
-      setProject(initialProject);
-      setLoading(false);
-      return;
+    let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const loadVersions = async () => {
+      if (!id) {
+        console.warn("[DEBUG] No project ID available for loading versions");
+        return;
+      }
+
+      try {
+        console.log("[DEBUG] Loading versions for project ID:", id);
+        console.log(
+          "[DEBUG] Current project data:",
+          project ? "exists" : "null",
+        );
+        console.log("[DEBUG] Retry count:", retryCount);
+
+        const versionsData = await projectVersionsService.getVersions(id);
+
+        if (!mounted) {
+          console.log("[DEBUG] Component unmounted, skipping state update");
+          return;
+        }
+
+        if (!versionsData.length && retryCount < maxRetries) {
+          console.log("[DEBUG] No versions found, retrying...");
+          retryCount++;
+          setTimeout(loadVersions, 1000); // Retry after 1 second
+          return;
+        }
+
+        console.log("[DEBUG] Loaded versions:", versionsData.length);
+        console.log(
+          "[DEBUG] Version data:",
+          versionsData.map((v) => ({
+            id: v.id,
+            number: v.version_number,
+            created: v.created_at,
+          })),
+        );
+
+        if (mounted) {
+          setVersions(versionsData);
+          setCurrentVersionIndex(-1);
+        }
+      } catch (error) {
+        console.error("[DEBUG] Error loading project versions:", error);
+        if (mounted && (!project || retryCount >= maxRetries)) {
+          toast({
+            title: "Error",
+            description: "Failed to load project versions",
+            variant: "destructive",
+          });
+        } else if (mounted && retryCount < maxRetries) {
+          console.log("[DEBUG] Retrying version load after error...");
+          retryCount++;
+          setTimeout(loadVersions, 1000); // Retry after 1 second
+        }
+      }
+    };
+
+    // Load versions whenever project data changes or component mounts
+    if (project && project.id) {
+      console.log("[DEBUG] Project data changed, reloading versions");
+      retryCount = 0; // Reset retry count
+      loadVersions();
     }
 
-    // Skip fetching if we're in edit mode and already have project data
-    // This prevents refetching when milestones are reordered
-    if (isEditing && project) {
-      console.log("Already in edit mode with project data, skipping fetch");
-      return;
-    }
+    return () => {
+      mounted = false;
+      console.log("[DEBUG] Version loading effect cleanup");
+    };
+  }, [id, toast, project?.id]); // Only depend on project.id, not the entire project object
 
-    // Skip fetching if we're currently in a drag operation
-    if (isDraggingRef.current) {
-      console.log("Currently in drag operation, skipping fetch");
-      return;
-    }
+  const loadVersion = async (versionIndex) => {
+    console.log("Loading version index:", versionIndex);
+    console.log("Available versions:", versions.length);
+    console.log("Current versions data:", versions);
 
+    if (versionIndex === -1) {
+      // Load current version
+      setIsLoadingVersion(true);
+      try {
+        console.log("Loading current version for project ID:", id);
+        const projectData = await projectService.getProject(id);
+        if (projectData) {
+          console.log("Successfully loaded current version:", projectData);
+          setProject(projectData);
+          setCurrentVersionIndex(-1);
+        } else {
+          console.error("Failed to load current project data");
+          toast({
+            title: "Error",
+            description: "Failed to load current project data",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error loading current project version:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load current project version",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingVersion(false);
+      }
+    } else if (versions[versionIndex]) {
+      // Load specific version
+      setIsLoadingVersion(true);
+      try {
+        const version = versions[versionIndex];
+        console.log("Loading version:", version.version_number);
+        console.log("Version data:", version.data);
+
+        if (!version.data) {
+          throw new Error("Version data is missing");
+        }
+
+        // Ensure version data has all required fields
+        const requiredFields = [
+          "title",
+          "description",
+          "status",
+          "milestones",
+          "risks",
+          "accomplishments",
+        ];
+        const missingFields = requiredFields.filter(
+          (field) => !(field in version.data),
+        );
+        if (missingFields.length > 0) {
+          throw new Error(
+            `Version data is missing required fields: ${missingFields.join(", ")}`,
+          );
+        }
+
+        setProject(version.data);
+        setCurrentVersionIndex(versionIndex);
+      } catch (error) {
+        console.error("Error loading project version:", error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to load project version",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingVersion(false);
+      }
+    } else {
+      console.error("Invalid version index:", versionIndex);
+      toast({
+        title: "Error",
+        description: "Invalid version selected",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePreviousVersion = () => {
+    console.log("Handling previous version");
+    console.log("Current version index:", currentVersionIndex);
+    console.log("Versions length:", versions.length);
+
+    if (currentVersionIndex === -1 && versions.length > 0) {
+      // Go from current to most recent version
+      console.log("Going from current to most recent version");
+      loadVersion(0);
+    } else if (currentVersionIndex < versions.length - 1) {
+      // Go to older version
+      console.log("Going to older version");
+      loadVersion(currentVersionIndex + 1);
+    } else {
+      console.log("No older version available");
+    }
+  };
+
+  const handleNextVersion = () => {
+    console.log("Handling next version");
+    console.log("Current version index:", currentVersionIndex);
+
+    if (currentVersionIndex > 0) {
+      // Go to newer version
+      console.log("Going to newer version");
+      loadVersion(currentVersionIndex - 1);
+    } else if (currentVersionIndex === 0) {
+      // Go from most recent version to current
+      console.log("Going from most recent version to current");
+      loadVersion(-1);
+    } else {
+      console.log("Already at newest version");
+    }
+  };
+
+  useEffect(() => {
+    // Always fetch fresh data when mounting component
     const fetchProject = async () => {
       if (!id) {
         setLoading(false);
@@ -89,10 +273,17 @@ const ProjectDashboard = ({
       try {
         setLoading(true);
         console.log("Fetching project with ID:", id);
-        const projectData = await projectService.getProject(id);
+        const [projectData, versionsData] = await Promise.all([
+          projectService.getProject(id),
+          projectVersionsService.getVersions(id),
+        ]);
         console.log("Project data received:", projectData ? "success" : "null");
+        console.log("Versions data received:", versionsData.length);
+
         if (projectData) {
           setProject(projectData);
+          setVersions(versionsData);
+          setCurrentVersionIndex(-1);
         } else {
           setError("Project not found");
         }
@@ -105,7 +296,7 @@ const ProjectDashboard = ({
     };
 
     fetchProject();
-  }, [id, initialProject, isEditing]);
+  }, [id, initialProject]);
 
   // Add a timeout to prevent infinite loading
   useEffect(() => {
@@ -135,6 +326,16 @@ const ProjectDashboard = ({
     );
   }
 
+  const handleBack = () => {
+    if (onBack) {
+      // Use the callback from props if provided
+      onBack();
+    } else {
+      // Otherwise navigate directly
+      navigate("/");
+    }
+  };
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -145,16 +346,6 @@ const ProjectDashboard = ({
       </div>
     );
   }
-
-  const handleBack = () => {
-    if (onBack) {
-      // Use the callback from props if provided
-      onBack();
-    } else {
-      // Otherwise navigate directly
-      navigate("/");
-    }
-  };
 
   const formatCurrency = (value: number | null | undefined) => {
     return value
@@ -271,22 +462,61 @@ const ProjectDashboard = ({
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        {/* Use navigateSafely from ProjectForm when in edit mode */}
-        <Button
-          variant="ghost"
-          onClick={() => {
-            if (isEditing) {
-              // Check for unsaved changes before navigating back
-              checkUnsavedChanges(handleBack);
-            } else {
-              handleBack();
-            }
-          }}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Projects
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              if (isEditing) {
+                // Check for unsaved changes before navigating back
+                checkUnsavedChanges(handleBack);
+              } else {
+                handleBack();
+              }
+            }}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Projects
+          </Button>
+
+          {/* Version Navigation - Only show in Status Sheet view */}
+          {!isEditing && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreviousVersion}
+                disabled={
+                  (currentVersionIndex === -1 && versions.length === 0) ||
+                  currentVersionIndex >= versions.length - 1 ||
+                  isLoadingVersion
+                }
+                className="flex items-center gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" /> Older ({versions.length}{" "}
+                versions)
+              </Button>
+
+              <div className="text-sm px-2">
+                {isLoadingVersion
+                  ? "Loading..."
+                  : currentVersionIndex === -1
+                    ? "Current"
+                    : `Version ${versions[currentVersionIndex]?.version_number || ""} of ${versions.length}`}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextVersion}
+                disabled={currentVersionIndex === -1 || isLoadingVersion}
+                className="flex items-center gap-1"
+              >
+                Newer <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
 
         <Button
           onClick={async () => {
@@ -385,6 +615,7 @@ const ProjectDashboard = ({
                 return false;
               }
 
+              // First update the project
               const updatedProject = await projectService.updateProject(
                 projectId,
                 {
@@ -421,73 +652,59 @@ const ProjectDashboard = ({
                       owner: m.owner,
                       completion: m.completion,
                       status: m.status,
-                      weight: m.weight || 3, // Include weight with default of 3
-                      tasks: m.tasks,
+                      weight: m.weight || 3,
+                      tasks:
+                        m.tasks?.map((t) => ({
+                          description: t.description,
+                          assignee: t.assignee || m.owner,
+                          date: t.date || m.date,
+                          completion: t.completion || 0,
+                        })) || [],
                     })),
-                  accomplishments: data.accomplishments.filter(
-                    (a) => a.trim() !== "",
-                  ),
-                  next_period_activities: data.nextPeriodActivities
-                    .filter((a) => a.description.trim() !== "")
-                    .map((a) => ({
-                      description: a.description,
-                      date: a.date,
-                      completion: a.completion,
-                      assignee: a.assignee,
-                    })),
-                  risks: data.risks
-                    .filter((r) =>
-                      typeof r === "string"
-                        ? r.trim() !== ""
-                        : r.description && r.description.trim() !== "",
-                    )
-                    .map((r) =>
-                      typeof r === "string"
-                        ? { description: r, impact: "" }
-                        : {
-                            description: r.description || "",
-                            impact: r.impact || "",
-                          },
-                    ),
-                  considerations: data.considerations.filter(
-                    (c) => c.trim() !== "",
-                  ),
-                  changes: data.changes
-                    .filter((c) => c.change.trim() !== "")
-                    .map((c) => ({
-                      change: c.change,
-                      impact: c.impact,
-                      disposition: c.disposition,
-                    })),
+                  accomplishments: data.accomplishments || [],
+                  next_period_activities:
+                    data.nextPeriodActivities?.map((a) => ({
+                      description: a.description || "",
+                      date: a.date || new Date().toISOString().split("T")[0],
+                      completion: a.completion || 0,
+                      assignee: a.assignee || "",
+                    })) || [],
+                  risks:
+                    data.risks?.map((r) => ({
+                      description: r.description || "",
+                      impact: r.impact || "",
+                    })) || [],
+                  considerations:
+                    data.considerations?.map((c) => ({ description: c })) || [],
+                  changes:
+                    data.changes?.map((c) => ({
+                      change: c.change || "",
+                      impact: c.impact || "",
+                      disposition: c.disposition || "",
+                    })) || [],
                 },
               );
 
-              console.log(
-                "Update project response:",
-                updatedProject ? "success" : "failed",
-              );
               if (updatedProject) {
                 setProject(updatedProject);
                 toast({
-                  title: "Changes saved",
-                  description: "Your changes have been saved successfully",
-                  className: "bg-green-50 border-green-200",
+                  title: "Success",
+                  description: "Project updated successfully",
                 });
-                // Removed automatic switch to Status Sheet view
                 return true;
+              } else {
+                toast({
+                  title: "Error",
+                  description: "Failed to update project",
+                  variant: "destructive",
+                });
+                return false;
               }
-              toast({
-                title: "Error",
-                description:
-                  "Failed to update project. No response from server.",
-                variant: "destructive",
-              });
-              return false;
             } catch (error) {
               console.error("Error updating project:", error);
               toast({
                 title: "Error",
-                description: "Failed to update project",
+                description: "Failed to update project: " + error.message,
                 variant: "destructive",
               });
               return false;
@@ -497,7 +714,52 @@ const ProjectDashboard = ({
           }}
         />
       ) : (
-        <StatusSheet data={formattedData} />
+        <StatusSheet
+          data={{
+            title: project.title || "Untitled Project",
+            description: project.description || "",
+            status: project.status || "active",
+            health_calculation_type:
+              project.health_calculation_type || "automatic",
+            manual_health_percentage: project.manual_health_percentage || 0,
+            budget: {
+              total:
+                typeof project.budget_total === "number"
+                  ? project.budget_total.toLocaleString()
+                  : "0",
+              actuals:
+                typeof project.budget_actuals === "number"
+                  ? project.budget_actuals.toLocaleString()
+                  : "0",
+              forecast:
+                typeof project.budget_forecast === "number"
+                  ? project.budget_forecast.toLocaleString()
+                  : "0",
+            },
+            charterLink: project.charter_link || "",
+            sponsors: project.sponsors || "",
+            businessLeads: project.business_leads || "",
+            projectManager: project.project_manager || "",
+            milestones: Array.isArray(project.milestones)
+              ? project.milestones
+              : [],
+            accomplishments: Array.isArray(project.accomplishments)
+              ? project.accomplishments.map((a) =>
+                  typeof a === "string" ? a : a.description,
+                )
+              : [],
+            nextPeriodActivities: Array.isArray(project.next_period_activities)
+              ? project.next_period_activities
+              : [],
+            risks: Array.isArray(project.risks) ? project.risks : [],
+            considerations: Array.isArray(project.considerations)
+              ? project.considerations.map((c) =>
+                  typeof c === "string" ? c : c.description,
+                )
+              : [],
+            changes: Array.isArray(project.changes) ? project.changes : [],
+          }}
+        />
       )}
     </div>
   );

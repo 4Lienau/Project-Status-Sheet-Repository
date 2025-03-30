@@ -127,6 +127,12 @@ export function MilestoneList({
           newMilestones.map((m) => m.weight || 3),
         );
 
+        // Update milestones without triggering form submission
+        const formElement = document.querySelector("form");
+        if (formElement) {
+          formElement.setAttribute("data-has-changes", "true");
+          formElement.setAttribute("data-user-interaction", "true");
+        }
         onMilestonesChange(newMilestones);
       }
     }

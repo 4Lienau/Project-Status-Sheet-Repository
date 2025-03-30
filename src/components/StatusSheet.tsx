@@ -38,55 +38,76 @@ interface StatusSheetProps {
     description?: string;
     valueStatement?: string;
     status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
+    health_calculation_type?: "automatic" | "manual";
+    manual_health_percentage?: number;
     budget: {
-      total: string;
-      actuals: string;
-      forecast: string;
+      total: string | number;
+      actuals: string | number;
+      forecast: string | number;
     };
-    charterLink: string;
-    sponsors: string;
-    businessLeads: string;
-    projectManager: string;
-    accomplishments: string[];
-    nextPeriodActivities: Array<{
-      description: string;
-      date: string;
-      completion: number;
-      assignee: string;
-    }>;
-    milestones: Array<{
-      date: string;
-      milestone: string;
-      owner: string;
-      completion: number;
-      status: "green" | "yellow" | "red";
+    charterLink?: string;
+    sponsors?: string;
+    businessLeads?: string;
+    projectManager?: string;
+    accomplishments?: string[];
+    nextPeriodActivities?:
+      | Array<{
+          description: string;
+          date?: string;
+          completion?: number;
+          assignee?: string;
+        }>
+      | string[];
+    milestones?: Array<{
+      date?: string;
+      milestone?: string;
+      owner?: string;
+      completion?: number;
+      status?: "green" | "yellow" | "red";
       tasks?: Array<{
         id?: string;
-        description: string;
-        assignee: string;
-        date: string;
-        completion: number;
+        description?: string;
+        assignee?: string;
+        date?: string;
+        completion?: number;
       }>;
     }>;
-    risks: string[];
-    considerations: string[];
-    changes: Array<{
-      change: string;
-      impact: string;
-      disposition: string;
+    risks?:
+      | Array<{
+          description?: string;
+          impact?: string;
+        }>
+      | string[];
+    considerations?: string[];
+    changes?: Array<{
+      change?: string;
+      impact?: string;
+      disposition?: string;
     }>;
   };
 }
 
+/**
+ * StatusSheet component
+ * Renders a formatted project status sheet with export capabilities
+ */
 const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
   const { toast } = useToast();
-  if (!data) return null;
+
+  if (!data) {
+    console.warn("No data provided to StatusSheet component");
+    return (
+      <div className="p-4 bg-gray-100 rounded-lg text-center">
+        <p className="text-gray-500">No project data available</p>
+      </div>
+    );
+  }
 
   // Calculate overall completion percentage
   const overallCompletion =
     data.health_calculation_type === "manual"
-      ? data.manual_health_percentage
-      : calculateWeightedCompletion(data.milestones);
+      ? data.manual_health_percentage || 0
+      : calculateWeightedCompletion(data.milestones || []);
 
   // Determine overall status color
   const getStatusColor = (status: string) => {
@@ -106,22 +127,47 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
 
   // Get budget status and color
   const getBudgetStatus = (
-    actuals: number,
-    total: number,
-    forecast: number,
+    actuals: number | string,
+    total: number | string,
+    forecast: number | string,
   ) => {
-    if (actuals + forecast > total) return "At Risk";
-    if (actuals > total) return "Over Budget";
+    // Convert string values to numbers if needed
+    const actualsNum =
+      typeof actuals === "string"
+        ? parseFloat(actuals.replace(/,/g, ""))
+        : actuals;
+    const totalNum =
+      typeof total === "string" ? parseFloat(total.replace(/,/g, "")) : total;
+    const forecastNum =
+      typeof forecast === "string"
+        ? parseFloat(forecast.replace(/,/g, ""))
+        : forecast;
+
+    if (actualsNum + forecastNum > totalNum) return "At Risk";
+    if (actualsNum > totalNum) return "Over Budget";
     return "On Budget";
   };
 
   const getBudgetStatusColor = (
-    actuals: number,
-    total: number,
-    forecast: number,
+    actuals: number | string,
+    total: number | string,
+    forecast: number | string,
   ) => {
-    if (actuals + forecast > total) return "text-yellow-600 font-medium";
-    if (actuals > total) return "text-red-600 font-medium";
+    // Convert string values to numbers if needed
+    const actualsNum =
+      typeof actuals === "string"
+        ? parseFloat(actuals.replace(/,/g, ""))
+        : actuals;
+    const totalNum =
+      typeof total === "string" ? parseFloat(total.replace(/,/g, "")) : total;
+    const forecastNum =
+      typeof forecast === "string"
+        ? parseFloat(forecast.replace(/,/g, ""))
+        : forecast;
+
+    if (actualsNum + forecastNum > totalNum)
+      return "text-yellow-600 font-medium";
+    if (actualsNum > totalNum) return "text-red-600 font-medium";
     return "text-green-600 font-medium";
   };
 
@@ -215,11 +261,11 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
         <div className="bg-gradient-to-r from-blue-650 via-blue-600 to-blue-450 p-3 mb-2">
           <h1
             className="text-2xl font-bold text-white dark:text-white"
-            dangerouslySetInnerHTML={{ __html: data.title }}
+            dangerouslySetInnerHTML={{ __html: data.title || "" }}
           ></h1>
           <h2
             className="text-xl text-blue-50 dark:text-blue-50"
-            dangerouslySetInnerHTML={{ __html: data.description }}
+            dangerouslySetInnerHTML={{ __html: data.description || "" }}
           ></h2>
         </div>
 
@@ -240,8 +286,13 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                   <div>
                     <div className="text-gray-900 dark:text-gray-900">
                       Health:{" "}
-                      {data.status?.replace("_", " ").charAt(0).toUpperCase() +
-                        data.status?.slice(1).replace("_", " ") || "Active"}
+                      {data.status
+                        ? data.status
+                            .replace("_", " ")
+                            .charAt(0)
+                            .toUpperCase() +
+                          data.status.slice(1).replace("_", " ")
+                        : "Active"}
                     </div>
                     <div className="text-cyan-600 dark:text-cyan-600">
                       {data.status === "completed"
@@ -264,7 +315,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     Sponsors
                   </div>
                   <div className="text-gray-900 dark:text-gray-900">
-                    {data.sponsors}
+                    {data.sponsors || ""}
                   </div>
                 </div>
                 <div className="flex-1 border-l-2 border-gray-300 pl-4">
@@ -272,7 +323,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     Business Lead(s)
                   </div>
                   <div className="text-gray-900 dark:text-gray-900">
-                    {data.businessLeads}
+                    {data.businessLeads || ""}
                   </div>
                 </div>
                 <div className="flex-1 border-l-2 border-gray-300 pl-4">
@@ -280,7 +331,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     PM
                   </div>
                   <div className="text-gray-900 dark:text-gray-900">
-                    {data.projectManager}
+                    {data.projectManager || ""}
                   </div>
                 </div>
               </div>
@@ -296,7 +347,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     Budget
                   </div>
                   <div className="text-gray-900 dark:text-gray-900">
-                    ${data.budget.total}
+                    ${data.budget?.total || "0"}
                   </div>
                 </div>
                 <div className="border-l-2 border-gray-300 pl-4">
@@ -304,7 +355,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     Actuals
                   </div>
                   <div className="text-gray-900 dark:text-gray-900">
-                    ${data.budget.actuals}
+                    ${data.budget?.actuals || "0"}
                   </div>
                 </div>
                 <div className="border-l-2 border-gray-300 pl-4">
@@ -312,7 +363,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     Forecast
                   </div>
                   <div className="text-gray-900 dark:text-gray-900">
-                    ${data.budget.forecast}
+                    ${data.budget?.forecast || "0"}
                   </div>
                 </div>
                 <div className="border-l-2 border-gray-300 pl-4">
@@ -321,15 +372,15 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                   </div>
                   <div
                     className={`${getBudgetStatusColor(
-                      parseFloat(data.budget.actuals.replace(/,/g, "")),
-                      parseFloat(data.budget.total.replace(/,/g, "")),
-                      parseFloat(data.budget.forecast.replace(/,/g, "")),
+                      data.budget.actuals,
+                      data.budget.total,
+                      data.budget.forecast,
                     )}`}
                   >
                     {getBudgetStatus(
-                      parseFloat(data.budget.actuals.replace(/,/g, "")),
-                      parseFloat(data.budget.total.replace(/,/g, "")),
-                      parseFloat(data.budget.forecast.replace(/,/g, "")),
+                      data.budget.actuals,
+                      data.budget.total,
+                      data.budget.forecast,
                     )}
                   </div>
                 </div>
@@ -338,7 +389,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                 <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                   Charter
                 </div>
-                {data.charterLink && (
+                {data.charterLink ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -364,6 +415,10 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                ) : (
+                  <div className="text-gray-500 italic">
+                    No charter link provided
+                  </div>
                 )}
               </div>
             </div>
@@ -377,7 +432,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                   Accomplishments To Date
                 </h3>
                 <ul className="list-disc pl-5 space-y-1">
-                  {data.accomplishments.map((item, index) => (
+                  {(data.accomplishments || []).map((item, index) => (
                     <li
                       key={index}
                       className="text-gray-900 dark:text-gray-900"
@@ -411,32 +466,44 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.nextPeriodActivities.map((item, index) => (
-                      <tr key={index} className="border-b border-gray-300">
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {item.description}
-                        </td>
-                        <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                          {item.date}
-                        </td>
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 text-center">
-                              {item.completion}%
+                    {(data.nextPeriodActivities || []).map((item, index) => {
+                      // Handle both string and object formats
+                      const description =
+                        typeof item === "string" ? item : item.description;
+                      const date =
+                        typeof item === "string" ? "" : item.date || "";
+                      const completion =
+                        typeof item === "string" ? 0 : item.completion || 0;
+                      const assignee =
+                        typeof item === "string" ? "" : item.assignee || "";
+
+                      return (
+                        <tr key={index} className="border-b border-gray-300">
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {description}
+                          </td>
+                          <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
+                            {date}
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 text-center">
+                                {completion}%
+                              </div>
+                              <div className="w-24 h-4 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${completion === 100 ? "bg-blue-500" : completion >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
+                                  style={{ width: `${completion}%` }}
+                                ></div>
+                              </div>
                             </div>
-                            <div className="w-24 h-4 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full ${item.completion === 100 ? "bg-blue-500" : item.completion >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
-                                style={{ width: `${item.completion}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {item.assignee}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {assignee}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -447,7 +514,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                   Questions / Items for Consideration
                 </h3>
                 <ul className="list-disc pl-5 space-y-1">
-                  {data.considerations.map((item, index) => (
+                  {(data.considerations || []).map((item, index) => (
                     <li
                       key={index}
                       className="text-gray-900 dark:text-gray-900"
@@ -478,19 +545,26 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.changes?.map((item, index) => (
-                      <tr key={index} className="border-b border-gray-300">
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {item.change}
-                        </td>
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {item.impact}
-                        </td>
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {item.disposition}
-                        </td>
-                      </tr>
-                    ))}
+                    {(data.changes || []).map((item, index) => {
+                      // Handle potential undefined values
+                      const change = item?.change || "";
+                      const impact = item?.impact || "";
+                      const disposition = item?.disposition || "";
+
+                      return (
+                        <tr key={index} className="border-b border-gray-300">
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {change}
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {impact}
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {disposition}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -520,24 +594,24 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.milestones.map((milestone, index) => (
+                    {(data.milestones || []).map((milestone, index) => (
                       <React.Fragment key={index}>
                         <tr className="border-b border-gray-300">
                           <td className="py-1 pr-4">
                             <div
-                              className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion, milestone.status)}`}
+                              className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion || 0, milestone.status || "green")}`}
                             >
-                              {milestone.completion}%
+                              {milestone.completion || 0}%
                             </div>
                           </td>
                           <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                            {milestone.date}
+                            {milestone.date || ""}
                           </td>
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
-                            {milestone.milestone}
+                            {milestone.milestone || ""}
                           </td>
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            {milestone.owner}
+                            {milestone.owner || ""}
                           </td>
                         </tr>
                         {/* Tasks are hidden from Status Sheet view */}
@@ -564,16 +638,26 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.risks.map((risk, index) => (
-                      <tr key={index} className="border-b border-gray-300">
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {typeof risk === "string" ? risk : risk.description}
-                        </td>
-                        <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                          {typeof risk === "string" ? "" : risk.impact}
-                        </td>
-                      </tr>
-                    ))}
+                    {(data.risks || []).map((risk, index) => {
+                      // Handle different risk formats
+                      const description =
+                        typeof risk === "string"
+                          ? risk
+                          : risk.description || "";
+                      const impact =
+                        typeof risk === "string" ? "" : risk.impact || "";
+
+                      return (
+                        <tr key={index} className="border-b border-gray-300">
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {description}
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {impact}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -398,6 +398,7 @@ const Home = () => {
               project={projectData}
               onBack={() => setMode("list")}
               initialEditMode={true}
+              id={projectData.id}
             />
           )}
 
