@@ -1,3 +1,12 @@
+/**
+ * File: Footer.tsx
+ * Purpose: Footer component for the application layout
+ * Description: This component renders the application footer with copyright information.
+ * It's a simple component that provides consistent footer styling across the application.
+ *
+ * Called by: src/components/layout/Layout.tsx (likely)
+ */
+
 const Footer = () => {
   return (
     <footer className="bg-gray-200 border-t border-gray-300">

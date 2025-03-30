@@ -1,3 +1,22 @@
+/**
+ * File: useAuth.ts
+ * Purpose: Custom hook for authentication and user management
+ * Description: This hook provides authentication functionality throughout the application,
+ * handling user sessions, profile data, and approval status. It manages the authentication state,
+ * loads user profiles, checks for pending approval status, and handles sign-out. The hook also
+ * subscribes to auth state changes and provides navigation based on authentication status.
+ *
+ * Imports from:
+ * - React core libraries
+ * - Supabase client and types
+ * - Toast notifications
+ * - React Router navigation
+ *
+ * Used by:
+ * - src/App.tsx
+ * - Various components that need authentication state
+ */
+
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import type { User } from "@supabase/supabase-js";

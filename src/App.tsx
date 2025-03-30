@@ -1,3 +1,21 @@
+/**
+ * File: App.tsx
+ * Purpose: Main application component that handles routing and authentication
+ * Description: This is the root component of the application that sets up all routes and
+ * implements route protection based on authentication status. It includes routes for login,
+ * authentication callback, and various protected routes like home, project dashboard, profile,
+ * and admin pages.
+ *
+ * Imports from:
+ * - React core libraries
+ * - react-router-dom for routing
+ * - Various page components
+ * - tempo-routes for Tempo platform integration
+ * - useAuth custom hook for authentication
+ *
+ * Called by: src/main.tsx
+ */
+
 import { Suspense, useState, useEffect } from "react";
 import {
   useRoutes,

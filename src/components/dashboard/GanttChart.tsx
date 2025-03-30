@@ -1,3 +1,22 @@
+/**
+ * File: GanttChart.tsx
+ * Purpose: Component for displaying project milestones in a Gantt chart format
+ * Description: This component renders a Gantt chart visualization of project milestones using
+ * the gantt-task-react library. It allows users to view milestones in different time scales
+ * (day, week, month, year), provides custom styling, and includes tooltips with detailed milestone
+ * information. The chart also highlights the current date and color-codes milestones based on status.
+ *
+ * Imports from:
+ * - React core libraries
+ * - date-fns for date manipulation
+ * - UI components from shadcn/ui
+ * - gantt-task-react for Gantt chart visualization
+ *
+ * Called by:
+ * - src/components/dashboard/GanttChartDialog.tsx
+ * - src/pages/ProjectDashboard.tsx
+ */
+
 import React, { useState } from "react";
 import {
   format,

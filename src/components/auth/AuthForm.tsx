@@ -1,3 +1,21 @@
+/**
+ * File: AuthForm.tsx
+ * Purpose: Authentication form component for user login
+ * Description: This component handles the Azure AD authentication flow using Supabase Auth.
+ * It manages the authentication state, handles popup windows for OAuth, and includes error handling
+ * and session management. The component also cleans up existing sessions when needed and provides
+ * feedback to users during the authentication process.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - Supabase client for authentication
+ * - react-router-dom for navigation
+ * - Lucide icons
+ *
+ * Called by: src/pages/LoginPage.tsx
+ */
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Cloud } from "lucide-react";

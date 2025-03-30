@@ -1,3 +1,22 @@
+/**
+ * File: ProjectList.tsx
+ * Purpose: Component for displaying a grid of project cards with filtering and export capabilities
+ * Description: This component renders a grid of project cards with filtering options by department,
+ * project manager, and status. It includes functionality to export projects to Excel, create new
+ * projects, and view project details. The component also handles loading states and user permissions
+ * based on department.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - Project service and related types
+ * - Authentication hooks
+ * - Supabase client
+ * - Excel export service
+ *
+ * Called by: src/components/home.tsx
+ */
+
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +25,10 @@ import ProjectListSkeleton from "./ProjectListSkeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { useNavigate } from "react-router-dom";
-import { projectService } from "@/lib/services/project";
+import {
+  projectService,
+  calculateWeightedCompletion,
+} from "@/lib/services/project";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import type { ProjectWithRelations } from "@/lib/services/project";
@@ -254,12 +276,7 @@ const ProjectList = ({
                 const overallCompletion =
                   project.health_calculation_type === "manual"
                     ? project.manual_health_percentage
-                    : Math.round(
-                        project.milestones.reduce(
-                          (acc, m) => acc + m.completion,
-                          0,
-                        ) / Math.max(project.milestones.length, 1),
-                      );
+                    : calculateWeightedCompletion(project.milestones);
 
                 // Determine background color based on status (same logic as StatusSheet)
                 let bgColor = "bg-green-500";

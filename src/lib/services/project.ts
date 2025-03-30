@@ -1,8 +1,33 @@
+/**
+ * File: project.ts
+ * Purpose: Service for project data management and operations
+ * Description: This comprehensive service handles all project-related operations including creating,
+ * updating, deleting, and fetching projects and their related data (milestones, tasks, accomplishments,
+ * risks, etc.). It provides strongly typed interfaces for project data structures and includes
+ * real-time subscription capabilities. The service interacts with the Supabase database and includes
+ * detailed logging for debugging.
+ *
+ * Imports from:
+ * - Supabase client
+ * - Database type definitions
+ *
+ * Used by:
+ * - src/components/home.tsx
+ * - src/components/ProjectForm.tsx
+ * - src/components/projects/ProjectList.tsx
+ * - src/components/projects/ProjectsOverview.tsx
+ * - src/pages/ProjectDashboard.tsx
+ * - src/pages/StatusSheetView.tsx
+ * - Other components that need project data
+ */
+
 import { supabase } from "../supabase";
 import { Database } from "@/types/supabase";
 
 export type Project = Database["public"]["Tables"]["projects"]["Row"];
-export type Milestone = Database["public"]["Tables"]["milestones"]["Row"];
+export type Milestone = Database["public"]["Tables"]["milestones"]["Row"] & {
+  weight?: number;
+};
 export type Accomplishment =
   Database["public"]["Tables"]["accomplishments"]["Row"];
 export type NextPeriodActivity = {
@@ -50,6 +75,27 @@ export interface ProjectWithRelations extends Project {
   considerations: Consideration[];
   changes: Change[];
 }
+
+// Calculate weighted completion percentage for milestones
+export const calculateWeightedCompletion = (milestones: Milestone[]) => {
+  if (!milestones.length) return 0;
+
+  // Calculate the weighted sum of completion percentages
+  const weightedSum = milestones.reduce((sum, m) => {
+    const weight = m.weight || 3;
+    // Multiply completion by weight directly
+    return sum + m.completion * weight;
+  }, 0);
+
+  // Calculate total possible weighted completion (sum of weights * 100)
+  const totalPossibleWeighted = milestones.reduce(
+    (sum, m) => sum + (m.weight || 3) * 100,
+    0,
+  );
+
+  // Return the weighted percentage
+  return Math.round((weightedSum / totalPossibleWeighted) * 100);
+};
 
 export const projectService = {
   async updateProject(
@@ -180,6 +226,7 @@ export const projectService = {
               owner: m.owner,
               completion: m.completion,
               status: m.status,
+              weight: m.weight || 3, // Default to 3 if not provided
             })),
           )
           .select();
@@ -422,6 +469,7 @@ export const projectService = {
                 owner: m.owner,
                 completion: m.completion,
                 status: m.status,
+                weight: m.weight || 3, // Default to 3 if not provided
               })),
             );
           if (milestonesError) {

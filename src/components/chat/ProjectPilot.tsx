@@ -1,3 +1,21 @@
+/**
+ * File: ProjectPilot.tsx
+ * Purpose: AI chat assistant component for project management
+ * Description: This component provides a floating chat interface that allows users to interact with
+ * an AI assistant (Project Pilot) for help with project management tasks. It loads project data,
+ * sends messages to the AI service, displays responses, and can be minimized, moved, or closed.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - Lucide icons
+ * - Chat and project services
+ *
+ * Called by:
+ * - src/components/ProjectForm.tsx
+ * - src/pages/ProjectDashboard.tsx
+ */
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

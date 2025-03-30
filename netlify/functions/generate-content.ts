@@ -1,3 +1,13 @@
+/**
+ * File: generate-content.ts
+ * Purpose: Serverless function that provides AI content generation capabilities using OpenAI API
+ * Description: This Netlify function handles requests to generate various types of content (descriptions,
+ * value statements, milestones, analysis) for projects using OpenAI's API. It processes incoming
+ * requests, validates them, calls OpenAI, and returns the generated content.
+ *
+ * Called by: src/lib/services/aiService.ts
+ */
+
 import { Handler } from "@netlify/functions";
 import OpenAI from "openai";
 

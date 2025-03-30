@@ -1,3 +1,28 @@
+/**
+ * File: ProjectForm.tsx
+ * Purpose: Component for creating and editing projects with comprehensive form fields
+ * Description: This complex component provides a complete form for creating and editing projects.
+ * It includes sections for project details, status, department, health calculation, budget, milestones,
+ * accomplishments, activities, risks, considerations, and changes. The component features AI-assisted
+ * content generation, milestone management with drag-and-drop reordering, Gantt chart visualization,
+ * and unsaved changes protection. It also handles form validation and submission.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - ProjectPilot AI assistant
+ * - GanttChart visualization
+ * - MilestoneList and related components
+ * - AI service for content generation
+ * - Authentication and navigation hooks
+ * - Supabase client
+ * - Project service
+ *
+ * Called by:
+ * - src/components/home.tsx
+ * - src/pages/ProjectDashboard.tsx
+ */
+
 import React, { useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import ProjectPilot from "@/components/chat/ProjectPilot";
@@ -40,11 +65,15 @@ import { supabase } from "@/lib/supabase";
 import DepartmentSelect from "@/components/DepartmentSelect";
 import { useNavigate } from "react-router-dom";
 import { useUnsavedChangesWarning } from "@/lib/hooks/useUnsavedChangesWarning";
-import { projectService } from "@/lib/services/project";
+import {
+  projectService,
+  calculateWeightedCompletion,
+} from "@/lib/services/project";
 
 interface ProjectFormProps {
   onBack?: () => void;
   projectId?: string;
+  setIsDragging?: (dragging: boolean) => void;
   initialData?: {
     title: string;
     description?: string;
@@ -125,6 +154,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   onSubmit,
   onBack,
   projectId,
+  setIsDragging,
 }) => {
   // Log the projectId for debugging
   console.log("ProjectForm received projectId:", projectId);
@@ -484,10 +514,23 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Project Title, Description and Value Statement */}
         <div className={cardClasses}>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <h3 className="text-2xl font-bold text-blue-800 mb-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-blue-800">
                 Project Details
               </h3>
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-gray-600">Overall Completion:</div>
+                <div
+                  className={`w-16 h-16 flex items-center justify-center text-white text-2xl font-bold rounded-full shadow-md border border-gray-700 ${formData.health_calculation_type === "manual" ? (formData.status === "draft" ? "bg-yellow-500" : formData.status === "completed" ? "bg-blue-500" : formData.status === "on_hold" ? "bg-yellow-500" : formData.status === "cancelled" ? "bg-red-500" : "bg-green-500") : "bg-green-500"}`}
+                >
+                  {formData.health_calculation_type === "manual"
+                    ? formData.manual_health_percentage
+                    : calculateWeightedCompletion(formData.milestones)}
+                  %
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   {onBack && (
@@ -1182,20 +1225,23 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             {/* Column Headers */}
             <div className="grid grid-cols-[30px_1fr] gap-2">
               <div></div>
-              <div className="grid grid-cols-[140px_1fr_150px_200px] gap-2">
+              <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
                 <div className="font-medium text-sm text-blue-800">Date</div>
                 <div className="font-medium text-sm text-blue-800">
                   Milestone
                 </div>
                 <div className="font-medium text-sm text-blue-800">Owner</div>
-                <div className="flex gap-2">
-                  <div className="w-24 font-medium text-sm text-blue-800">
+                <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
+                  <div className="font-medium text-sm text-blue-800">
                     Completion %
                   </div>
-                  <div className="w-24 font-medium text-sm text-blue-800">
+                  <div className="font-medium text-sm text-blue-800">
+                    Weight
+                  </div>
+                  <div className="font-medium text-sm text-blue-800">
                     Status
                   </div>
-                  <div className="w-8"></div>
+                  <div></div>
                 </div>
               </div>
             </div>
@@ -1207,6 +1253,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   milestones: newMilestones,
                 }))
               }
+              setIsDragging={setIsDragging}
               onUpdate={(index, values) =>
                 setFormData((prev) => ({
                   ...prev,

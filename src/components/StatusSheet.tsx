@@ -1,5 +1,26 @@
+/**
+ * File: StatusSheet.tsx
+ * Purpose: Component for displaying a formatted project status sheet with export capabilities
+ * Description: This component renders a comprehensive project status sheet with sections for
+ * project details, budget, milestones, accomplishments, activities, risks, and considerations.
+ * It includes functionality to export the status sheet to JPG and PowerPoint formats. The component
+ * uses a structured layout with consistent styling for professional presentation.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - PowerPoint export service
+ * - html2canvas for JPG export
+ * - Lucide icons
+ *
+ * Called by:
+ * - src/pages/StatusSheetView.tsx
+ * - src/pages/ProjectDashboard.tsx
+ */
+
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { calculateWeightedCompletion } from "@/lib/services/project";
 import { FileText, Download, FileOutput } from "lucide-react";
 import { exportToPowerPoint } from "@/lib/services/pptExport";
 import { useToast } from "./ui/use-toast";
@@ -65,10 +86,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
   const overallCompletion =
     data.health_calculation_type === "manual"
       ? data.manual_health_percentage
-      : Math.round(
-          data.milestones.reduce((acc, m) => acc + m.completion, 0) /
-            Math.max(data.milestones.length, 1),
-        );
+      : calculateWeightedCompletion(data.milestones);
 
   // Determine overall status color
   const getStatusColor = (status: string) => {

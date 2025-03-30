@@ -1,3 +1,21 @@
+/**
+ * File: SupabaseMetrics.tsx
+ * Purpose: Admin component for displaying Supabase database metrics and statistics
+ * Description: This component provides a dashboard view of key metrics from the Supabase project,
+ * including user counts, project counts, storage usage, and database size. It also includes charts
+ * for daily active users and database table sizes, and checks for the existence of required database
+ * functions.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - Supabase client for database operations
+ * - Recharts for data visualization
+ * - Lucide icons
+ *
+ * Called by: src/pages/AdminPage.tsx
+ */
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";

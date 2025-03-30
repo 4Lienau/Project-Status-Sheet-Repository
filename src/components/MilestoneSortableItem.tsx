@@ -1,3 +1,21 @@
+/**
+ * File: MilestoneSortableItem.tsx
+ * Purpose: Component for a draggable milestone item with task management
+ * Description: This component renders a single milestone item that can be dragged and reordered
+ * using dnd-kit. It includes fields for milestone date, description, owner, completion percentage,
+ * weight, and status. The component also provides an expandable section for managing tasks associated
+ * with the milestone and calculates milestone completion based on task progress.
+ *
+ * Imports from:
+ * - React core libraries
+ * - dnd-kit for drag and drop functionality
+ * - UI components from shadcn/ui
+ * - TaskList component for managing milestone tasks
+ * - Lucide icons
+ *
+ * Called by: src/components/MilestoneList.tsx
+ */
+
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -30,6 +48,7 @@ interface MilestoneSortableItemProps {
     completion: number;
     status: "green" | "yellow" | "red";
     tasks?: Task[];
+    weight?: number;
   };
   onUpdate: (values: any) => void;
   onDelete: () => void;
@@ -69,6 +88,9 @@ export function MilestoneSortableItem({
       );
       const avgTaskCompletion = Math.round(totalTaskCompletion / tasks.length);
 
+      // Apply weight factor to the completion percentage
+      const weight = milestone.weight || 3; // Default to 3 if not set
+
       // Update both tasks and completion percentage
       onUpdate({
         tasks,
@@ -94,7 +116,7 @@ export function MilestoneSortableItem({
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <div className="grid grid-cols-[140px_1fr_150px_220px] gap-2 pr-2">
+        <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
           <Input
             placeholder="Date"
             type="date"
@@ -136,7 +158,7 @@ export function MilestoneSortableItem({
             value={milestone.owner}
             onChange={(e) => onUpdate({ owner: e.target.value })}
           />
-          <div className="flex gap-2">
+          <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
             <Input
               placeholder="Completion %"
               type="number"
@@ -144,8 +166,33 @@ export function MilestoneSortableItem({
               max="100"
               value={milestone.completion}
               onChange={(e) => onUpdate({ completion: Number(e.target.value) })}
-              className="w-24"
             />
+            <div className="relative">
+              <select
+                value={milestone.weight !== undefined ? milestone.weight : 3}
+                onChange={(e) => {
+                  const newWeight = Number(e.target.value);
+                  console.log("Setting milestone weight to:", newWeight);
+                  onUpdate({
+                    weight: newWeight,
+                  });
+                }}
+                className={`flex h-10 w-full rounded-md border border-input bg-background px-2 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${(milestone.weight || 3) >= 4 ? "font-semibold text-blue-600" : ""}`}
+                title="Milestone Weight (1-5)"
+              >
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+              {(milestone.weight !== undefined ? milestone.weight : 3) >= 4 && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                </span>
+              )}
+            </div>
             <select
               value={milestone.status}
               onChange={(e) =>
@@ -153,7 +200,7 @@ export function MilestoneSortableItem({
                   status: e.target.value as "green" | "yellow" | "red",
                 })
               }
-              className="flex h-10 w-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="green">On Track</option>
               <option value="yellow">At Risk</option>

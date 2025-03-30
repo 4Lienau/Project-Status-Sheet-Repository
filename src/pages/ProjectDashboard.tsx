@@ -1,3 +1,25 @@
+/**
+ * File: ProjectDashboard.tsx
+ * Purpose: Page component for viewing and editing project details
+ * Description: This component serves as the main project dashboard, allowing users to view and edit
+ * project details. It provides two main views: a form view for editing project data and a status sheet
+ * view for viewing the formatted project status. The component handles loading project data, saving
+ * changes, and navigation between views. It also includes unsaved changes protection and project
+ * deletion functionality.
+ *
+ * Imports from:
+ * - React core libraries
+ * - React Router for navigation and parameters
+ * - Project service for data operations
+ * - UI components from shadcn/ui
+ * - ProjectForm for editing
+ * - StatusSheet for viewing
+ *
+ * Called by:
+ * - src/App.tsx (via routing)
+ * - src/components/home.tsx
+ */
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { projectService } from "@/lib/services/project";
@@ -26,12 +48,34 @@ const ProjectDashboard = ({
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(initialEditMode);
 
+  // Add a ref to track if we're in a drag operation to prevent loading screen
+  const isDraggingRef = React.useRef(false);
+
+  // Function to set the dragging state that can be passed down to children
+  const setIsDragging = (dragging: boolean) => {
+    console.log("Setting isDragging to:", dragging);
+    isDraggingRef.current = dragging;
+  };
+
   useEffect(() => {
     // Skip fetching if project was provided as a prop
     if (initialProject) {
       console.log("Using project from props, skipping fetch");
       setProject(initialProject);
       setLoading(false);
+      return;
+    }
+
+    // Skip fetching if we're in edit mode and already have project data
+    // This prevents refetching when milestones are reordered
+    if (isEditing && project) {
+      console.log("Already in edit mode with project data, skipping fetch");
+      return;
+    }
+
+    // Skip fetching if we're currently in a drag operation
+    if (isDraggingRef.current) {
+      console.log("Currently in drag operation, skipping fetch");
       return;
     }
 
@@ -61,7 +105,46 @@ const ProjectDashboard = ({
     };
 
     fetchProject();
-  }, [id, initialProject]);
+  }, [id, initialProject, isEditing]);
+
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        if (loading) {
+          console.log("Loading timeout reached, forcing state update");
+          setLoading(false);
+          if (!project && !error) {
+            setError("Loading timed out. Please try refreshing the page.");
+          }
+        }
+      }, 10000); // 10 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, project, error]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-muted-foreground">Loading project data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <p className="text-red-500">{error}</p>
+        <Link to="/">
+          <Button onClick={handleBack}>Back to Projects</Button>
+        </Link>
+      </div>
+    );
+  }
 
   const handleBack = () => {
     if (onBack) {
@@ -159,45 +242,6 @@ const ProjectDashboard = ({
     };
   };
 
-  // Add a timeout to prevent infinite loading
-  useEffect(() => {
-    if (loading) {
-      const timeout = setTimeout(() => {
-        if (loading) {
-          console.log("Loading timeout reached, forcing state update");
-          setLoading(false);
-          if (!project && !error) {
-            setError("Loading timed out. Please try refreshing the page.");
-          }
-        }
-      }, 10000); // 10 second timeout
-
-      return () => clearTimeout(timeout);
-    }
-  }, [loading, project, error]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-muted-foreground">Loading project data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-red-500">{error}</p>
-        <Link to="/">
-          <Button onClick={handleBack}>Back to Projects</Button>
-        </Link>
-      </div>
-    );
-  }
-
   const formattedData = getFormattedData();
 
   // Function to check for unsaved changes
@@ -245,7 +289,7 @@ const ProjectDashboard = ({
         </Button>
 
         <Button
-          onClick={() => {
+          onClick={async () => {
             if (isEditing) {
               // Check for unsaved changes before switching to Status Sheet view
               const formElement = document.querySelector("form");
@@ -260,9 +304,51 @@ const ProjectDashboard = ({
                   "You have unsaved changes. Are you sure you want to leave without saving?",
                 );
                 if (confirmLeave) {
+                  // Fetch fresh data before switching view
+                  setLoading(true);
+                  try {
+                    const projectId = id || (project && project.id);
+                    if (projectId) {
+                      const freshData =
+                        await projectService.getProject(projectId);
+                      if (freshData) {
+                        setProject(freshData);
+                      }
+                    }
+                  } catch (error) {
+                    console.error("Error fetching fresh project data:", error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to load latest project data",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
                   setIsEditing(false);
                 }
               } else {
+                // Fetch fresh data before switching view
+                setLoading(true);
+                try {
+                  const projectId = id || (project && project.id);
+                  if (projectId) {
+                    const freshData =
+                      await projectService.getProject(projectId);
+                    if (freshData) {
+                      setProject(freshData);
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error fetching fresh project data:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to load latest project data",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setLoading(false);
+                }
                 setIsEditing(false);
               }
             } else {
@@ -280,6 +366,7 @@ const ProjectDashboard = ({
           initialData={formattedData}
           projectId={project?.id || id || ""}
           onBack={handleBack}
+          setIsDragging={setIsDragging}
           onSubmit={async (data) => {
             try {
               setLoading(true);
@@ -334,6 +421,7 @@ const ProjectDashboard = ({
                       owner: m.owner,
                       completion: m.completion,
                       status: m.status,
+                      weight: m.weight || 3, // Include weight with default of 3
                       tasks: m.tasks,
                     })),
                   accomplishments: data.accomplishments.filter(

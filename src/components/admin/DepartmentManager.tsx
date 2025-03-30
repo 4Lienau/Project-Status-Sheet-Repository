@@ -1,3 +1,19 @@
+/**
+ * File: DepartmentManager.tsx
+ * Purpose: Admin component for managing departments in the system
+ * Description: This component provides a UI for administrators to view, add, edit, and delete
+ * departments. It includes a form for adding new departments, a table displaying existing departments,
+ * and functionality for editing and deleting departments with appropriate validation and confirmation.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - Supabase client for database operations
+ * - Lucide icons
+ *
+ * Called by: src/pages/AdminPage.tsx
+ */
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

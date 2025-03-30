@@ -1,3 +1,19 @@
+/**
+ * File: TaskList.tsx
+ * Purpose: Component for managing tasks associated with milestones
+ * Description: This component provides a UI for adding, editing, and removing tasks associated
+ * with project milestones. It includes fields for task description, assignee, date, and completion
+ * percentage. The component maintains its own state and communicates changes back to the parent
+ * component.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - Lucide icons
+ *
+ * Called by: src/components/MilestoneSortableItem.tsx
+ */
+
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

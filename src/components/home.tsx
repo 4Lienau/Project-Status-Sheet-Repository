@@ -1,3 +1,21 @@
+/**
+ * File: home.tsx
+ * Purpose: Main home page component that serves as the application dashboard
+ * Description: This component is the primary landing page after login, providing access to all
+ * project management functionality. It includes project listing with filtering options, project
+ * creation form, project details view, and projects overview. It also handles user profile setup
+ * and manages navigation between different views.
+ *
+ * Imports from:
+ * - React core libraries
+ * - Layout and various project-related components
+ * - Authentication hooks and services
+ * - UI components from shadcn/ui
+ * - Supabase client
+ *
+ * Called by: src/App.tsx
+ */
+
 import React, { useState, useEffect } from "react";
 import Layout from "./layout/Layout";
 import { useAuth } from "@/lib/hooks/useAuth";

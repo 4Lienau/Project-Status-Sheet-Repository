@@ -1,3 +1,22 @@
+/**
+ * File: ProjectsOverview.tsx
+ * Purpose: Component for displaying a tabular overview of all projects with detailed metrics
+ * Description: This component renders a comprehensive table view of all projects with columns for
+ * key metrics like status, completion, budget, milestones, and risks. It includes filtering options,
+ * Excel export functionality, and navigation to project details. The component also handles loading
+ * states and user permissions based on department.
+ *
+ * Imports from:
+ * - React core libraries
+ * - UI components from shadcn/ui
+ * - Project service
+ * - Excel export service
+ * - Authentication hooks
+ * - Supabase client
+ *
+ * Called by: src/components/home.tsx
+ */
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

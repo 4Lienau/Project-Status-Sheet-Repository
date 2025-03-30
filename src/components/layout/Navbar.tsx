@@ -1,3 +1,20 @@
+/**
+ * File: Navbar.tsx
+ * Purpose: Navigation bar component for the application header
+ * Description: This component renders the top navigation bar with the application title and user
+ * account menu. It handles user profile loading, sign out functionality, and navigation to profile
+ * and admin pages. The component also subscribes to profile changes to keep the display updated.
+ *
+ * Imports from:
+ * - React core libraries
+ * - Authentication hooks
+ * - UI components from shadcn/ui
+ * - Supabase client
+ * - Lucide icons
+ *
+ * Called by: src/components/layout/Layout.tsx (likely)
+ */
+
 import React from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";

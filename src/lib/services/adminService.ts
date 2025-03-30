@@ -1,3 +1,18 @@
+/**
+ * File: adminService.ts
+ * Purpose: Service for admin-related functionality
+ * Description: This service provides functions for administrative tasks such as managing pending
+ * users. It includes functions to fetch pending users, approve users, and reject users. The service
+ * interacts with the Supabase database to update user statuses and profiles.
+ *
+ * Imports from:
+ * - Supabase client
+ *
+ * Used by:
+ * - src/components/admin/PendingUsersManager.tsx (likely)
+ * - src/pages/AdminPage.tsx (likely)
+ */
+
 import { supabase } from "../supabase";
 
 export interface PendingUser {

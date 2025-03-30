@@ -1,3 +1,14 @@
+/**
+ * File: index.css
+ * Purpose: Main CSS file for the application
+ * Description: This file contains global CSS styles using Tailwind CSS. It includes base styles,
+ * component styles, and utility styles. The file defines custom prose styles for rich text content,
+ * CSS variables for theming (light and dark modes), and custom component styles like card shadows
+ * and TipTap editor styling.
+ * 
+ * Imported by: src/main.tsx
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

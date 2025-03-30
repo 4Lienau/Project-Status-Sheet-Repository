@@ -1,3 +1,22 @@
+/**
+ * File: StatusSheetView.tsx
+ * Purpose: Page component for viewing a project status sheet in full page mode
+ * Description: This component renders a standalone view of a project's status sheet. It loads
+ * project data based on the URL parameter, formats it for the StatusSheet component, and provides
+ * navigation back to the previous page. The component also includes functionality to export the
+ * status sheet to JPG format.
+ *
+ * Imports from:
+ * - React core libraries
+ * - React Router for navigation and parameters
+ * - UI components from shadcn/ui
+ * - StatusSheet component
+ * - Project service
+ * - Lucide icons
+ *
+ * Called by: src/App.tsx (via routing)
+ */
+
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";

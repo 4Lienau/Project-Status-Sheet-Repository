@@ -1,3 +1,22 @@
+/**
+ * File: AuthCallback.tsx
+ * Purpose: Page component for handling authentication callbacks
+ * Description: This component handles the OAuth callback process after authentication with Azure AD.
+ * It processes the authentication response, manages the session, and handles communication between
+ * popup windows and the main application. The component includes special handling for popup detection,
+ * error handling, and navigation after successful authentication.
+ *
+ * Imports from:
+ * - React core libraries
+ * - React Router for navigation
+ * - Supabase client for authentication
+ * - UI components from shadcn/ui
+ * - Lucide icons
+ * - query-string for URL parameter parsing
+ *
+ * Called by: src/App.tsx (via routing)
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";

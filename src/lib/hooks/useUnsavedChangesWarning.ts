@@ -1,3 +1,21 @@
+/**
+ * File: useUnsavedChangesWarning.ts
+ * Purpose: Custom hook for handling unsaved changes warnings during navigation
+ * Description: This hook provides functionality to warn users about unsaved changes when
+ * navigating away from a form or editor. It handles both browser's native beforeunload event
+ * and React Router navigation, allowing for custom confirmation dialogs. The hook also provides
+ * a safe navigation function that checks for unsaved changes before navigating.
+ *
+ * Imports from:
+ * - React core libraries
+ * - React Router navigation hooks and context
+ *
+ * Used by:
+ * - src/components/ProjectForm.tsx
+ * - src/pages/ProjectDashboard.tsx
+ * - Other components with forms that need unsaved changes protection
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import {
   useNavigate,

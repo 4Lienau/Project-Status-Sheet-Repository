@@ -1,3 +1,22 @@
+/**
+ * File: aiService.ts
+ * Purpose: Service for AI-powered content generation
+ * Description: This service provides functions for generating AI content for projects, including
+ * descriptions, value statements, milestones, and analysis. It first attempts to use a Netlify
+ * serverless function for generation, with a fallback to direct OpenAI API calls. The service
+ * includes specialized processing for different content types and handles formatting of responses.
+ *
+ * Imports from:
+ * - OpenAI client
+ *
+ * Used by:
+ * - src/components/ProjectForm.tsx
+ * - Other components that need AI-generated content
+ *
+ * Calls:
+ * - netlify/functions/generate-content.ts (serverless function)
+ */
+
 import OpenAI from "openai";
 
 const openai = new OpenAI({
