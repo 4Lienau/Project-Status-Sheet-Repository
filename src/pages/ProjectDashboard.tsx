@@ -622,7 +622,10 @@ const ProjectDashboard = ({
                   title: data.title,
                   description: data.description || null,
                   valueStatement: data.valueStatement || null,
-                  project_analysis: data.projectAnalysis || null,
+                  project_analysis:
+                    data.projectAnalysis !== undefined
+                      ? data.projectAnalysis
+                      : null,
                   status: data.status || "active",
                   health_calculation_type:
                     data.health_calculation_type || "automatic",

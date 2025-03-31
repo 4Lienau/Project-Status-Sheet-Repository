@@ -98,6 +98,40 @@ export const calculateWeightedCompletion = (milestones: Milestone[]) => {
 };
 
 export const projectService = {
+  // Special method to update only the project analysis field
+  async updateProjectAnalysis(
+    id: string,
+    analysisContent: string,
+  ): Promise<boolean> {
+    console.log("[DEBUG] Updating project analysis for project ID:", id);
+    console.log(
+      "[DEBUG] Analysis content length:",
+      analysisContent?.length || 0,
+    );
+
+    try {
+      const { data, error } = await supabase
+        .from("projects")
+        .update({
+          project_analysis: analysisContent,
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error("[DEBUG] Error updating project analysis:", error);
+        return false;
+      }
+
+      console.log("[DEBUG] Project analysis updated successfully");
+      return true;
+    } catch (error) {
+      console.error(
+        "[DEBUG] Unexpected error in updateProjectAnalysis:",
+        error,
+      );
+      return false;
+    }
+  },
   async updateProject(
     id: string,
     data: {
@@ -143,6 +177,7 @@ export const projectService = {
         disposition: string;
       }>;
       department?: string;
+      projectAnalysis?: string;
     },
   ): Promise<ProjectWithRelations | null> {
     console.log(
@@ -163,7 +198,8 @@ export const projectService = {
           title: data.title,
           description: data.description,
           value_statement: data.valueStatement,
-          project_analysis: data.project_analysis, // Add project_analysis field
+          project_analysis:
+            data.projectAnalysis !== undefined ? data.projectAnalysis : null, // More robust null handling
           status: data.status,
           budget_total: data.budget_total,
           budget_actuals: data.budget_actuals,
@@ -395,6 +431,7 @@ export const projectService = {
       impact: string;
       disposition: string;
     }>;
+    projectAnalysis?: string;
   }): Promise<ProjectWithRelations | null> {
     try {
       console.log(
@@ -428,7 +465,8 @@ export const projectService = {
           title: data.title,
           description: data.description,
           value_statement: data.valueStatement,
-          project_analysis: data.project_analysis, // Add project_analysis field
+          project_analysis:
+            data.projectAnalysis !== undefined ? data.projectAnalysis : null, // More robust null handling
           status: data.status || "active",
           budget_total: data.budget_total,
           budget_actuals: data.budget_actuals,

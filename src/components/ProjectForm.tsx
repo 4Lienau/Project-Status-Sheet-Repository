@@ -318,6 +318,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   >(null);
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = React.useState(false);
   const [isAnalysisExpanded, setIsAnalysisExpanded] = React.useState(false);
+  const [isAnalysisLoading, setIsAnalysisLoading] = React.useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -363,6 +364,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       return;
     }
 
+    // For analysis, set loading state immediately
+    if (type === "analysis") {
+      console.log("Setting analysis loading state and expanding section");
+      setIsAnalysisLoading(true);
+      setIsAnalysisExpanded(true);
+
+      // Clear any existing analysis to ensure we don't show stale content
+      setFormData((prev) => ({
+        ...prev,
+        projectAnalysis: "",
+      }));
+    }
+
     // If no existing content or it's milestones or analysis, proceed with generation
     await generateContent(type);
   };
@@ -380,9 +394,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         return;
       }
 
-      // Show loading toast for analysis
+      // Show loading toast and set loading state for analysis
       if (type === "analysis") {
         setIsGeneratingAnalysis(true);
+        setIsAnalysisLoading(true);
         toast({
           title: "Analyzing Project",
           description: "Generating executive summary based on project data...",
@@ -412,16 +427,40 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           });
         }
       } else if (type === "analysis") {
+        console.log("AI generated analysis content:", content);
+
+        // Store the analysis content in a variable
+        const analysisContent = content;
+
+        // Save the analysis to the database immediately
+        if (safeProjectId) {
+          console.log(
+            "Saving analysis to database for project:",
+            safeProjectId,
+          );
+          await projectService.updateProjectAnalysis(
+            safeProjectId,
+            analysisContent,
+          );
+        }
+
+        // Update the form data with the analysis content
         setFormData((prev) => ({
           ...prev,
-          projectAnalysis: content,
+          projectAnalysis: analysisContent,
         }));
-        setIsGeneratingAnalysis(false);
-        toast({
-          title: "Analysis Complete",
-          description: "Executive summary has been generated",
-          className: "bg-green-50 border-green-200",
-        });
+
+        // Update UI states after a short delay to ensure state is updated
+        setTimeout(() => {
+          setIsGeneratingAnalysis(false);
+          setIsAnalysisLoading(false);
+
+          toast({
+            title: "Analysis Complete",
+            description: "Executive summary has been generated and saved",
+            className: "bg-green-50 border-green-200",
+          });
+        }, 100);
       } else {
         setFormData((prev) => ({
           ...prev,
@@ -431,6 +470,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     } catch (error) {
       if (type === "analysis") {
         setIsGeneratingAnalysis(false);
+        setIsAnalysisLoading(false);
       }
       toast({
         title: "Error",
@@ -791,6 +831,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                     e.stopPropagation();
                     handleGenerateContent("analysis");
                     setIsAnalysisExpanded(true);
+                    console.log("Expanding analysis section");
                   }}
                   disabled={isGeneratingAnalysis}
                   className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200"
@@ -808,14 +849,32 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   )}
                 </Button>
               </div>
-              {isAnalysisExpanded && formData.projectAnalysis && (
+              {isAnalysisExpanded && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mt-2 transition-all duration-300">
-                  <div
-                    className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{
-                      __html: formData.projectAnalysis,
-                    }}
-                  />
+                  {isAnalysisLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                      <span className="ml-2 text-purple-600">
+                        Loading analysis...
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      {formData.projectAnalysis ? (
+                        <div
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: formData.projectAnalysis,
+                          }}
+                        />
+                      ) : (
+                        <div className="text-center text-gray-500 py-4">
+                          No analysis available. Click the "AI Executive
+                          Summary" button to generate one.
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>
