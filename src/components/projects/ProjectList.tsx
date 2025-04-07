@@ -19,8 +19,14 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Plus, FileSpreadsheet, Loader2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import ProjectListSkeleton from "./ProjectListSkeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -265,9 +271,40 @@ const ProjectList = ({
                 Project Manager: {project.project_manager}
               </p>
               {project.department && (
-                <p className="text-xs text-blue-600">
-                  Department: {project.department}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-blue-600">
+                    Department: {project.department}
+                  </p>
+                  <div className="border-t border-gray-200 pt-2 w-3/4">
+                    <p className="text-[11px] text-gray-500">
+                      Updated{" "}
+                      {project.updated_at
+                        ? (() => {
+                            const updatedDate = new Date(project.updated_at);
+                            const now = new Date();
+
+                            // Set both dates to midnight for accurate day comparison
+                            const updatedDay = new Date(
+                              updatedDate.getFullYear(),
+                              updatedDate.getMonth(),
+                              updatedDate.getDate(),
+                            );
+                            const today = new Date(
+                              now.getFullYear(),
+                              now.getMonth(),
+                              now.getDate(),
+                            );
+
+                            return updatedDay.getTime() === today.getTime()
+                              ? "today"
+                              : formatDistanceToNow(updatedDate, {
+                                  addSuffix: true,
+                                });
+                          })()
+                        : "recently"}
+                    </p>
+                  </div>
+                </div>
               )}
 
               {/* Health Indicator */}
