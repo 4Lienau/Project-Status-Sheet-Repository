@@ -29,7 +29,7 @@ import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, X, Check } from "lucide-react";
 import ProfileSetupDialog from "./auth/ProfileSetupDialog";
 import { supabase } from "@/lib/supabase";
 import {
@@ -39,6 +39,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -49,9 +63,10 @@ const Home = () => {
     "list",
   );
   const [projectData, setProjectData] = useState(null);
-  const [selectedManager, setSelectedManager] = useState<string>("all");
+  const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
   const [projectManagers, setProjectManagers] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
@@ -213,22 +228,104 @@ const Home = () => {
                     </SelectContent>
                   </Select>
 
-                  <Select
-                    value={selectedManager}
-                    onValueChange={setSelectedManager}
-                  >
-                    <SelectTrigger className="w-[280px]">
-                      <SelectValue placeholder="Filter by Project Manager" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Project Managers</SelectItem>
-                      {projectManagers.map((manager) => (
-                        <SelectItem key={manager} value={manager}>
-                          {manager}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="w-[280px]">
+                    <Popover
+                      open={managerPopoverOpen}
+                      onOpenChange={setManagerPopoverOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={managerPopoverOpen}
+                          className="w-full justify-between"
+                        >
+                          {selectedManagers.length > 0
+                            ? `${selectedManagers.length} manager${selectedManagers.length > 1 ? "s" : ""} selected`
+                            : "Filter by Project Manager"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[280px] p-0" align="start">
+                        <Command>
+                          <CommandInput
+                            placeholder="Search project managers..."
+                            className="h-9"
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              No project manager found.
+                            </CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => {
+                                  setSelectedManagers([]);
+                                  setManagerPopoverOpen(false);
+                                }}
+                                className="flex items-center justify-between"
+                              >
+                                <span>All Project Managers</span>
+                                {selectedManagers.length === 0 && (
+                                  <Check className="h-4 w-4" />
+                                )}
+                              </CommandItem>
+                              {projectManagers.map((manager) => (
+                                <CommandItem
+                                  key={manager}
+                                  onSelect={() => {
+                                    setSelectedManagers((prev) =>
+                                      prev.includes(manager)
+                                        ? prev.filter((m) => m !== manager)
+                                        : [...prev, manager],
+                                    );
+                                  }}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span>{manager}</span>
+                                  {selectedManagers.includes(manager) && (
+                                    <Check className="h-4 w-4" />
+                                  )}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {selectedManagers.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {selectedManagers.map((manager) => (
+                          <Badge
+                            key={manager}
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
+                            {manager}
+                            <X
+                              className="h-3 w-3 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent triggering popover
+                                setSelectedManagers((prev) =>
+                                  prev.filter((m) => m !== manager),
+                                );
+                              }}
+                            />
+                          </Badge>
+                        ))}
+                        {selectedManagers.length > 1 && (
+                          <Badge
+                            variant="outline"
+                            className="cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent triggering popover
+                              setSelectedManagers([]);
+                            }}
+                          >
+                            Clear all
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <Select
                     value={selectedStatus}
@@ -258,7 +355,7 @@ const Home = () => {
               <ProjectList
                 onSelectProject={handleSelectProject}
                 onCreateNew={() => setMode("form")}
-                filterManager={selectedManager}
+                filterManager={selectedManagers}
                 filterStatus={selectedStatus}
                 filterDepartment={selectedDepartment}
               />
@@ -405,7 +502,7 @@ const Home = () => {
           {mode === "overview" && (
             <ProjectsOverview
               onBack={() => setMode("list")}
-              filterManager={selectedManager}
+              filterManager={selectedManagers}
               filterStatus={selectedStatus}
               filterDepartment={selectedDepartment}
             />

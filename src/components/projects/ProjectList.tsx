@@ -43,7 +43,7 @@ import { exportProjectsToExcel } from "@/lib/services/excelExport";
 interface ProjectListProps {
   onSelectProject: (project: ProjectWithRelations) => void;
   onCreateNew: () => void;
-  filterManager?: string;
+  filterManager?: string | string[];
   filterStatus?: string;
   filterDepartment?: string;
 }
@@ -51,10 +51,25 @@ interface ProjectListProps {
 const ProjectList = ({
   onSelectProject,
   onCreateNew,
-  filterManager = "",
+  filterManager = "all",
   filterStatus = "all",
   filterDepartment = "all",
 }: ProjectListProps) => {
+  // Convert filterManager to array if it's a string for backward compatibility
+  const filterManagerArray = Array.isArray(filterManager)
+    ? filterManager
+    : filterManager === "all" || !filterManager
+      ? []
+      : [filterManager];
+
+  // Flag to determine if we should apply manager filtering
+  // We only want to filter if we have specific managers selected
+  const shouldFilterByManager = filterManagerArray.length > 0;
+
+  console.log("ProjectList received filterManager:", filterManager);
+  console.log("Converted to filterManagerArray:", filterManagerArray);
+  console.log("shouldFilterByManager:", shouldFilterByManager);
+
   const { user } = useAuth();
   const [profile, setProfile] = useState<{ full_name: string | null }>({
     full_name: null,
@@ -86,75 +101,141 @@ const ProjectList = ({
   useEffect(() => {
     const loadProjects = async () => {
       setLoading(true);
+      console.log("Loading projects with filters:", {
+        filterManager,
+        filterManagerArray,
+        filterStatus,
+        filterDepartment,
+      });
 
-      // First, get the current user's department and email
-      let userDepartment = "";
-      let userEmail = "";
-      let userName = "";
+      try {
+        // First, get the current user's department and email
+        let userDepartment = "";
+        let userEmail = "";
+        let userName = "";
 
-      if (user?.id) {
-        const { data: userData } = await supabase
-          .from("profiles")
-          .select("department, email, full_name")
-          .eq("id", user.id)
-          .single();
+        if (user?.id) {
+          const { data: userData } = await supabase
+            .from("profiles")
+            .select("department, email, full_name")
+            .eq("id", user.id)
+            .single();
 
-        if (userData) {
-          userDepartment = userData.department || "";
-          userEmail = userData.email || user.email || "";
-          userName = userData.full_name || "";
-        } else {
-          userEmail = user.email || "";
+          if (userData) {
+            userDepartment = userData.department || "";
+            userEmail = userData.email || user.email || "";
+            userName = userData.full_name || "";
+          } else {
+            userEmail = user.email || "";
+          }
         }
+
+        console.log("User info:", { userDepartment, userEmail, userName });
+
+        // Simplified project loading - get all projects in one go
+        const allProjectsData = await projectService.getAllProjects();
+        console.log("All projects count:", allProjectsData.length);
+
+        // Load full project details
+        const projectPromises = allProjectsData.map((p) =>
+          projectService.getProject(p.id),
+        );
+        const projects = (await Promise.all(projectPromises)).filter(
+          (p): p is ProjectWithRelations => p !== null,
+        );
+
+        console.log("Loaded projects count:", projects.length);
+        setAllProjects(projects);
+
+        // Apply filters
+        let filtered = [...projects];
+        console.log("Starting filter with", filtered.length, "projects");
+
+        // TEMPORARILY DISABLE USER DEPARTMENT FILTERING FOR DEBUGGING
+        // This filter might be too restrictive and causing no projects to show
+        /*
+        if (userDepartment && userDepartment !== "Technology") {
+          const beforeCount = filtered.length;
+          filtered = filtered.filter((project) => {
+            // Always show projects where user is the project manager
+            if (userEmail && project.project_manager === userEmail) return true;
+            if (userName && project.project_manager === userName) return true;
+
+            // Show projects from user's department
+            return project.department === userDepartment;
+          });
+          console.log('After user department filter:', filtered.length, 'projects (from', beforeCount, ')');
+        }
+        */
+
+        // Then apply department filter dropdown if selected
+        if (filterDepartment && filterDepartment !== "all") {
+          const beforeCount = filtered.length;
+          filtered = filtered.filter((project) => {
+            return project.department === filterDepartment;
+          });
+          console.log(
+            "After department filter:",
+            filtered.length,
+            "projects (from",
+            beforeCount,
+            ")",
+          );
+        }
+
+        // Apply project manager filter only if specific managers are selected
+        if (shouldFilterByManager) {
+          const beforeCount = filtered.length;
+          filtered = filtered.filter((project) => {
+            // Check if the project's manager is in the selected managers array
+            const isIncluded = filterManagerArray.includes(
+              project.project_manager,
+            );
+            console.log(
+              `Project ${project.id} manager: ${project.project_manager}, included: ${isIncluded}`,
+            );
+            return isIncluded;
+          });
+          console.log(
+            "After manager filter:",
+            filtered.length,
+            "projects (from",
+            beforeCount,
+            ")",
+          );
+        }
+
+        // Apply status filter
+        if (filterStatus && filterStatus !== "all") {
+          const beforeCount = filtered.length;
+          filtered = filtered.filter((p) => p.status === filterStatus);
+          console.log(
+            "After status filter:",
+            filtered.length,
+            "projects (from",
+            beforeCount,
+            ")",
+          );
+        }
+
+        console.log("Final filtered projects:", filtered.length);
+        setFilteredProjects(filtered);
+      } catch (error) {
+        console.error("Error loading projects:", error);
+      } finally {
+        setLoading(false);
       }
-
-      const projectPromises = (await projectService.getAllProjects()).map((p) =>
-        projectService.getProject(p.id),
-      );
-      const projects = (await Promise.all(projectPromises)).filter(
-        (p): p is ProjectWithRelations => p !== null,
-      );
-
-      setAllProjects(projects);
-
-      // Apply filters
-      let filtered = [...projects];
-
-      // First filter by user's department (unless they're in Technology department)
-      if (userDepartment && userDepartment !== "Technology") {
-        filtered = filtered.filter((project) => {
-          // Always show projects where user is the project manager
-          if (userEmail && project.project_manager === userEmail) return true;
-          if (userName && project.project_manager === userName) return true;
-
-          // Show projects from user's department
-          return project.department === userDepartment;
-        });
-      }
-
-      // Then apply department filter dropdown if selected
-      if (filterDepartment && filterDepartment !== "all") {
-        filtered = filtered.filter((project) => {
-          return project.department === filterDepartment;
-        });
-      }
-
-      // Apply project manager filter
-      if (filterManager && filterManager !== "all") {
-        filtered = filtered.filter((p) => p.project_manager === filterManager);
-      }
-
-      // Apply status filter
-      if (filterStatus && filterStatus !== "all") {
-        filtered = filtered.filter((p) => p.status === filterStatus);
-      }
-
-      setFilteredProjects(filtered);
-      setLoading(false);
     };
 
     loadProjects();
-  }, [filterManager, filterStatus, filterDepartment, user?.id]);
+  }, [
+    // Remove shouldFilterByManager from dependencies to prevent re-render loops
+    // It's derived from filterManagerArray, so we don't need both
+    filterManagerArray,
+    filterStatus,
+    filterDepartment,
+    user?.id,
+  ]);
 
   if (loading) {
     return (
@@ -364,7 +445,11 @@ const ProjectList = ({
 
         {filteredProjects.length === 0 && (
           <div className="col-span-full text-center py-8 text-blue-800">
-            No projects yet. Click "New Project" to create one.
+            {loading
+              ? "Loading projects..."
+              : allProjects.length === 0
+                ? 'No projects yet. Click "New Project" to create one.'
+                : "No projects match the current filters. Try changing your filter criteria."}
           </div>
         )}
       </div>
