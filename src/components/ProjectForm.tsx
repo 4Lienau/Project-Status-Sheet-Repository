@@ -1960,8 +1960,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Gantt Chart Dialog */}
         {showGanttChart && (
           <GanttChartDialog
+            open={showGanttChart}
+            onOpenChange={(open) => setShowGanttChart(open)}
             milestones={formData.milestones}
-            onClose={() => setShowGanttChart(false)}
+            projectTitle={formData.title}
           />
         )}
       </form>
