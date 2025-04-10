@@ -39,7 +39,7 @@ import { supabase } from "@/lib/supabase";
 
 interface ProjectsOverviewProps {
   onBack: () => void;
-  filterManager?: string;
+  filterManager?: string | string[];
   filterStatus?: string;
   filterDepartment?: string;
 }
@@ -78,6 +78,12 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   useEffect(() => {
     const loadProjects = async () => {
       setLoading(true);
+      console.log("ProjectsOverview - Loading projects with filters:", {
+        filterManager,
+        filterStatus,
+        filterDepartment,
+      });
+
       try {
         // Get user's department
         let userDepartment = "";
@@ -100,18 +106,42 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
           }
         }
 
+        console.log("ProjectsOverview - User info:", {
+          userDepartment,
+          userEmail,
+          userName,
+        });
+
         // Get all projects with their related data
-        const projectPromises = (await projectService.getAllProjects()).map(
-          (p) => projectService.getProject(p.id),
+        const allProjectsData = await projectService.getAllProjects();
+        console.log(
+          "ProjectsOverview - All projects count:",
+          allProjectsData.length,
+        );
+
+        const projectPromises = allProjectsData.map((p) =>
+          projectService.getProject(p.id),
         );
         const allProjects = (await Promise.all(projectPromises)).filter(
           (p) => p !== null,
         );
 
+        console.log(
+          "ProjectsOverview - Loaded projects count:",
+          allProjects.length,
+        );
+
         // Apply filters
         let filtered = [...allProjects];
+        console.log(
+          "ProjectsOverview - Starting filter with",
+          filtered.length,
+          "projects",
+        );
 
-        // First filter by user's department (unless they're in Technology department)
+        // TEMPORARILY DISABLE USER DEPARTMENT FILTERING
+        // This filter might be too restrictive and causing no projects to show
+        /*
         if (userDepartment && userDepartment !== "Technology") {
           filtered = filtered.filter((project) => {
             // Always show projects where user is the project manager
@@ -122,26 +152,69 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
             return project.department === userDepartment;
           });
         }
+        */
 
         // Then apply department filter dropdown if selected
         if (filterDepartment && filterDepartment !== "all") {
+          const beforeCount = filtered.length;
           filtered = filtered.filter((project) => {
             return project.department === filterDepartment;
           });
-        }
-
-        // Apply project manager filter
-        if (filterManager && filterManager !== "all") {
-          filtered = filtered.filter(
-            (p) => p.project_manager === filterManager,
+          console.log(
+            "ProjectsOverview - After department filter:",
+            filtered.length,
+            "projects (from",
+            beforeCount,
+            ")",
           );
         }
 
+        // Convert filterManager to array if it's a string for backward compatibility
+        const filterManagerArray = Array.isArray(filterManager)
+          ? filterManager
+          : filterManager === "all" || !filterManager
+            ? []
+            : [filterManager];
+
+        console.log(
+          "ProjectsOverview - Filter manager array:",
+          filterManagerArray,
+        );
+
+        // Apply project manager filter only if specific managers are selected
+        if (filterManagerArray.length > 0) {
+          const beforeCount = filtered.length;
+          filtered = filtered.filter((project) => {
+            // Check if the project's manager is in the selected managers array
+            return filterManagerArray.includes(project.project_manager);
+          });
+          console.log(
+            "ProjectsOverview - After manager filter:",
+            filtered.length,
+            "projects (from",
+            beforeCount,
+            ")",
+          );
+        }
+        // When filterManagerArray is empty, show all projects (no filtering by manager)
+
         // Apply status filter
         if (filterStatus && filterStatus !== "all") {
+          const beforeCount = filtered.length;
           filtered = filtered.filter((p) => p.status === filterStatus);
+          console.log(
+            "ProjectsOverview - After status filter:",
+            filtered.length,
+            "projects (from",
+            beforeCount,
+            ")",
+          );
         }
 
+        console.log(
+          "ProjectsOverview - Final filtered projects:",
+          filtered.length,
+        );
         setProjects(filtered);
       } catch (error) {
         console.error("Error loading projects:", error);
