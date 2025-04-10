@@ -370,6 +370,7 @@ const ProjectDashboard = ({
         status: "active",
         health_calculation_type: "automatic",
         manual_health_percentage: 0,
+        manual_status_color: "green",
         budget: { total: "0.00", actuals: "0.00", forecast: "0.00" },
         charterLink: "",
         sponsors: "",
@@ -393,6 +394,7 @@ const ProjectDashboard = ({
       status: project.status || "active",
       health_calculation_type: project.health_calculation_type || "automatic",
       manual_health_percentage: project.manual_health_percentage || 0,
+      manual_status_color: project.manual_status_color || "green",
       budget: {
         total: project.budget_total
           ? formatCurrency(project.budget_total)
@@ -633,6 +635,7 @@ const ProjectDashboard = ({
                     data.health_calculation_type === "manual"
                       ? data.manual_health_percentage
                       : null,
+                  manual_status_color: data.manual_status_color || "green",
                   budget_total: parseFloat(
                     data.budget.total.replace(/[^0-9.-]+/g, ""),
                   ),
@@ -725,6 +728,7 @@ const ProjectDashboard = ({
             health_calculation_type:
               project.health_calculation_type || "automatic",
             manual_health_percentage: project.manual_health_percentage || 0,
+            manual_status_color: project.manual_status_color || "green",
             budget: {
               total:
                 typeof project.budget_total === "number"

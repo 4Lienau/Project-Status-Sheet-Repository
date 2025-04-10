@@ -1,30 +1,9 @@
-/**
- * File: project.ts
- * Purpose: Service for project data management and operations
- * Description: This comprehensive service handles all project-related operations including creating,
- * updating, deleting, and fetching projects and their related data (milestones, tasks, accomplishments,
- * risks, etc.). It provides strongly typed interfaces for project data structures and includes
- * real-time subscription capabilities. The service interacts with the Supabase database and includes
- * detailed logging for debugging.
- *
- * Imports from:
- * - Supabase client
- * - Database type definitions
- *
- * Used by:
- * - src/components/home.tsx
- * - src/components/ProjectForm.tsx
- * - src/components/projects/ProjectList.tsx
- * - src/components/projects/ProjectsOverview.tsx
- * - src/pages/ProjectDashboard.tsx
- * - src/pages/StatusSheetView.tsx
- * - Other components that need project data
- */
-
 import { supabase } from "../supabase";
 import { Database } from "@/types/supabase";
 
-export type Project = Database["public"]["Tables"]["projects"]["Row"];
+export type Project = Database["public"]["Tables"]["projects"]["Row"] & {
+  manual_status_color?: "red" | "yellow" | "green";
+};
 export type Milestone = Database["public"]["Tables"]["milestones"]["Row"] & {
   weight?: number;
 };
@@ -65,9 +44,9 @@ export type Task = {
   updated_at?: string;
 };
 
-// Daily Notes type removed
-
-export interface ProjectWithRelations extends Project {
+export interface ProjectWithRelations
+  extends Omit<Project, "manual_status_color"> {
+  manual_status_color: "red" | "yellow" | "green";
   milestones: (Milestone & { tasks?: Task[] })[];
   accomplishments: Accomplishment[];
   next_period_activities: NextPeriodActivity[];
@@ -98,6 +77,122 @@ export const calculateWeightedCompletion = (milestones: Milestone[]) => {
 };
 
 export const projectService = {
+  async getAllProjects(): Promise<ProjectWithRelations[]> {
+    try {
+      console.log("[DEBUG] Fetching all projects with relations");
+
+      // Fetch all projects first
+      const { data: projects, error: projectsError } = await supabase
+        .from("projects")
+        .select("*")
+        .order("updated_at", { ascending: false });
+
+      if (projectsError) {
+        console.error("[DEBUG] Error fetching projects:", projectsError);
+        return [];
+      }
+
+      if (!projects || projects.length === 0) {
+        console.log("[DEBUG] No projects found");
+        return [];
+      }
+
+      console.log(
+        `[DEBUG] Found ${projects.length} projects, fetching relations`,
+      );
+
+      // Get all project IDs
+      const projectIds = projects.map((p) => p.id);
+
+      // Fetch all related data in parallel
+      const [
+        { data: milestones, error: milestonesError },
+        { data: tasks, error: tasksError },
+        { data: accomplishments, error: accomplishmentsError },
+        { data: activities, error: activitiesError },
+        { data: risks, error: risksError },
+        { data: considerations, error: considerationsError },
+        { data: changes, error: changesError },
+      ] = await Promise.all([
+        supabase.from("milestones").select("*").in("project_id", projectIds),
+        supabase.from("tasks").select("*").in("project_id", projectIds),
+        supabase
+          .from("accomplishments")
+          .select("*")
+          .in("project_id", projectIds),
+        supabase
+          .from("next_period_activities")
+          .select("*")
+          .in("project_id", projectIds),
+        supabase.from("risks").select("*").in("project_id", projectIds),
+        supabase
+          .from("considerations")
+          .select("*")
+          .in("project_id", projectIds),
+        supabase.from("changes").select("*").in("project_id", projectIds),
+      ]);
+
+      // Log any errors
+      [
+        milestonesError,
+        tasksError,
+        accomplishmentsError,
+        activitiesError,
+        risksError,
+        considerationsError,
+        changesError,
+      ].forEach((error, index) => {
+        if (error) {
+          console.error(`[DEBUG] Error fetching relation ${index}:`, error);
+        }
+      });
+
+      // Map tasks to milestones
+      const milestonesWithTasks = (milestones || []).map((milestone) => ({
+        ...milestone,
+        tasks: (tasks || []).filter(
+          (task) => task.milestone_id === milestone.id,
+        ),
+      }));
+
+      // Build complete projects with relations
+      const projectsWithRelations = projects.map((project) => {
+        console.log(
+          "[DEBUG] Project ID:",
+          project.id,
+          "manual_status_color:",
+          project.manual_status_color,
+        );
+        return {
+          ...project,
+          manual_status_color: project.manual_status_color,
+          milestones: milestonesWithTasks.filter(
+            (m) => m.project_id === project.id,
+          ),
+          accomplishments: (accomplishments || []).filter(
+            (a) => a.project_id === project.id,
+          ),
+          next_period_activities: (activities || []).filter(
+            (a) => a.project_id === project.id,
+          ),
+          risks: (risks || []).filter((r) => r.project_id === project.id),
+          considerations: (considerations || []).filter(
+            (c) => c.project_id === project.id,
+          ),
+          changes: (changes || []).filter((c) => c.project_id === project.id),
+        };
+      });
+
+      console.log(
+        `[DEBUG] Successfully built ${projectsWithRelations.length} projects with relations`,
+      );
+      return projectsWithRelations;
+    } catch (error) {
+      console.error("[DEBUG] Unexpected error in getAllProjects:", error);
+      return [];
+    }
+  },
+
   // Special method to update only the project analysis field
   async updateProjectAnalysis(
     id: string,
@@ -148,6 +243,7 @@ export const projectService = {
       project_manager: string;
       health_calculation_type?: "automatic" | "manual";
       manual_health_percentage?: number;
+      manual_status_color?: "red" | "yellow" | "green";
       milestones: Array<{
         date: string;
         milestone: string;
@@ -181,6 +277,10 @@ export const projectService = {
     },
   ): Promise<ProjectWithRelations | null> {
     console.log(
+      "[DEBUG] updateProject called with manual_status_color:",
+      data.manual_status_color,
+    );
+    console.log(
       "[DEBUG] updateProject called with data:",
       JSON.stringify(
         data.milestones.map((m) => ({
@@ -199,7 +299,7 @@ export const projectService = {
           description: data.description,
           value_statement: data.valueStatement,
           project_analysis:
-            data.projectAnalysis !== undefined ? data.projectAnalysis : null, // More robust null handling
+            data.projectAnalysis !== undefined ? data.projectAnalysis : null,
           status: data.status,
           budget_total: data.budget_total,
           budget_actuals: data.budget_actuals,
@@ -209,8 +309,9 @@ export const projectService = {
           business_leads: data.business_leads,
           project_manager: data.project_manager,
           health_calculation_type: data.health_calculation_type || "automatic",
-          manual_health_percentage: data.manual_health_percentage,
-          department: data.department, // Update department if provided
+          manual_health_percentage: data.manual_health_percentage || null,
+          manual_status_color: data.manual_status_color,
+          department: data.department,
         })
         .eq("id", id)
         .select()
@@ -409,6 +510,7 @@ export const projectService = {
     project_manager: string;
     health_calculation_type?: "automatic" | "manual";
     manual_health_percentage?: number;
+    manual_status_color?: "red" | "yellow" | "green";
     milestones: Array<{
       date: string;
       milestone: string;
@@ -466,7 +568,7 @@ export const projectService = {
           description: data.description,
           value_statement: data.valueStatement,
           project_analysis:
-            data.projectAnalysis !== undefined ? data.projectAnalysis : null, // More robust null handling
+            data.projectAnalysis !== undefined ? data.projectAnalysis : null,
           status: data.status || "active",
           budget_total: data.budget_total,
           budget_actuals: data.budget_actuals,
@@ -477,7 +579,8 @@ export const projectService = {
           project_manager: data.project_manager,
           health_calculation_type: data.health_calculation_type || "automatic",
           manual_health_percentage: data.manual_health_percentage,
-          department: department, // Add department to project
+          manual_status_color: data.manual_status_color,
+          department: department,
         })
         .select()
         .single();
@@ -654,7 +757,7 @@ export const projectService = {
       return null;
     }
 
-    // Validate that id is a valid UUID format to prevent errors
+    // Validate that id is a valid UUID format
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
@@ -737,215 +840,59 @@ export const projectService = {
 
         return {
           ...milestone,
-          tasks: milestoneTasks || [],
+          tasks: milestoneTasks,
         };
       });
 
-      console.log("[DEBUG] Fetching accomplishments for project ID:", id);
-      const { data: accomplishments, error: accomplishmentsError } =
-        await supabase.from("accomplishments").select("*").eq("project_id", id);
+      // Fetch remaining related data
+      const [
+        { data: accomplishments, error: accomplishmentsError },
+        { data: activities, error: activitiesError },
+        { data: risks, error: risksError },
+        { data: considerations, error: considerationsError },
+        { data: changes, error: changesError },
+      ] = await Promise.all([
+        supabase.from("accomplishments").select("*").eq("project_id", id),
+        supabase
+          .from("next_period_activities")
+          .select("*")
+          .eq("project_id", id),
+        supabase.from("risks").select("*").eq("project_id", id),
+        supabase.from("considerations").select("*").eq("project_id", id),
+        supabase.from("changes").select("*").eq("project_id", id),
+      ]);
 
-      if (accomplishmentsError)
-        console.warn(
-          "[DEBUG] Error fetching accomplishments:",
-          accomplishmentsError.message,
-        );
+      // Log any errors
+      [
+        accomplishmentsError,
+        activitiesError,
+        risksError,
+        considerationsError,
+        changesError,
+      ].forEach((error) => {
+        if (error) {
+          console.warn("[DEBUG] Error fetching related data:", error.message);
+        }
+      });
+
+      // Build and return complete project with relations
       console.log(
-        "[DEBUG] Found",
-        accomplishments?.length || 0,
-        "accomplishments",
+        "[DEBUG] Project manual_status_color before returning:",
+        project.manual_status_color,
       );
-
-      console.log("[DEBUG] Fetching activities for project ID:", id);
-      const { data: activities, error: activitiesError } = await supabase
-        .from("next_period_activities")
-        .select("*")
-        .eq("project_id", id);
-
-      if (activitiesError)
-        console.warn(
-          "[DEBUG] Error fetching activities:",
-          activitiesError.message,
-        );
-      console.log("[DEBUG] Found", activities?.length || 0, "activities");
-
-      console.log("[DEBUG] Fetching risks for project ID:", id);
-      const { data: risks, error: risksError } = await supabase
-        .from("risks")
-        .select("*")
-        .eq("project_id", id);
-
-      if (risksError)
-        console.warn("[DEBUG] Error fetching risks:", risksError.message);
-      console.log("[DEBUG] Found", risks?.length || 0, "risks");
-
-      console.log("[DEBUG] Fetching considerations for project ID:", id);
-      const { data: considerations, error: considerationsError } =
-        await supabase.from("considerations").select("*").eq("project_id", id);
-
-      if (considerationsError)
-        console.warn(
-          "[DEBUG] Error fetching considerations:",
-          considerationsError.message,
-        );
-      console.log(
-        "[DEBUG] Found",
-        considerations?.length || 0,
-        "considerations",
-      );
-
-      console.log("[DEBUG] Fetching changes for project ID:", id);
-      const { data: changes, error: changesError } = await supabase
-        .from("changes")
-        .select("*")
-        .eq("project_id", id);
-
-      if (changesError)
-        console.warn("[DEBUG] Error fetching changes:", changesError.message);
-      console.log("[DEBUG] Found", changes?.length || 0, "changes");
-
-      const result = {
+      return {
         ...project,
-        milestones: milestonesWithTasks || [],
+        manual_status_color: project.manual_status_color,
+        milestones: milestonesWithTasks,
         accomplishments: accomplishments || [],
         next_period_activities: activities || [],
         risks: risks || [],
         considerations: considerations || [],
         changes: changes || [],
       };
-
-      console.log(
-        "[DEBUG] Returning complete project data with",
-        Object.keys(result).length,
-        "top-level keys",
-      );
-      return result;
     } catch (error) {
-      console.error("[DEBUG] Error fetching project data:", error);
+      console.error("[DEBUG] Unexpected error in getProject:", error);
       return null;
     }
-  },
-
-  async getAllProjects(): Promise<Project[]> {
-    const { data } = await supabase.from("projects").select("*");
-    return data || [];
-  },
-
-  subscribeToProject(
-    id: string,
-    callback: (project: ProjectWithRelations) => void,
-  ) {
-    const channels = [
-      supabase
-        .channel(`projects:${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "projects",
-            filter: `id=eq.${id}`,
-          },
-          () => this.getProject(id).then((p) => p && callback(p)),
-        )
-        .subscribe(),
-      supabase
-        .channel(`milestones:${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "milestones",
-            filter: `project_id=eq.${id}`,
-          },
-          () => this.getProject(id).then((p) => p && callback(p)),
-        )
-        .subscribe(),
-      supabase
-        .channel(`tasks:${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "tasks",
-            filter: `project_id=eq.${id}`,
-          },
-          () => this.getProject(id).then((p) => p && callback(p)),
-        )
-        .subscribe(),
-      supabase
-        .channel(`accomplishments:${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "accomplishments",
-            filter: `project_id=eq.${id}`,
-          },
-          () => this.getProject(id).then((p) => p && callback(p)),
-        )
-        .subscribe(),
-      supabase
-        .channel(`activities:${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "next_period_activities",
-            filter: `project_id=eq.${id}`,
-          },
-          () => this.getProject(id).then((p) => p && callback(p)),
-        )
-        .subscribe(),
-      supabase
-        .channel(`risks:${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "risks",
-            filter: `project_id=eq.${id}`,
-          },
-          () => this.getProject(id).then((p) => p && callback(p)),
-        )
-        .subscribe(),
-      supabase
-        .channel(`considerations:${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "considerations",
-            filter: `project_id=eq.${id}`,
-          },
-          () => this.getProject(id).then((p) => p && callback(p)),
-        )
-        .subscribe(),
-      supabase
-        .channel(`changes:${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "changes",
-            filter: `project_id=eq.${id}`,
-          },
-          () => this.getProject(id).then((p) => p && callback(p)),
-        )
-        .subscribe(),
-    ];
-
-    return () => {
-      channels.forEach((channel) => {
-        supabase.removeChannel(channel);
-      });
-    };
   },
 };

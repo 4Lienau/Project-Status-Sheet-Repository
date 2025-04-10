@@ -111,6 +111,12 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
 
   // Determine overall status color
   const getStatusColor = (status: string) => {
+    // If using manual calculation and manual color is set, use that
+    if (data.health_calculation_type === "manual" && data.manual_status_color) {
+      return `bg-${data.manual_status_color}-500`;
+    }
+
+    // Otherwise use status-based colors
     switch (status) {
       case "draft":
         return "bg-yellow-500";

@@ -315,14 +315,24 @@ const ProjectList = ({
                     ? project.manual_health_percentage
                     : calculateWeightedCompletion(project.milestones);
 
-                // Determine background color based on status (same logic as StatusSheet)
+                // Determine background color
                 let bgColor = "bg-green-500";
-                if (project.status === "draft") bgColor = "bg-yellow-500";
-                else if (project.status === "completed")
-                  bgColor = "bg-blue-500";
-                else if (project.status === "on_hold")
-                  bgColor = "bg-yellow-500";
-                else if (project.status === "cancelled") bgColor = "bg-red-500";
+                if (
+                  project.health_calculation_type === "manual" &&
+                  project.manual_status_color
+                ) {
+                  // Use the manual color if specified
+                  bgColor = `bg-${project.manual_status_color}-500`;
+                } else {
+                  // Use status-based colors for automatic calculation or if manual color is not set
+                  if (project.status === "draft") bgColor = "bg-yellow-500";
+                  else if (project.status === "completed")
+                    bgColor = "bg-blue-500";
+                  else if (project.status === "on_hold")
+                    bgColor = "bg-yellow-500";
+                  else if (project.status === "cancelled")
+                    bgColor = "bg-red-500";
+                }
                 // For active projects, use green by default
 
                 // Determine status text

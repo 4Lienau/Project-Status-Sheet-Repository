@@ -81,6 +81,7 @@ interface ProjectFormProps {
     status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
     health_calculation_type?: "automatic" | "manual";
     manual_health_percentage?: number;
+    manual_status_color?: "green" | "yellow" | "red";
     budget: {
       total: string;
       actuals: string;
@@ -131,6 +132,7 @@ const defaultFormData = {
   status: "active" as const,
   health_calculation_type: "automatic" as const,
   manual_health_percentage: 0,
+  manual_status_color: "green" as "green" | "yellow" | "red",
   budget: {
     total: "0",
     actuals: "0",
@@ -158,12 +160,22 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 }) => {
   // Log the projectId for debugging
   console.log("ProjectForm received projectId:", projectId);
+  console.log("ProjectForm received initialData:", initialData);
   // Ensure projectId is a string and has a default value
   const safeProjectId = projectId || "";
-  const [formData, setFormData] = React.useState(() => ({
-    ...defaultFormData,
-    ...initialData,
-  }));
+  const [formData, setFormData] = React.useState(() => {
+    // Ensure manual_status_color has a default value if not provided
+    const mergedData = {
+      ...defaultFormData,
+      ...initialData,
+      manual_status_color: initialData?.manual_status_color || "green",
+    };
+    console.log(
+      "Initial formData with manual_status_color:",
+      mergedData.manual_status_color,
+    );
+    return mergedData;
+  });
   const [hasChanges, setHasChanges] = React.useState(false);
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] =
     React.useState(false);
@@ -174,7 +186,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   // For debugging
   React.useEffect(() => {
     console.log("Form data department:", formData.department);
-  }, [formData.department]);
+    console.log("Current manual_status_color:", formData.manual_status_color);
+  }, [formData.department, formData.manual_status_color]);
 
   // Track user interaction with the form
   const [hasUserInteracted, setHasUserInteracted] = React.useState(false);
@@ -264,10 +277,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       setHasUserInteracted(false);
 
       // Also reset the form data to match initialData
-      setFormData({
+      const updatedFormData = {
         ...defaultFormData,
         ...initialData,
-      });
+        manual_status_color: initialData?.manual_status_color || "green",
+      };
+      console.log(
+        "Updating formData with new initialData, manual_status_color:",
+        updatedFormData.manual_status_color,
+      );
+      setFormData(updatedFormData);
 
       // Reset form attributes
       const formElement = document.querySelector("form");
@@ -323,6 +342,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const { user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log(
+      "[DEBUG] Submitting form data with manual_status_color:",
+      formData.manual_status_color,
+    );
     e.preventDefault();
     console.log("Submitting form data:", formData);
 
@@ -561,7 +584,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               <div className="flex items-center gap-4">
                 <div className="text-sm text-gray-600">Overall Completion:</div>
                 <div
-                  className={`w-16 h-16 flex items-center justify-center text-white text-2xl font-bold rounded-full shadow-md border border-gray-700 ${formData.health_calculation_type === "manual" ? (formData.status === "draft" ? "bg-yellow-500" : formData.status === "completed" ? "bg-blue-500" : formData.status === "on_hold" ? "bg-yellow-500" : formData.status === "cancelled" ? "bg-red-500" : "bg-green-500") : "bg-green-500"}`}
+                  className={`w-16 h-16 flex items-center justify-center text-white text-2xl font-bold rounded-full shadow-md border border-gray-700 ${formData.health_calculation_type === "manual" ? `bg-${formData.manual_status_color}-500` : "bg-green-500"}`}
                 >
                   {formData.health_calculation_type === "manual"
                     ? formData.manual_health_percentage
@@ -573,18 +596,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  {onBack && (
-                    <Button
-                      type="button"
-                      onClick={() => handleNavigation(onBack)}
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                      Back to Projects
-                    </Button>
-                  )}
                   <div className="flex items-center gap-1">
                     <Label htmlFor="title">Project Title</Label>
                     <Tooltip>
@@ -988,10 +999,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Health Percentage */}
         {formData.health_calculation_type === "manual" && (
           <div className={cardClasses}>
-            <div className="space-y-2">
+            <div className="space-y-4">
               <div className="flex items-center gap-1 mb-4">
                 <h3 className="text-2xl font-bold text-blue-800">
-                  Health Percentage
+                  Health Status
                 </h3>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -999,27 +1010,69 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="max-w-xs">
-                      Enter a percentage (0-100) to manually set the project
-                      health. This is only used when Health Calculation is set
-                      to Manual.
+                      Set the health percentage and status color for the
+                      project.
                     </p>
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <Input
-                id="manual_health_percentage"
-                type="number"
-                min="0"
-                max="100"
-                value={formData.manual_health_percentage}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    manual_health_percentage: Number(e.target.value),
-                  }))
-                }
-                className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor="manual_health_percentage">
+                      Health Percentage
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">
+                          Enter a percentage (0-100) to manually set the project
+                          health. This is only used when Health Calculation is
+                          set to Manual.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Input
+                    id="manual_health_percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.manual_health_percentage}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        manual_health_percentage: Number(e.target.value),
+                      }))
+                    }
+                    className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="manual_status_color">Status Color</Label>
+                  <Select
+                    value={formData.manual_status_color}
+                    onValueChange={(value: "red" | "yellow" | "green") => {
+                      console.log("Setting manual_status_color to:", value);
+                      setFormData((prev) => ({
+                        ...prev,
+                        manual_status_color: value,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select color" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="green">Green</SelectItem>
+                      <SelectItem value="yellow">Yellow</SelectItem>
+                      <SelectItem value="red">Red</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1561,67 +1614,33 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         {/* Risks */}
         <div className={cardClasses}>
           <div className="flex items-center gap-1 mb-4">
-            <h3 className="text-2xl font-bold text-blue-800">Risks & Issues</h3>
+            <h3 className="text-2xl font-bold text-blue-800">Risks</h3>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-4 w-4 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  List any risks, issues, or challenges that may impact the
-                  project's success.
+                  List any risks or challenges that could impact the project's
+                  success.
                 </p>
               </TooltipContent>
             </Tooltip>
           </div>
           <div className="space-y-4">
-            {/* Column Headers */}
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start">
-              <div className="font-medium text-sm text-blue-800">
-                Risk/Issue
-              </div>
-              <div className="font-medium text-sm text-blue-800">Impact</div>
-              <div></div>
-            </div>
             {formData.risks.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start"
-              >
+              <div key={index} className="flex gap-2">
                 <Input
-                  value={
-                    typeof item === "string" ? item : item.description || ""
-                  }
+                  value={item}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
                       risks: prev.risks.map((r, i) =>
-                        i === index
-                          ? typeof r === "string"
-                            ? { description: e.target.value, impact: "" }
-                            : { ...r, description: e.target.value }
-                          : r,
+                        i === index ? e.target.value : r,
                       ),
                     }))
                   }
-                  placeholder="Enter risk or issue"
-                  className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-                />
-                <Input
-                  value={typeof item === "string" ? "" : item.impact || ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      risks: prev.risks.map((r, i) =>
-                        i === index
-                          ? typeof r === "string"
-                            ? { description: r, impact: e.target.value }
-                            : { ...r, impact: e.target.value }
-                          : r,
-                      ),
-                    }))
-                  }
-                  placeholder="Enter impact"
+                  placeholder="Enter risk"
                   className="bg-white/50 backdrop-blur-sm border-gray-200/50"
                 />
                 <Button
@@ -1645,7 +1664,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               onClick={() =>
                 setFormData((prev) => ({
                   ...prev,
-                  risks: [...prev.risks, { description: "", impact: "" }],
+                  risks: [...prev.risks, ""],
                 }))
               }
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
@@ -1655,7 +1674,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* Considerations Section */}
+        {/* Considerations */}
         <div className={cardClasses}>
           <div className="flex items-center gap-1 mb-4">
             <h3 className="text-2xl font-bold text-blue-800">Considerations</h3>
@@ -1665,8 +1684,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  List any items that need consideration or decisions from
-                  stakeholders.
+                  List any additional considerations, dependencies, or factors
+                  that should be taken into account.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -1720,7 +1739,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* Changes Section */}
+        {/* Changes */}
         <div className={cardClasses}>
           <div className="flex items-center gap-1 mb-4">
             <h3 className="text-2xl font-bold text-blue-800">Changes</h3>
@@ -1730,8 +1749,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  List any changes to the project, their impact, and
-                  disposition.
+                  Document any changes to the project scope, timeline, or
+                  requirements, along with their impact and disposition.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -1824,72 +1843,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           </div>
         </div>
 
-        {/* Daily Notes Section Removed */}
-
         {/* Floating Submit Button */}
-        <div className="sticky bottom-6 float-right mr-6 z-50">
+        <div className="fixed bottom-6 left-[calc(50%+600px+20px)] z-50 flex items-center gap-2 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-gray-200">
+          {hasChanges && (
+            <span className="text-sm text-blue-600 font-medium">
+              Unsaved changes
+            </span>
+          )}
           <Button
             type="submit"
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6 py-6"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
           >
             Save Project
           </Button>
         </div>
-
-        {/* Suggested Milestones Dialog */}
-        <SuggestedMilestones
-          isOpen={showSuggestedMilestones}
-          onClose={() => setShowSuggestedMilestones(false)}
-          suggestedMilestones={suggestedMilestones}
-          onApply={(selectedMilestones) => {
-            setFormData((prev) => ({
-              ...prev,
-              milestones: [...prev.milestones, ...selectedMilestones],
-            }));
-          }}
-        />
-
-        {/* Overwrite Dialog */}
-        <AlertDialog
-          open={showOverwriteDialog}
-          onOpenChange={setShowOverwriteDialog}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Overwrite existing content?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will replace your existing{" "}
-                {pendingGenerationType === "description"
-                  ? "project description"
-                  : "value statement"}
-                . Are you sure you want to continue?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setPendingGenerationType(null)}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  if (pendingGenerationType) {
-                    generateContent(pendingGenerationType);
-                    setPendingGenerationType(null);
-                  }
-                }}
-              >
-                Continue
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Gantt Chart Dialog */}
-        <GanttChartDialog
-          open={showGanttChart}
-          onOpenChange={setShowGanttChart}
-          milestones={formData.milestones}
-          projectTitle={formData.title}
-        />
 
         {/* Unsaved Changes Dialog */}
         <AlertDialog
@@ -1898,17 +1865,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                {pendingNavigationAction &&
-                pendingNavigationAction.toString().includes("deleteProject")
-                  ? "Delete Project"
-                  : "Unsaved Changes"}
-              </AlertDialogTitle>
+              <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
               <AlertDialogDescription>
-                {pendingNavigationAction &&
-                pendingNavigationAction.toString().includes("deleteProject")
-                  ? "Are you sure you want to delete this project? This action cannot be undone."
-                  : "You have unsaved changes. Are you sure you want to leave without saving?"}
+                You have unsaved changes. Are you sure you want to leave without
+                saving?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1922,44 +1882,88 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  setShowUnsavedChangesDialog(false);
                   if (pendingNavigationAction) {
                     pendingNavigationAction();
+                    setPendingNavigationAction(null);
                   }
+                  setShowUnsavedChangesDialog(false);
                 }}
-                className={
-                  pendingNavigationAction &&
-                  pendingNavigationAction.toString().includes("deleteProject")
-                    ? "bg-red-600 hover:bg-red-700 text-white"
-                    : ""
-                }
               >
-                {pendingNavigationAction &&
-                pendingNavigationAction.toString().includes("deleteProject")
-                  ? "Delete Project"
-                  : "Leave Without Saving"}
+                Leave Without Saving
               </AlertDialogAction>
-              {!pendingNavigationAction
-                ?.toString()
-                .includes("deleteProject") && (
-                <Button
-                  onClick={() => {
-                    handleSubmit(
-                      new Event("submit") as unknown as React.FormEvent,
-                    );
-                    setShowUnsavedChangesDialog(false);
-                    if (pendingNavigationAction) {
-                      pendingNavigationAction();
-                    }
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  Save and Leave
-                </Button>
-              )}
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Overwrite Dialog */}
+        <AlertDialog
+          open={showOverwriteDialog}
+          onOpenChange={setShowOverwriteDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Overwrite Existing Content</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will overwrite your existing content. Are you sure you want
+                to proceed?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setPendingGenerationType(null);
+                  setShowOverwriteDialog(false);
+                }}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (pendingGenerationType) {
+                    generateContent(pendingGenerationType);
+                    setPendingGenerationType(null);
+                  }
+                  setShowOverwriteDialog(false);
+                }}
+              >
+                Overwrite
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Suggested Milestones Dialog */}
+        {showSuggestedMilestones && (
+          <SuggestedMilestones
+            milestones={suggestedMilestones}
+            onClose={() => setShowSuggestedMilestones(false)}
+            onApply={(selectedMilestones) => {
+              setFormData((prev) => ({
+                ...prev,
+                milestones: [
+                  ...prev.milestones,
+                  ...selectedMilestones.map((m) => ({
+                    date: m.date,
+                    milestone: m.milestone,
+                    owner: m.owner || "",
+                    completion: 0,
+                    status: "green",
+                    tasks: [],
+                  })),
+                ],
+              }));
+              setShowSuggestedMilestones(false);
+            }}
+          />
+        )}
+
+        {/* Gantt Chart Dialog */}
+        {showGanttChart && (
+          <GanttChartDialog
+            milestones={formData.milestones}
+            onClose={() => setShowGanttChart(false)}
+          />
+        )}
       </form>
     </TooltipProvider>
   );
