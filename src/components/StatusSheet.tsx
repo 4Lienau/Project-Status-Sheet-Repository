@@ -457,14 +457,14 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                 <table className="w-full">
                   <thead>
                     <tr className="text-left border-b border-gray-300">
-                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900 w-full">
                         Activity
                       </th>
                       <th className="py-1 pr-4 w-32 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
                         Date
                       </th>
-                      <th className="py-1 pr-4 w-24 font-bold text-gray-900 dark:text-gray-900">
-                        %
+                      <th className="py-1 pr-4 w-20 font-bold text-gray-900 dark:text-gray-900">
+                        Progress
                       </th>
                       <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
                         Assignee
@@ -492,15 +492,13 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                             {date}
                           </td>
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 text-center">
+                            <div className="w-16 h-5 bg-gray-200 rounded-full overflow-hidden relative">
+                              <div
+                                className={`h-full ${completion === 100 ? "bg-blue-500" : completion >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
+                                style={{ width: `${completion}%` }}
+                              ></div>
+                              <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
                                 {completion}%
-                              </div>
-                              <div className="w-24 h-4 bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full ${completion === 100 ? "bg-blue-500" : completion >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
-                                  style={{ width: `${completion}%` }}
-                                ></div>
                               </div>
                             </div>
                           </td>
@@ -591,11 +589,8 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                       <th className="py-1 pr-4 w-32 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
                         Date
                       </th>
-                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900 w-full">
                         Milestone
-                      </th>
-                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
-                        Owner
                       </th>
                     </tr>
                   </thead>
@@ -615,9 +610,6 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                           </td>
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
                             {milestone.milestone || ""}
-                          </td>
-                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            {milestone.owner || ""}
                           </td>
                         </tr>
                         {/* Tasks are hidden from Status Sheet view */}
