@@ -5,19 +5,9 @@
  * key metrics like status, completion, budget, milestones, and risks. It includes filtering options,
  * Excel export functionality, and navigation to project details. The component also handles loading
  * states and user permissions based on department.
- *
- * Imports from:
- * - React core libraries
- * - UI components from shadcn/ui
- * - Project service
- * - Excel export service
- * - Authentication hooks
- * - Supabase client
- *
- * Called by: src/components/home.tsx
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -28,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { projectService } from "@/lib/services/project";
 import { FileSpreadsheet, ArrowLeft, ExternalLink } from "lucide-react";
 import { exportProjectsToExcel } from "@/lib/services/excelExport";
@@ -44,15 +35,44 @@ interface ProjectsOverviewProps {
   filterDepartment?: string;
 }
 
+// Define column types for better type safety
+type SortDirection = "asc" | "desc";
+
+interface ColumnDefinition {
+  id: string;
+  label: string;
+  accessor: (project: any) => any;
+  sortable: boolean;
+  className?: string;
+  cellClassName?: string;
+  renderCell?: (value: any, project: any) => React.ReactNode;
+}
+
 const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   onBack,
   filterManager = "all",
   filterStatus = "all",
   filterDepartment = "all",
 }) => {
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: SortDirection;
+  }>({ key: "title", direction: "asc" });
+  // Add a force update state to trigger re-renders when needed
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Debug counter to verify component updates
+  const [debugRenderCount, setDebugRenderCount] = useState(0);
+
+  // Increment render count on each render to verify updates
+  useEffect(() => {
+    setDebugRenderCount((prev) => prev + 1);
+    console.log(`ProjectsOverview render count: ${debugRenderCount + 1}`);
+  }, []);
+
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -60,6 +80,193 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     full_name: null,
   });
 
+  // Calculate overall completion for a project
+  const calculateCompletion = (project: any) => {
+    if (!project.milestones || project.milestones.length === 0) return 0;
+    return Math.round(
+      project.milestones.reduce(
+        (acc: number, m: any) => acc + m.completion,
+        0,
+      ) / project.milestones.length,
+    );
+  };
+
+  // Format currency
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value || 0);
+  };
+
+  // Get budget status
+  const getBudgetStatus = (
+    total: number,
+    actuals: number,
+    forecast: number,
+  ) => {
+    if (actuals + forecast > total) return "At Risk";
+    if (actuals > total) return "Over Budget";
+    return "On Budget";
+  };
+
+  // Define columns configuration
+  const columns: ColumnDefinition[] = [
+    {
+      id: "title",
+      label: "Project",
+      accessor: (project) =>
+        project.title?.replace(/<[^>]*>/g, "").toLowerCase() || "",
+      sortable: true,
+      cellClassName:
+        "font-medium text-blue-600 hover:text-blue-800 hover:underline",
+      renderCell: (value, project) => (
+        <div className="flex items-center">
+          {project.title.replace(/<[^>]*>/g, "")}
+          <ExternalLink className="h-3 w-3 text-muted-foreground ml-1" />
+        </div>
+      ),
+    },
+    {
+      id: "department",
+      label: "Department",
+      accessor: (project) => project.department?.toLowerCase() || "",
+      sortable: true,
+      renderCell: (value, project) => project.department || "—",
+    },
+    {
+      id: "status",
+      label: "Status",
+      accessor: (project) => project.status?.toLowerCase() || "",
+      sortable: true,
+      renderCell: (value, project) => {
+        const statusClasses = {
+          active: "bg-green-100 text-green-800 border border-green-200",
+          on_hold: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+          completed: "bg-blue-100 text-blue-800 border border-blue-200",
+          cancelled: "bg-red-100 text-red-800 border border-red-200",
+          draft: "bg-gray-100 text-gray-800 border border-gray-200",
+        };
+
+        const status = project.status || "active";
+        const displayStatus =
+          status.replace("_", " ").charAt(0).toUpperCase() +
+          status.slice(1).replace("_", " ");
+
+        return (
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[status]}`}
+          >
+            {displayStatus}
+          </span>
+        );
+      },
+    },
+    {
+      id: "project_manager",
+      label: "Project Manager",
+      accessor: (project) => project.project_manager?.toLowerCase() || "",
+      sortable: true,
+      renderCell: (value, project) => project.project_manager || "—",
+    },
+    {
+      id: "completion",
+      label: "Completion",
+      accessor: (project) => calculateCompletion(project),
+      sortable: true,
+      renderCell: (value, project) => {
+        const completion = calculateCompletion(project);
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-12 text-center">{completion}%</div>
+            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${
+                  completion === 100
+                    ? "bg-blue-500"
+                    : completion >= 50
+                      ? "bg-green-500"
+                      : "bg-yellow-500"
+                }`}
+                style={{ width: `${completion}%` }}
+              ></div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "budget_total",
+      label: "Budget",
+      accessor: (project) => Number(project.budget_total) || 0,
+      sortable: true,
+      renderCell: (value, project) => formatCurrency(project.budget_total),
+    },
+    {
+      id: "budget_actuals",
+      label: "Actuals",
+      accessor: (project) => Number(project.budget_actuals) || 0,
+      sortable: true,
+      renderCell: (value, project) => formatCurrency(project.budget_actuals),
+    },
+    {
+      id: "budget_forecast",
+      label: "Forecast",
+      accessor: (project) => Number(project.budget_forecast) || 0,
+      sortable: true,
+      renderCell: (value, project) => formatCurrency(project.budget_forecast),
+    },
+    {
+      id: "budget_status",
+      label: "Budget Status",
+      accessor: (project) =>
+        getBudgetStatus(
+          project.budget_total,
+          project.budget_actuals,
+          project.budget_forecast,
+        ),
+      sortable: true,
+      renderCell: (value, project) => {
+        const budgetStatus = getBudgetStatus(
+          project.budget_total,
+          project.budget_actuals,
+          project.budget_forecast,
+        );
+
+        const statusClasses = {
+          "On Budget": "bg-green-100 text-green-800 border border-green-200",
+          "At Risk": "bg-yellow-100 text-yellow-800 border border-yellow-200",
+          "Over Budget": "bg-red-100 text-red-800 border border-red-200",
+        };
+
+        return (
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[budgetStatus]}`}
+          >
+            {budgetStatus}
+          </span>
+        );
+      },
+    },
+    {
+      id: "milestones",
+      label: "Milestones",
+      accessor: (project) => Number(project.milestones?.length) || 0,
+      sortable: true,
+      renderCell: (value, project) => project.milestones?.length || 0,
+    },
+    {
+      id: "risks",
+      label: "Risks",
+      accessor: (project) => Number(project.risks?.length) || 0,
+      sortable: true,
+      renderCell: (value, project) => project.risks?.length || 0,
+    },
+  ];
+
+  // Load user profile
   useEffect(() => {
     if (user?.id) {
       supabase
@@ -75,10 +282,11 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     }
   }, [user?.id]);
 
+  // Load projects with filters
   useEffect(() => {
     const loadProjects = async () => {
       setLoading(true);
-      console.log("ProjectsOverview - Loading projects with filters:", {
+      console.log("ProjectsOverview (FIXED) - Loading projects with filters:", {
         filterManager,
         filterStatus,
         filterDepartment,
@@ -106,19 +314,8 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
           }
         }
 
-        console.log("ProjectsOverview - User info:", {
-          userDepartment,
-          userEmail,
-          userName,
-        });
-
         // Get all projects with their related data
         const allProjectsData = await projectService.getAllProjects();
-        console.log(
-          "ProjectsOverview - All projects count:",
-          allProjectsData.length,
-        );
-
         const projectPromises = allProjectsData.map((p) =>
           projectService.getProject(p.id),
         );
@@ -126,47 +323,14 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
           (p) => p !== null,
         );
 
-        console.log(
-          "ProjectsOverview - Loaded projects count:",
-          allProjects.length,
-        );
-
         // Apply filters
         let filtered = [...allProjects];
-        console.log(
-          "ProjectsOverview - Starting filter with",
-          filtered.length,
-          "projects",
-        );
 
-        // TEMPORARILY DISABLE USER DEPARTMENT FILTERING
-        // This filter might be too restrictive and causing no projects to show
-        /*
-        if (userDepartment && userDepartment !== "Technology") {
-          filtered = filtered.filter((project) => {
-            // Always show projects where user is the project manager
-            if (userEmail && project.project_manager === userEmail) return true;
-            if (userName && project.project_manager === userName) return true;
-
-            // Show projects from user's department
-            return project.department === userDepartment;
-          });
-        }
-        */
-
-        // Then apply department filter dropdown if selected
+        // Apply department filter if selected
         if (filterDepartment && filterDepartment !== "all") {
-          const beforeCount = filtered.length;
           filtered = filtered.filter((project) => {
             return project.department === filterDepartment;
           });
-          console.log(
-            "ProjectsOverview - After department filter:",
-            filtered.length,
-            "projects (from",
-            beforeCount,
-            ")",
-          );
         }
 
         // Convert filterManager to array if it's a string for backward compatibility
@@ -176,45 +340,19 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
             ? []
             : [filterManager];
 
-        console.log(
-          "ProjectsOverview - Filter manager array:",
-          filterManagerArray,
-        );
-
         // Apply project manager filter only if specific managers are selected
         if (filterManagerArray.length > 0) {
-          const beforeCount = filtered.length;
           filtered = filtered.filter((project) => {
             // Check if the project's manager is in the selected managers array
             return filterManagerArray.includes(project.project_manager);
           });
-          console.log(
-            "ProjectsOverview - After manager filter:",
-            filtered.length,
-            "projects (from",
-            beforeCount,
-            ")",
-          );
         }
-        // When filterManagerArray is empty, show all projects (no filtering by manager)
 
         // Apply status filter
         if (filterStatus && filterStatus !== "all") {
-          const beforeCount = filtered.length;
           filtered = filtered.filter((p) => p.status === filterStatus);
-          console.log(
-            "ProjectsOverview - After status filter:",
-            filtered.length,
-            "projects (from",
-            beforeCount,
-            ")",
-          );
         }
 
-        console.log(
-          "ProjectsOverview - Final filtered projects:",
-          filtered.length,
-        );
         setProjects(filtered);
       } catch (error) {
         console.error("Error loading projects:", error);
@@ -231,30 +369,82 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     loadProjects();
   }, [user, filterManager, filterStatus, filterDepartment, toast]);
 
-  // Calculate overall completion for a project
-  const calculateCompletion = (project) => {
-    if (!project.milestones || project.milestones.length === 0) return 0;
-    return Math.round(
-      project.milestones.reduce((acc, m) => acc + m.completion, 0) /
-        project.milestones.length,
+  // Handle column sorting - use useCallback to prevent unnecessary re-renders
+  const handleSort = useCallback((columnId: string) => {
+    console.log(`Sort clicked for column: ${columnId}`);
+    setSortConfig((prevConfig) => {
+      const newConfig =
+        prevConfig.key === columnId
+          ? {
+              key: columnId,
+              direction: prevConfig.direction === "asc" ? "desc" : "asc",
+            }
+          : { key: columnId, direction: "asc" };
+
+      console.log(`New sort config:`, newConfig);
+      // Force a re-render to ensure the UI updates
+      setForceUpdate((prev) => prev + 1);
+      return newConfig;
+    });
+  }, []);
+
+  // Get sorted projects using useMemo to prevent unnecessary re-calculations
+  const sortedProjects = useMemo(() => {
+    if (!projects.length) return [];
+
+    console.log(
+      `Sorting by ${sortConfig.key} in ${sortConfig.direction} order`,
     );
-  };
 
-  // Format currency
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+    // Find the column definition for the current sort key
+    const column = columns.find((col) => col.id === sortConfig.key);
+    if (!column) {
+      console.log(`Column not found for key: ${sortConfig.key}`);
+      return [...projects];
+    }
 
-  // Get budget status
-  const getBudgetStatus = (total, actuals, forecast) => {
-    if (actuals + forecast > total) return "At Risk";
-    if (actuals > total) return "Over Budget";
-    return "On Budget";
+    console.log(`Using column: ${column.id} (${column.label})`);
+
+    // Create a new array to avoid mutating the original
+    const sorted = [...projects].sort((a, b) => {
+      try {
+        const valueA = column.accessor(a);
+        const valueB = column.accessor(b);
+
+        console.log(`Comparing: ${valueA} vs ${valueB}`);
+
+        // Handle null/undefined values
+        if (valueA == null && valueB == null) return 0;
+        if (valueA == null) return 1;
+        if (valueB == null) return -1;
+
+        // Compare values based on sort direction
+        const comparison = valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+        const result =
+          sortConfig.direction === "asc" ? comparison : -comparison;
+
+        console.log(`Comparison result: ${result}`);
+        return result;
+      } catch (error) {
+        console.error("Error during sort comparison:", error);
+        return 0; // Return equal if comparison fails
+      }
+    });
+
+    console.log("Sorted projects count:", sorted.length);
+    return sorted;
+  }, [projects, sortConfig, columns, forceUpdate]); // Include forceUpdate to ensure re-render
+
+  // Render sort indicator for column headers
+  const renderSortIndicator = (columnId: string) => {
+    if (sortConfig.key !== columnId) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-70" />;
+    }
+    return sortConfig.direction === "asc" ? (
+      <ArrowUp className="ml-2 h-4 w-4 flex-shrink-0 text-blue-600" />
+    ) : (
+      <ArrowDown className="ml-2 h-4 w-4 flex-shrink-0 text-blue-600" />
+    );
   };
 
   return (
@@ -309,7 +499,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
       <Card className="bg-white shadow-md">
         <div className="p-6">
           <h2 className="text-2xl font-bold text-blue-800 mb-6">
-            Projects Overview
+            Projects Overview Table
           </h2>
 
           {loading ? (
@@ -321,135 +511,81 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="font-bold">
-                      Project{" "}
-                      <ExternalLink className="inline h-3 w-3 text-muted-foreground ml-1" />
-                    </TableHead>
-                    <TableHead className="font-bold">Department</TableHead>
-                    <TableHead className="font-bold">Status</TableHead>
-                    <TableHead className="font-bold">Project Manager</TableHead>
-                    <TableHead className="font-bold">Completion</TableHead>
-                    <TableHead className="font-bold">Budget</TableHead>
-                    <TableHead className="font-bold">Actuals</TableHead>
-                    <TableHead className="font-bold">Forecast</TableHead>
-                    <TableHead className="font-bold">Budget Status</TableHead>
-                    <TableHead className="font-bold">Milestones</TableHead>
-                    <TableHead className="font-bold">Risks</TableHead>
+                    {columns.map((column) => (
+                      <TableHead
+                        key={column.id}
+                        className={`font-bold ${column.sortable ? "cursor-pointer hover:bg-gray-50 active:bg-gray-100" : ""} ${column.className || ""}`}
+                      >
+                        {column.sortable ? (
+                          <button
+                            type="button"
+                            className="flex items-center w-full text-left focus:outline-none"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log(
+                                "Sort button clicked for column:",
+                                column.id,
+                              );
+                              handleSort(column.id);
+                            }}
+                          >
+                            {column.label}
+                            {renderSortIndicator(column.id)}
+                          </button>
+                        ) : (
+                          column.label
+                        )}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {projects.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={11}
+                        colSpan={columns.length}
                         className="text-center py-8 text-gray-500"
                       >
                         No projects found matching the current filters.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    projects.map((project) => {
-                      const completion = calculateCompletion(project);
-                      const budgetStatus = getBudgetStatus(
-                        project.budget_total,
-                        project.budget_actuals,
-                        project.budget_forecast,
-                      );
-
-                      return (
-                        <TableRow
-                          key={project.id}
-                          className="cursor-pointer hover:bg-gray-50"
-                          onClick={() => {
-                            // Navigate to home with project data for editing
-                            navigate("/", {
-                              state: { projectId: project.id, mode: "preview" },
-                            });
-                          }}
-                        >
-                          <TableCell className="font-medium text-blue-600 hover:text-blue-800 hover:underline">
-                            {project.title.replace(/<[^>]*>/g, "")}
+                    sortedProjects.map((project) => (
+                      <TableRow
+                        key={project.id}
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => {
+                          navigate("/", {
+                            state: { projectId: project.id, mode: "preview" },
+                          });
+                        }}
+                      >
+                        {columns.map((column) => (
+                          <TableCell
+                            key={`${project.id}-${column.id}`}
+                            className={column.cellClassName || ""}
+                          >
+                            {(() => {
+                              try {
+                                return column.renderCell
+                                  ? column.renderCell(
+                                      column.accessor(project),
+                                      project,
+                                    )
+                                  : column.accessor(project);
+                              } catch (error) {
+                                console.error(
+                                  `Error rendering cell for column ${column.id}:`,
+                                  error,
+                                );
+                                return "—";
+                              }
+                            })()}
                           </TableCell>
-                          <TableCell>{project.department || "—"}</TableCell>
-                          <TableCell>
-                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                {
-                                  active:
-                                    "bg-green-100 text-green-800 border border-green-200",
-                                  on_hold:
-                                    "bg-yellow-100 text-yellow-800 border border-yellow-200",
-                                  completed:
-                                    "bg-blue-100 text-blue-800 border border-blue-200",
-                                  cancelled:
-                                    "bg-red-100 text-red-800 border border-red-200",
-                                  draft:
-                                    "bg-gray-100 text-gray-800 border border-gray-200",
-                                }[project.status || "active"]
-                              }`}
-                            >
-                              {project.status
-                                ?.replace("_", " ")
-                                .charAt(0)
-                                .toUpperCase() +
-                                project.status?.slice(1).replace("_", " ") ||
-                                "Active"}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {project.project_manager || "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-12 text-center">
-                                {completion}%
-                              </div>
-                              <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full ${
-                                    completion === 100
-                                      ? "bg-blue-500"
-                                      : completion >= 50
-                                        ? "bg-green-500"
-                                        : "bg-yellow-500"
-                                  }`}
-                                  style={{ width: `${completion}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {formatCurrency(project.budget_total)}
-                          </TableCell>
-                          <TableCell>
-                            {formatCurrency(project.budget_actuals)}
-                          </TableCell>
-                          <TableCell>
-                            {formatCurrency(project.budget_forecast)}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                {
-                                  "On Budget":
-                                    "bg-green-100 text-green-800 border border-green-200",
-                                  "At Risk":
-                                    "bg-yellow-100 text-yellow-800 border border-yellow-200",
-                                  "Over Budget":
-                                    "bg-red-100 text-red-800 border border-red-200",
-                                }[budgetStatus]
-                              }`}
-                            >
-                              {budgetStatus}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {project.milestones?.length || 0}
-                          </TableCell>
-                          <TableCell>{project.risks?.length || 0}</TableCell>
-                        </TableRow>
-                      );
-                    })
+                        ))}
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
