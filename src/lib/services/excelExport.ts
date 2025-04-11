@@ -1,6 +1,12 @@
 import ExcelJS from "exceljs";
 import { ProjectWithRelations } from "./project";
 
+// Helper function to strip HTML tags from text
+const stripHtmlTags = (text: string | null | undefined): string => {
+  if (!text) return "";
+  return text.replace(/<[^>]*>/g, "");
+};
+
 export const exportProjectsToExcel = async (
   projects: ProjectWithRelations[],
   username?: string,
@@ -43,9 +49,9 @@ export const exportProjectsToExcel = async (
       : 0;
 
     const row = overviewSheet.addRow({
-      title: project.title,
-      description: project.description || "",
-      value_statement: project.value_statement || "",
+      title: stripHtmlTags(project.title),
+      description: stripHtmlTags(project.description || ""),
+      value_statement: stripHtmlTags(project.value_statement || ""),
       status: (project.status || "active").toUpperCase(),
       overall_complete: overallComplete,
       budget_total: project.budget_total,
@@ -53,9 +59,9 @@ export const exportProjectsToExcel = async (
       budget_forecast: project.budget_forecast,
       variance: project.budget_total - project.budget_forecast,
       charter_link: project.charter_link,
-      sponsors: project.sponsors,
-      business_leads: project.business_leads,
-      project_manager: project.project_manager,
+      sponsors: stripHtmlTags(project.sponsors || ""),
+      business_leads: stripHtmlTags(project.business_leads || ""),
+      project_manager: stripHtmlTags(project.project_manager || ""),
       created_at: new Date(project.created_at || "").toLocaleDateString(),
       updated_at: new Date(project.updated_at || "").toLocaleDateString(),
       milestone_count: project.milestones?.length || 0,
@@ -183,9 +189,9 @@ export const exportProjectsToExcel = async (
     },
     columns: overviewColumns.map((col) => ({ name: col.header })),
     rows: projects.map((project) => [
-      project.title,
-      project.description || "",
-      project.value_statement || "",
+      stripHtmlTags(project.title),
+      stripHtmlTags(project.description || ""),
+      stripHtmlTags(project.value_statement || ""),
       (project.status || "active").toUpperCase(),
       project.milestones?.length
         ? Math.round(
@@ -198,9 +204,9 @@ export const exportProjectsToExcel = async (
       project.budget_forecast,
       project.budget_total - project.budget_forecast,
       project.charter_link,
-      project.sponsors,
-      project.business_leads,
-      project.project_manager,
+      stripHtmlTags(project.sponsors || ""),
+      stripHtmlTags(project.business_leads || ""),
+      stripHtmlTags(project.project_manager || ""),
       new Date(project.created_at || "").toLocaleDateString(),
       new Date(project.updated_at || "").toLocaleDateString(),
       project.milestones?.length || 0,
@@ -226,10 +232,10 @@ export const exportProjectsToExcel = async (
   projects.forEach((project) => {
     project.milestones?.forEach((milestone) => {
       allMilestones.push({
-        project: project.title,
+        project: stripHtmlTags(project.title),
         date: milestone.date,
-        milestone: milestone.milestone,
-        owner: milestone.owner,
+        milestone: stripHtmlTags(milestone.milestone || ""),
+        owner: stripHtmlTags(milestone.owner || ""),
         completion: milestone.completion,
         status: milestone.status.toUpperCase(),
       });
@@ -344,7 +350,7 @@ export const exportProjectsToExcel = async (
     const variance = project.budget_total - project.budget_forecast;
 
     const row = budgetSheet.addRow({
-      project: project.title,
+      project: stripHtmlTags(project.title),
       status: (project.status || "active").toUpperCase(),
       budget_total: project.budget_total,
       budget_actuals: project.budget_actuals,
@@ -467,7 +473,7 @@ export const exportProjectsToExcel = async (
         : 0;
       const variance = project.budget_total - project.budget_forecast;
       return [
-        project.title,
+        stripHtmlTags(project.title),
         (project.status || "active").toUpperCase(),
         project.budget_total,
         project.budget_actuals,
