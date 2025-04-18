@@ -1631,12 +1631,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             {formData.risks.map((item, index) => (
               <div key={index} className="flex gap-2">
                 <Input
-                  value={item}
+                  value={
+                    typeof item === "string" ? item : item.description || ""
+                  }
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
                       risks: prev.risks.map((r, i) =>
-                        i === index ? e.target.value : r,
+                        i === index
+                          ? {
+                              description: e.target.value,
+                              impact: typeof r === "object" ? r.impact : "",
+                            }
+                          : r,
                       ),
                     }))
                   }
@@ -1664,7 +1671,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               onClick={() =>
                 setFormData((prev) => ({
                   ...prev,
-                  risks: [...prev.risks, ""],
+                  risks: [...prev.risks, { description: "", impact: "" }],
                 }))
               }
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
@@ -1694,12 +1701,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             {formData.considerations.map((item, index) => (
               <div key={index} className="flex gap-2">
                 <Input
-                  value={item}
+                  value={
+                    typeof item === "string" ? item : item.description || ""
+                  }
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
                       considerations: prev.considerations.map((c, i) =>
-                        i === index ? e.target.value : c,
+                        i === index
+                          ? { description: e.target.value }
+                          : typeof c === "string"
+                            ? { description: c }
+                            : c,
                       ),
                     }))
                   }
@@ -1729,7 +1742,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               onClick={() =>
                 setFormData((prev) => ({
                   ...prev,
-                  considerations: [...prev.considerations, ""],
+                  considerations: [
+                    ...(prev.considerations || []).map((c) =>
+                      typeof c === "string" ? { description: c } : c,
+                    ),
+                    { description: "" },
+                  ],
                 }))
               }
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
