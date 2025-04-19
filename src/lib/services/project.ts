@@ -51,7 +51,7 @@ export interface ProjectWithRelations
   accomplishments: Accomplishment[];
   next_period_activities: NextPeriodActivity[];
   risks: Risk[];
-  considerations: Consideration[];
+  considerations: string[];
   changes: Change[];
 }
 
@@ -176,9 +176,11 @@ export const projectService = {
             (a) => a.project_id === project.id,
           ),
           risks: (risks || []).filter((r) => r.project_id === project.id),
-          considerations: (considerations || []).filter(
-            (c) => c.project_id === project.id,
-          ),
+          considerations: (considerations || [])
+            .filter((c) => c.project_id === project.id)
+            .map((c) =>
+              typeof c.description === "string" ? c.description : "",
+            ),
           changes: (changes || []).filter((c) => c.project_id === project.id),
         };
       });
@@ -467,7 +469,14 @@ export const projectService = {
         supabase.from("considerations").insert(
           data.considerations.map((c) => ({
             project_id: id,
-            description: c,
+            description:
+              typeof c === "string"
+                ? c
+                : typeof c === "object" && c !== null && "description" in c
+                  ? typeof c.description === "string"
+                    ? c.description
+                    : JSON.stringify(c.description)
+                  : String(c || ""),
           })),
         ),
         supabase.from("changes").insert(
@@ -700,7 +709,14 @@ export const projectService = {
             .insert(
               data.considerations.map((c) => ({
                 project_id: project.id,
-                description: c,
+                description:
+                  typeof c === "string"
+                    ? c
+                    : typeof c === "object" && c !== null && "description" in c
+                      ? typeof c.description === "string"
+                        ? c.description
+                        : JSON.stringify(c.description)
+                      : String(c || ""),
               })),
             );
           if (considerationsError) {
@@ -887,7 +903,18 @@ export const projectService = {
         accomplishments: accomplishments || [],
         next_period_activities: activities || [],
         risks: risks || [],
-        considerations: considerations || [],
+        considerations: (considerations || []).map((c) => {
+          if (!c) return "";
+          if (typeof c.description === "string") return c.description;
+          if (typeof c.description === "object" && c.description !== null) {
+            try {
+              return JSON.stringify(c.description);
+            } catch (e) {
+              return "";
+            }
+          }
+          return "";
+        }),
         changes: changes || [],
       };
     } catch (error) {

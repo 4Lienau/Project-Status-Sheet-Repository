@@ -34,20 +34,48 @@ import ProjectDashboard from "./pages/ProjectDashboard";
 import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
 
+// Helper function to check authentication status
+const checkAuthStatus = (user, loading, initialCheckComplete) => {
+  // Still loading authentication state
+  if (loading || !initialCheckComplete) {
+    console.log("ProtectedRoute: Still loading authentication state");
+    return "loading";
+  }
+
+  // Not authenticated
+  if (!user) {
+    console.log("ProtectedRoute: No authenticated user, redirecting to login");
+    return "unauthenticated";
+  }
+
+  // Authenticated
+  console.log(
+    "ProtectedRoute: User authenticated, rendering protected content",
+  );
+  return "authenticated";
+};
+
 // Protected route component that redirects to login if not authenticated
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
+  const location = useLocation();
 
   // Set a flag when initial check is complete
   useEffect(() => {
     if (!loading) {
       setInitialCheckComplete(true);
+      console.log(
+        "ProtectedRoute: Initial auth check complete for path:",
+        location.pathname,
+      );
     }
-  }, [loading]);
+  }, [loading, location.pathname]);
+
+  const authStatus = checkAuthStatus(user, loading, initialCheckComplete);
 
   // Show loading state while checking authentication
-  if (loading || !initialCheckComplete) {
+  if (authStatus === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -61,37 +89,30 @@ const ProtectedRoute = ({ children }) => {
   }
 
   // Redirect to login if not authenticated
-  if (!user) {
-    console.log("ProtectedRoute: No authenticated user, redirecting to login");
+  if (authStatus === "unauthenticated") {
     return <Navigate to="/login" replace />;
   }
 
-  console.log(
-    "ProtectedRoute: User authenticated, rendering protected content",
-  );
   // Render children if authenticated
   return children;
 };
 
 function App() {
   const location = useLocation();
+  console.log("Current location:", location.pathname);
 
   return (
     <Suspense fallback={<p>Loading...</p>}>
       {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
       <Routes>
+        {/* Public routes - these should come BEFORE protected routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
+        {/* Tempo route for development */}
+        {import.meta.env.VITE_TEMPO === "true" && <Route path="/tempobook/*" />}
+
         {/* Protected routes */}
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/status-sheet/:id"
           element={
@@ -125,7 +146,15 @@ function App() {
           }
         />
 
-        {import.meta.env.VITE_TEMPO === "true" && <Route path="/tempobook/*" />}
+        {/* Catch-all route - must be last */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Suspense>
   );

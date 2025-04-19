@@ -151,6 +151,84 @@ const defaultFormData = {
   changes: [],
 };
 
+// Helper function to extract string from nested description objects
+const extractStringFromNestedObject = (item: any): string => {
+  console.log("extractStringFromNestedObject called with:", item);
+
+  // If it's already a string, return it
+  if (typeof item === "string") {
+    console.log("Item is already a string:", item);
+    return item;
+  }
+
+  // If it's an object with a description property
+  if (typeof item === "object" && item !== null) {
+    console.log("Item is an object:", item);
+
+    // If it has a description property that's a string, return that
+    if (typeof item.description === "string") {
+      console.log("Found string description:", item.description);
+      return item.description;
+    }
+
+    // If it has a description property that's an object, recursively extract from it
+    if (typeof item.description === "object" && item.description !== null) {
+      console.log("Found nested object description:", item.description);
+      return extractStringFromNestedObject(item.description);
+    }
+
+    // If we couldn't extract a string, convert the object to a string
+    console.log("Converting object to string:", item);
+    return JSON.stringify(item);
+  }
+
+  // For any other type, convert to string
+  console.log("Converting non-object to string:", item);
+  return String(item || "");
+};
+
+// Helper function to ensure considerations are always stored as simple strings
+const ensureConsiderationsAreStrings = (considerations: any[]): string[] => {
+  if (!considerations || !Array.isArray(considerations)) {
+    console.log(
+      "ensureConsiderationsAreStrings: considerations is not an array",
+      considerations,
+    );
+    return [];
+  }
+
+  console.log("ensureConsiderationsAreStrings input:", considerations);
+  const result = considerations.map((item) => {
+    // Handle objects with description property
+    if (item && typeof item === "object" && "description" in item) {
+      // If description is a string, return it directly
+      if (typeof item.description === "string") {
+        return item.description;
+      }
+      // If description is an object, try to stringify it
+      if (typeof item.description === "object" && item.description !== null) {
+        try {
+          return JSON.stringify(item.description);
+        } catch (e) {
+          return "";
+        }
+      }
+    }
+    // If it's already a string, return it
+    if (typeof item === "string") {
+      return item;
+    }
+    // For any other case, try to convert to string
+    try {
+      return String(item || "");
+    } catch (e) {
+      return "";
+    }
+  });
+  console.log("ensureConsiderationsAreStrings output:", result);
+  return result;
+};
+
 const ProjectForm: React.FC<ProjectFormProps> = ({
   initialData,
   onSubmit,
@@ -174,6 +252,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       "Initial formData with manual_status_color:",
       mergedData.manual_status_color,
     );
+
+    // Normalize considerations to ensure they are always strings
+    mergedData.considerations = ensureConsiderationsAreStrings(
+      mergedData.considerations,
+    );
+    console.log("Normalized considerations:", mergedData.considerations);
+
     return mergedData;
   });
   const [hasChanges, setHasChanges] = React.useState(false);
@@ -286,6 +371,22 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         "Updating formData with new initialData, manual_status_color:",
         updatedFormData.manual_status_color,
       );
+
+      // Log considerations before normalization
+      console.log(
+        "Raw considerations from initialData:",
+        initialData.considerations,
+      );
+
+      // Normalize considerations to ensure they are always strings
+      updatedFormData.considerations = ensureConsiderationsAreStrings(
+        updatedFormData.considerations,
+      );
+      console.log(
+        "Normalized considerations after update:",
+        updatedFormData.considerations,
+      );
+
       setFormData(updatedFormData);
 
       // Reset form attributes
@@ -348,6 +449,22 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     );
     e.preventDefault();
     console.log("Submitting form data:", formData);
+    console.log(
+      "Raw considerations before normalization:",
+      formData.considerations,
+    );
+
+    // Ensure considerations are simple strings before submitting
+    const submissionData = {
+      ...formData,
+      // Explicitly convert all considerations to simple strings
+      considerations: ensureConsiderationsAreStrings(formData.considerations),
+    };
+
+    console.log(
+      "Submitting with normalized considerations:",
+      submissionData.considerations,
+    );
 
     // Set the form as just saved before submitting to prevent navigation warnings
     const formElement = document.querySelector("form");
@@ -355,7 +472,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       formElement.setAttribute("data-just-saved", "true");
     }
 
-    const success = await onSubmit(formData);
+    const success = await onSubmit(submissionData);
     if (success) {
       // Don't try to modify the initialData prop directly as it's read-only
       // Instead, we'll rely on the parent component to pass updated initialData
@@ -1701,20 +1818,23 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             {formData.considerations.map((item, index) => (
               <div key={index} className="flex gap-2">
                 <Input
-                  value={
-                    typeof item === "string" ? item : item.description || ""
-                  }
+                  value={typeof item === "string" ? item : ""}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      considerations: prev.considerations.map((c, i) =>
-                        i === index
-                          ? { description: e.target.value }
-                          : typeof c === "string"
-                            ? { description: c }
-                            : c,
-                      ),
-                    }))
+                    setFormData((prev) => {
+                      const newConsiderations = [...prev.considerations];
+                      newConsiderations[index] = e.target.value;
+                      console.log(
+                        `Updating consideration at index ${index} to: '${e.target.value}'`,
+                      );
+                      console.log(
+                        "New considerations array:",
+                        newConsiderations,
+                      );
+                      return {
+                        ...prev,
+                        considerations: newConsiderations,
+                      };
+                    })
                   }
                   placeholder="Enter consideration"
                   className="bg-white/50 backdrop-blur-sm border-gray-200/50"
@@ -1740,15 +1860,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               type="button"
               variant="outline"
               onClick={() =>
-                setFormData((prev) => ({
-                  ...prev,
-                  considerations: [
-                    ...(prev.considerations || []).map((c) =>
-                      typeof c === "string" ? { description: c } : c,
-                    ),
-                    { description: "" },
-                  ],
-                }))
+                setFormData((prev) => {
+                  // Always add a simple string, never an object
+                  return {
+                    ...prev,
+                    considerations: [...prev.considerations, ""],
+                  };
+                })
               }
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
             >
