@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Info } from "lucide-react";
+import { Info, Trash2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -59,7 +59,8 @@ const ConsiderationsSection: React.FC<ConsiderationsSectionProps> = ({
             />
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              size="icon"
               onClick={() =>
                 setFormData((prev) => ({
                   ...prev,
@@ -68,9 +69,9 @@ const ConsiderationsSection: React.FC<ConsiderationsSectionProps> = ({
                   ),
                 }))
               }
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+              className="h-9 w-9 p-0"
             >
-              Remove
+              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
             </Button>
           </div>
         ))}
