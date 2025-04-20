@@ -265,6 +265,16 @@ export const useProjectForm = (
       }
     }
 
+    // Ensure the form has the data-adding-milestones attribute set if we're adding milestones
+    // This is critical to prevent data reloading during the save operation
+    const formElement = document.querySelector("form");
+    if (formElement && isAddingMilestones) {
+      formElement.setAttribute("data-adding-milestones", "true");
+      console.log(
+        "Ensuring form attribute data-adding-milestones is set to true during submit",
+      );
+    }
+
     // Log the current milestone count to help with debugging
     console.log(
       `Current milestone count in form data: ${formData.milestones.length}`,
@@ -330,13 +340,17 @@ export const useProjectForm = (
     );
 
     // Set the form as just saved before submitting to prevent navigation warnings
-    const formElement = document.querySelector("form");
     if (formElement) {
       formElement.setAttribute("data-just-saved", "true");
     }
 
     try {
       console.log("Calling onSubmit with submission data");
+      // Set data-auto-saving attribute to prevent data reloading during save
+      if (formElement) {
+        formElement.setAttribute("data-auto-saving", "true");
+      }
+
       const success = await onSubmit(submissionData);
       if (success) {
         console.log("Form saved successfully, resetting state flags");
@@ -344,18 +358,18 @@ export const useProjectForm = (
         // Instead, we'll rely on the parent component to pass updated initialData
 
         // Update the form element attributes to reflect saved state
-        if (formElement) {
-          formElement.setAttribute("data-has-changes", "false");
-          formElement.setAttribute("data-user-interaction", "false");
-          formElement.setAttribute("data-just-saved", "true");
+        const formEl = document.querySelector("form");
+        if (formEl) {
+          formEl.setAttribute("data-has-changes", "false");
+          formEl.setAttribute("data-user-interaction", "false");
+          formEl.setAttribute("data-just-saved", "true");
         }
 
-        // Show success toast only for automatic saves
-        if (!e) {
+        // Show success toast only for manual saves (not for automatic milestone saves)
+        if (e) {
           toast({
-            title: "Milestones Saved",
-            description:
-              "The selected milestones have been added to your project and saved.",
+            title: "Project Saved",
+            description: "Your project has been saved successfully.",
             className: "bg-green-50 border-green-200",
           });
         }
@@ -363,11 +377,26 @@ export const useProjectForm = (
         // Reset state flags AFTER everything else is done
         setHasChanges(false);
         setHasUserInteracted(false);
-        // Reset the isAddingMilestones flag after successful save
+
+        // Reset the isAddingMilestones flag and clear the timestamp
         setIsAddingMilestones(false);
+
+        // Reset auto-saving flag
         setIsAutoSaving(false);
+
+        // Reset all form attributes
+        const formElement2 = document.querySelector("form");
+        if (formElement2) {
+          formElement2.setAttribute("data-auto-saving", "false");
+          formElement2.setAttribute("data-adding-milestones", "false");
+          formElement2.removeAttribute("data-milestones-added-at");
+        }
       } else {
         console.error("Form save returned false");
+        const formEl = document.querySelector("form");
+        if (formEl) {
+          formEl.setAttribute("data-auto-saving", "false");
+        }
         setIsAutoSaving(false);
         toast({
           title: "Error Saving",
@@ -377,6 +406,11 @@ export const useProjectForm = (
       }
     } catch (error) {
       console.error("Error saving form:", error);
+      // Reset auto-saving attribute in case of error
+      const formEl = document.querySelector("form");
+      if (formEl) {
+        formEl.setAttribute("data-auto-saving", "false");
+      }
       toast({
         title: "Error Saving",
         description:
@@ -384,7 +418,11 @@ export const useProjectForm = (
         variant: "destructive",
       });
       setIsAutoSaving(false);
-      setIsAddingMilestones(false);
+      // Only reset isAddingMilestones if we're not in the handleApplyMilestones function
+      // which will handle its own cleanup
+      if (!isAddingMilestones) {
+        setIsAddingMilestones(false);
+      }
     }
 
     // Return false to ensure the form doesn't submit normally
@@ -593,20 +631,45 @@ export const useProjectForm = (
     console.log("Applying selected milestones to project:", selectedMilestones);
     // Set flags BEFORE modifying form data to prevent premature resets
     setIsAddingMilestones(true);
-    setIsAutoSaving(true);
-    console.log("Setting isAddingMilestones and isAutoSaving to true");
+    console.log("Setting isAddingMilestones to true");
+
+    // Also update the form attribute to prevent data reloading
+    const formElement = document.querySelector("form");
+    if (formElement) {
+      formElement.setAttribute("data-adding-milestones", "true");
+      formElement.setAttribute("data-has-changes", "true");
+      formElement.setAttribute("data-user-interaction", "true");
+      // Add a timestamp to track when milestones were added
+      formElement.setAttribute(
+        "data-milestones-added-at",
+        Date.now().toString(),
+      );
+      console.log("Updated form attributes to prevent data reloading");
+    }
 
     // Format the milestones properly to ensure they have all required fields
-    const formattedMilestones = selectedMilestones.map((milestone) => ({
-      date: milestone.date || new Date().toISOString().split("T")[0],
-      milestone: milestone.milestone || "",
-      owner: milestone.owner || "",
-      completion: milestone.completion || 0,
-      status: milestone.status || "green",
-      tasks: milestone.tasks || [],
-    }));
+    // and space them one week apart starting from today
+    const today = new Date();
+    const formattedMilestones = selectedMilestones.map((milestone, index) => {
+      // Create a new date for each milestone, starting with today
+      // and adding 7 days for each subsequent milestone
+      const milestoneDate = new Date(today);
+      milestoneDate.setDate(today.getDate() + index * 7); // Add 0, 7, 14, 21, etc. days
 
-    console.log("Formatted milestones for database:", formattedMilestones);
+      return {
+        date: milestoneDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
+        milestone: milestone.milestone || "",
+        owner: milestone.owner || "",
+        completion: milestone.completion || 0,
+        status: milestone.status || "green",
+        tasks: milestone.tasks || [],
+      };
+    });
+
+    console.log(
+      "Formatted milestones with weekly spacing for database:",
+      formattedMilestones,
+    );
 
     // Add the selected milestones to the form data
     setFormData((prev) => ({
@@ -614,12 +677,21 @@ export const useProjectForm = (
       milestones: [...prev.milestones, ...formattedMilestones],
     }));
 
-    // Auto-save the form with the new milestones
-    await handleSubmit(null);
+    // Set hasChanges and hasUserInteracted to true to indicate unsaved changes
+    setHasChanges(true);
+    setHasUserInteracted(true);
 
-    // Reset flags after saving
-    setIsAddingMilestones(false);
-    setIsAutoSaving(false);
+    // Show success toast to inform the user that milestones were added (but not saved)
+    toast({
+      title: "Milestones Added",
+      description: `${formattedMilestones.length} milestones have been added to your project. Don't forget to save your changes!`,
+      className: "bg-blue-50 border-blue-200",
+      duration: 5000,
+    });
+
+    // IMPORTANT: Don't reset the isAddingMilestones flag automatically
+    // It will be reset when the user explicitly saves the project
+    // This prevents any data reloading until the user saves
 
     // Close the suggested milestones dialog
     setShowSuggestedMilestones(false);

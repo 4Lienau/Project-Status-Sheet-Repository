@@ -87,140 +87,167 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
   return (
     <TooltipProvider>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSubmit(e);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
+      <div className="relative">
+        <form
+          data-adding-milestones="false"
+          onSubmit={(e) => {
             e.preventDefault();
-            // Find the next focusable element
-            const focusableElements =
-              'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-            const form = e.currentTarget;
-            const elements = Array.from(
-              form.querySelectorAll(focusableElements),
-            );
-            const index = elements.findIndex(
-              (el) => el === document.activeElement,
-            );
-            if (index > -1 && index < elements.length - 1) {
-              const nextElement = elements[index + 1] as HTMLElement;
-              nextElement.focus();
-            }
-          }
-        }}
-        className="space-y-4 pb-24"
-      >
-        {/* Project Details Section */}
-        <ProjectDetailsSection
-          formData={formData}
-          setFormData={setFormData}
-          handleGenerateContent={handleGenerateContent}
-          isGeneratingAnalysis={isGeneratingAnalysis}
-          isAnalysisExpanded={isAnalysisExpanded}
-          setIsAnalysisExpanded={setIsAnalysisExpanded}
-          isAnalysisLoading={isAnalysisLoading}
-          showGanttChart={showGanttChart}
-          setShowGanttChart={setShowGanttChart}
-          handleDeleteProject={handleDeleteProject}
-          setPendingNavigationAction={setPendingNavigationAction}
-          setShowUnsavedChangesDialog={setShowUnsavedChangesDialog}
-        />
-
-        {/* Project Status Section */}
-        <ProjectStatusSection formData={formData} setFormData={setFormData} />
-
-        {/* Health Calculation Section */}
-        <HealthCalculationSection
-          formData={formData}
-          setFormData={setFormData}
-        />
-
-        {/* Budget & Links Section */}
-        <BudgetLinksSection formData={formData} setFormData={setFormData} />
-
-        {/* Milestones Section */}
-        <MilestonesSection
-          formData={formData}
-          setFormData={setFormData}
-          handleGenerateContent={handleGenerateContent}
-        />
-
-        {/* Accomplishments Section */}
-        <AccomplishmentsSection formData={formData} setFormData={setFormData} />
-
-        {/* Next Period Activities Section */}
-        <NextPeriodActivitiesSection
-          formData={formData}
-          setFormData={setFormData}
-        />
-
-        {/* Risks Section */}
-        <RisksSection formData={formData} setFormData={setFormData} />
-
-        {/* Considerations Section */}
-        <ConsiderationsSection formData={formData} setFormData={setFormData} />
-
-        {/* Changes Section */}
-        <ChangesSection formData={formData} setFormData={setFormData} />
-
-        {/* Form Actions - Now floating */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 z-10 flex justify-between items-center">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              if (hasChanges) {
-                setPendingNavigationAction(() => onBack);
-                setShowUnsavedChangesDialog(true);
-              } else {
-                onBack();
-              }
-            }}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-            Save Project
-          </Button>
-        </div>
-
-        {/* Dialogs */}
-        <UnsavedChangesDialog
-          open={showUnsavedChangesDialog}
-          onOpenChange={setShowUnsavedChangesDialog}
-          pendingNavigationAction={pendingNavigationAction}
-          setPendingNavigationAction={setPendingNavigationAction}
-        />
-
-        <OverwriteDialog
-          open={showOverwriteDialog}
-          onOpenChange={setShowOverwriteDialog}
-          pendingGenerationType={pendingGenerationType}
-          setPendingGenerationType={setPendingGenerationType}
-          generateContent={generateContent}
-          onConfirm={handleConfirmOverwrite}
-          onCancel={handleCancelOverwrite}
-        />
-
-        <GanttChartDialog
-          open={showGanttChart}
-          onOpenChange={setShowGanttChart}
-          milestones={formData.milestones}
-        />
-
-        <SuggestedMilestones
-          isOpen={showSuggestedMilestones}
-          onClose={() => setShowSuggestedMilestones(false)}
-          suggestedMilestones={suggestedMilestones}
-          onApply={async (selectedMilestones) => {
-            // Apply the selected milestones to the form data
-            await handleApplyMilestones(selectedMilestones);
+            handleSubmit(e);
           }}
-        />
-      </form>
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              // Find the next focusable element
+              const focusableElements =
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+              const form = e.currentTarget;
+              const elements = Array.from(
+                form.querySelectorAll(focusableElements),
+              );
+              const index = elements.findIndex(
+                (el) => el === document.activeElement,
+              );
+              if (index > -1 && index < elements.length - 1) {
+                const nextElement = elements[index + 1] as HTMLElement;
+                nextElement.focus();
+              }
+            }
+          }}
+          className="space-y-4 pb-24"
+        >
+          {/* Project Details Section */}
+          <ProjectDetailsSection
+            formData={formData}
+            setFormData={setFormData}
+            handleGenerateContent={handleGenerateContent}
+            isGeneratingAnalysis={isGeneratingAnalysis}
+            isAnalysisExpanded={isAnalysisExpanded}
+            setIsAnalysisExpanded={setIsAnalysisExpanded}
+            isAnalysisLoading={isAnalysisLoading}
+            showGanttChart={showGanttChart}
+            setShowGanttChart={setShowGanttChart}
+            handleDeleteProject={handleDeleteProject}
+            setPendingNavigationAction={setPendingNavigationAction}
+            setShowUnsavedChangesDialog={setShowUnsavedChangesDialog}
+          />
+
+          {/* Project Status Section */}
+          <ProjectStatusSection formData={formData} setFormData={setFormData} />
+
+          {/* Health Calculation Section */}
+          <HealthCalculationSection
+            formData={formData}
+            setFormData={setFormData}
+          />
+
+          {/* Budget & Links Section */}
+          <BudgetLinksSection formData={formData} setFormData={setFormData} />
+
+          {/* Milestones Section */}
+          <MilestonesSection
+            formData={formData}
+            setFormData={setFormData}
+            handleGenerateContent={handleGenerateContent}
+          />
+
+          {/* Accomplishments Section */}
+          <AccomplishmentsSection
+            formData={formData}
+            setFormData={setFormData}
+          />
+
+          {/* Next Period Activities Section */}
+          <NextPeriodActivitiesSection
+            formData={formData}
+            setFormData={setFormData}
+          />
+
+          {/* Risks Section */}
+          <RisksSection formData={formData} setFormData={setFormData} />
+
+          {/* Considerations Section */}
+          <ConsiderationsSection
+            formData={formData}
+            setFormData={setFormData}
+          />
+
+          {/* Changes Section */}
+          <ChangesSection formData={formData} setFormData={setFormData} />
+
+          {/* Form Actions - Now floating */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 z-10 flex justify-center items-center">
+            <div className="container mx-auto flex justify-between max-w-4xl">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (hasChanges) {
+                    setPendingNavigationAction(() => onBack);
+                    setShowUnsavedChangesDialog(true);
+                  } else {
+                    onBack();
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+
+              <div className="flex items-center gap-2">
+                {hasChanges && (
+                  <div className="bg-orange-100 border-l-4 border-orange-500 shadow-md rounded-l-lg p-2 animate-pulse">
+                    <div className="flex items-center gap-2">
+                      <span className="animate-pulse h-3 w-3 rounded-full bg-orange-500"></span>
+                      <span className="text-orange-600 font-bold text-sm">
+                        Unsaved changes
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <Button
+                  type="submit"
+                  className={`${hasChanges ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-600 hover:bg-blue-700"}`}
+                >
+                  Save Project
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Dialogs */}
+          <UnsavedChangesDialog
+            open={showUnsavedChangesDialog}
+            onOpenChange={setShowUnsavedChangesDialog}
+            pendingNavigationAction={pendingNavigationAction}
+            setPendingNavigationAction={setPendingNavigationAction}
+          />
+
+          <OverwriteDialog
+            open={showOverwriteDialog}
+            onOpenChange={setShowOverwriteDialog}
+            pendingGenerationType={pendingGenerationType}
+            setPendingGenerationType={setPendingGenerationType}
+            generateContent={generateContent}
+            onConfirm={handleConfirmOverwrite}
+            onCancel={handleCancelOverwrite}
+          />
+
+          <GanttChartDialog
+            open={showGanttChart}
+            onOpenChange={setShowGanttChart}
+            milestones={formData.milestones}
+          />
+
+          <SuggestedMilestones
+            isOpen={showSuggestedMilestones}
+            onClose={() => setShowSuggestedMilestones(false)}
+            suggestedMilestones={suggestedMilestones}
+            onApply={async (selectedMilestones) => {
+              // Apply the selected milestones to the form data
+              await handleApplyMilestones(selectedMilestones);
+            }}
+          />
+        </form>
+      </div>
     </TooltipProvider>
   );
 };

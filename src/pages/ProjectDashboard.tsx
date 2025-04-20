@@ -55,6 +55,38 @@ const ProjectDashboard = ({
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1); // -1 means current
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
 
+  // Add state to track when milestones were recently added
+  const [milestonesAddedTimestamp, setMilestonesAddedTimestamp] = useState<
+    number | null
+  >(null);
+
+  // Check form attributes for milestone additions
+  useEffect(() => {
+    const checkMilestoneAdditions = () => {
+      const formElement = document.querySelector("form");
+      const timestampStr = formElement?.getAttribute(
+        "data-milestones-added-at",
+      );
+
+      if (timestampStr) {
+        const timestamp = parseInt(timestampStr, 10);
+        if (!isNaN(timestamp)) {
+          setMilestonesAddedTimestamp(timestamp);
+          console.log(
+            "Detected milestones were added at:",
+            new Date(timestamp).toISOString(),
+          );
+        }
+      }
+    };
+
+    // Check on mount and periodically
+    checkMilestoneAdditions();
+    const interval = setInterval(checkMilestoneAdditions, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Add a ref to track if we're in a drag operation to prevent loading screen
   const isDraggingRef = React.useRef(false);
 
@@ -281,6 +313,40 @@ const ProjectDashboard = ({
         return;
       }
 
+      // Check if milestones were recently added (within the last 30 seconds)
+      if (milestonesAddedTimestamp) {
+        const timeSinceAddition = Date.now() - milestonesAddedTimestamp;
+        if (timeSinceAddition < 30000) {
+          // 30 seconds
+          console.log(
+            `Skipping project data fetch - milestones were added ${timeSinceAddition}ms ago`,
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Also check if we're in the middle of auto-saving
+      const isAutoSaving =
+        formElement?.getAttribute("data-auto-saving") === "true";
+      if (isAutoSaving) {
+        console.log("Skipping project data fetch while auto-saving");
+        setLoading(false);
+        return;
+      }
+
+      // Check if there are unsaved changes - don't refresh if there are
+      const hasUnsavedChanges =
+        formElement?.getAttribute("data-has-changes") === "true" &&
+        formElement?.getAttribute("data-user-interaction") === "true" &&
+        formElement?.getAttribute("data-just-saved") !== "true";
+
+      if (hasUnsavedChanges && isEditing) {
+        console.log("Skipping project data fetch due to unsaved changes");
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         console.log("Fetching project with ID:", id);
@@ -292,6 +358,53 @@ const ProjectDashboard = ({
         console.log("Versions data received:", versionsData.length);
 
         if (projectData) {
+          // Final checks before updating state
+          const finalFormElement = document.querySelector("form");
+
+          // Check if milestones are still being added
+          const isStillAddingMilestones =
+            finalFormElement?.getAttribute("data-adding-milestones") === "true";
+
+          if (isStillAddingMilestones) {
+            console.log(
+              "Canceling project data update - milestones are being added",
+            );
+            setLoading(false);
+            return;
+          }
+
+          // Check for recent milestone additions
+          const timestampStr = finalFormElement?.getAttribute(
+            "data-milestones-added-at",
+          );
+          if (timestampStr) {
+            const timestamp = parseInt(timestampStr, 10);
+            if (!isNaN(timestamp)) {
+              const timeSinceAddition = Date.now() - timestamp;
+              if (timeSinceAddition < 30000) {
+                // 30 seconds
+                console.log(
+                  `Canceling project data update - milestones were added ${timeSinceAddition}ms ago`,
+                );
+                setLoading(false);
+                return;
+              }
+            }
+          }
+
+          // Check again for unsaved changes
+          const stillHasUnsavedChanges =
+            finalFormElement?.getAttribute("data-has-changes") === "true" &&
+            finalFormElement?.getAttribute("data-user-interaction") ===
+              "true" &&
+            finalFormElement?.getAttribute("data-just-saved") !== "true";
+
+          if (stillHasUnsavedChanges && isEditing) {
+            console.log("Canceling project data update due to unsaved changes");
+            setLoading(false);
+            return;
+          }
+
           setProject(projectData);
           setVersions(versionsData);
           setCurrentVersionIndex(-1);
@@ -307,7 +420,7 @@ const ProjectDashboard = ({
     };
 
     fetchProject();
-  }, [id, initialProject]);
+  }, [id, initialProject, isEditing, milestonesAddedTimestamp]);
 
   // Add a timeout to prevent infinite loading
   useEffect(() => {

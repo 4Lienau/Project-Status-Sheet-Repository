@@ -188,6 +188,10 @@ export const SuggestedMilestones: React.FC<SuggestedMilestonesProps> = ({
             Add Selected Milestones ({selectedMilestones.size})
           </Button>
         </DialogFooter>
+        <div className="text-sm text-amber-600 mt-2 text-center">
+          <strong>Note:</strong> After adding milestones, remember to click
+          "Save Project" to permanently save your changes.
+        </div>
       </DialogContent>
     </Dialog>
   );
