@@ -270,6 +270,17 @@ const ProjectDashboard = ({
         return;
       }
 
+      // Check if we're in the middle of adding milestones
+      const formElement = document.querySelector("form");
+      const isAddingMilestones =
+        formElement?.getAttribute("data-adding-milestones") === "true";
+
+      if (isAddingMilestones) {
+        console.log("Skipping project data fetch while adding milestones");
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         console.log("Fetching project with ID:", id);
@@ -425,7 +436,10 @@ const ProjectDashboard = ({
           description: r.description || "",
           impact: r.impact || "",
         })) || [],
-      considerations: project.considerations?.map((c) => c.description) || [],
+      considerations:
+        project.considerations?.map((c) =>
+          typeof c === "string" ? c : c.description || "",
+        ) || [],
       changes:
         project.changes?.map((c) => ({
           change: c.change || "",
@@ -529,6 +543,8 @@ const ProjectDashboard = ({
                 formElement?.getAttribute("data-has-changes") === "true";
               const formHasInteraction =
                 formElement?.getAttribute("data-user-interaction") === "true";
+              const isAddingMilestones =
+                formElement?.getAttribute("data-adding-milestones") === "true";
 
               if (formHasChanges && formHasInteraction) {
                 // Show confirmation dialog
@@ -560,6 +576,13 @@ const ProjectDashboard = ({
                   setIsEditing(false);
                 }
               } else {
+                // Don't fetch fresh data if we're in the middle of adding milestones
+                if (isAddingMilestones) {
+                  console.log("Skipping data reload while adding milestones");
+                  setIsEditing(false);
+                  return;
+                }
+
                 // Fetch fresh data before switching view
                 setLoading(true);
                 try {
@@ -618,6 +641,35 @@ const ProjectDashboard = ({
               }
 
               // First update the project
+              console.log(
+                "ProjectDashboard: Updating project with milestones:",
+                JSON.stringify(data.milestones),
+              );
+
+              // Ensure milestones are properly formatted and not empty
+              const formattedMilestones = data.milestones
+                .filter((m) => m.milestone.trim() !== "")
+                .map((m) => ({
+                  date: m.date,
+                  milestone: m.milestone,
+                  owner: m.owner,
+                  completion: m.completion,
+                  status: m.status,
+                  weight: m.weight || 3,
+                  tasks:
+                    m.tasks?.map((t) => ({
+                      description: t.description,
+                      assignee: t.assignee || m.owner,
+                      date: t.date || m.date,
+                      completion: t.completion || 0,
+                    })) || [],
+                }));
+
+              console.log(
+                "ProjectDashboard: Formatted milestones for update:",
+                JSON.stringify(formattedMilestones),
+              );
+
               const updatedProject = await projectService.updateProject(
                 projectId,
                 {
@@ -650,23 +702,7 @@ const ProjectDashboard = ({
                   business_leads: data.businessLeads,
                   project_manager: data.projectManager,
                   department: data.department,
-                  milestones: data.milestones
-                    .filter((m) => m.milestone.trim() !== "")
-                    .map((m) => ({
-                      date: m.date,
-                      milestone: m.milestone,
-                      owner: m.owner,
-                      completion: m.completion,
-                      status: m.status,
-                      weight: m.weight || 3,
-                      tasks:
-                        m.tasks?.map((t) => ({
-                          description: t.description,
-                          assignee: t.assignee || m.owner,
-                          date: t.date || m.date,
-                          completion: t.completion || 0,
-                        })) || [],
-                    })),
+                  milestones: formattedMilestones,
                   accomplishments: data.accomplishments || [],
                   next_period_activities:
                     data.nextPeriodActivities?.map((a) => ({
@@ -692,7 +728,18 @@ const ProjectDashboard = ({
               );
 
               if (updatedProject) {
+                console.log(
+                  "ProjectDashboard: Project updated successfully",
+                  updatedProject,
+                );
+                console.log(
+                  "ProjectDashboard: Updated milestones:",
+                  JSON.stringify(updatedProject.milestones),
+                );
+
+                // Set the project state with the updated data
                 setProject(updatedProject);
+
                 toast({
                   title: "Success",
                   description: "Project updated successfully",

@@ -163,7 +163,21 @@ export const aiService = {
   processMilestones(content: string) {
     try {
       // Parse the milestones from the AI response
-      const milestones = JSON.parse(content);
+      // First try to extract JSON if it's wrapped in text
+      let jsonContent = content;
+
+      // Try to find JSON array in the content if it's not pure JSON
+      const jsonMatch = content.match(/\[\s*\{.*\}\s*\]/s);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[0];
+      }
+
+      // Parse the JSON content
+      const milestones = JSON.parse(jsonContent);
+
+      if (!Array.isArray(milestones)) {
+        throw new Error("Parsed content is not an array");
+      }
 
       // Get current date
       const today = new Date();
@@ -177,14 +191,48 @@ export const aiService = {
 
           return {
             ...milestone,
-            date: date.toISOString().split("T")[0], // Format as YYYY-MM-DD
-            status: "green", // Set status to "On Track" (green)
+            date: milestone.date || date.toISOString().split("T")[0], // Use provided date or calculate one
+            owner: milestone.owner || "Project Manager", // Provide default owner if missing
+            completion:
+              typeof milestone.completion === "number"
+                ? milestone.completion
+                : 0,
+            status: milestone.status || "green", // Set status to "On Track" (green) if missing
           };
         }),
       );
     } catch (error) {
       console.error("Error processing milestones:", error);
-      return content; // Return original content if processing fails
+      // Return a default milestone array as fallback
+      const today = new Date();
+      const defaultMilestones = [
+        {
+          date: today.toISOString().split("T")[0],
+          milestone: "Project Kickoff",
+          owner: "Project Manager",
+          completion: 0,
+          status: "green",
+        },
+        {
+          date: new Date(today.setDate(today.getDate() + 14))
+            .toISOString()
+            .split("T")[0],
+          milestone: "Requirements Gathering",
+          owner: "Business Analyst",
+          completion: 0,
+          status: "green",
+        },
+        {
+          date: new Date(today.setDate(today.getDate() + 14))
+            .toISOString()
+            .split("T")[0],
+          milestone: "Design Phase Complete",
+          owner: "Design Lead",
+          completion: 0,
+          status: "green",
+        },
+      ];
+      return JSON.stringify(defaultMilestones);
     }
   },
 };

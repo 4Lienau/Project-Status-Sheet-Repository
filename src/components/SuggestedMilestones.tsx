@@ -31,12 +31,41 @@ interface SuggestedMilestonesProps {
 export const SuggestedMilestones: React.FC<SuggestedMilestonesProps> = ({
   isOpen,
   onClose,
-  suggestedMilestones,
+  suggestedMilestones = [], // Provide default empty array
   onApply,
 }) => {
+  // Initialize with all milestones selected by default
   const [selectedMilestones, setSelectedMilestones] = React.useState<
     Set<number>
-  >(new Set());
+  >(() => {
+    // Safely handle the case where suggestedMilestones might be undefined
+    return new Set(
+      Array.isArray(suggestedMilestones) && suggestedMilestones.length > 0
+        ? suggestedMilestones.map((_, index) => index)
+        : [],
+    );
+  });
+
+  // Reset selected milestones when suggestedMilestones changes or dialog opens
+  React.useEffect(() => {
+    if (
+      isOpen &&
+      Array.isArray(suggestedMilestones) &&
+      suggestedMilestones.length > 0
+    ) {
+      console.log(
+        "Resetting selected milestones with",
+        suggestedMilestones.length,
+        "items",
+      );
+      setSelectedMilestones(
+        new Set(suggestedMilestones.map((_, index) => index)),
+      );
+    } else if (isOpen) {
+      console.log("No valid milestones to select, clearing selection");
+      setSelectedMilestones(new Set());
+    }
+  }, [suggestedMilestones, isOpen]);
 
   const handleToggle = (index: number) => {
     const newSelected = new Set(selectedMilestones);
@@ -59,11 +88,37 @@ export const SuggestedMilestones: React.FC<SuggestedMilestonesProps> = ({
   };
 
   const handleApply = () => {
+    console.log("Applying selected milestones", {
+      totalMilestones: suggestedMilestones.length,
+      selectedCount: selectedMilestones.size,
+      selectedIndices: Array.from(selectedMilestones),
+    });
+
+    // Check if any milestones are selected
+    if (selectedMilestones.size === 0) {
+      console.log("No milestones selected, not applying any changes");
+      return;
+    }
+
+    // Filter the milestones based on selection
     const selected = suggestedMilestones.filter((_, index) =>
       selectedMilestones.has(index),
     );
-    onApply(selected);
-    onClose();
+
+    console.log("Selected milestones to apply:", selected);
+
+    // Create a deep copy of the selected milestones to prevent reference issues
+    const selectedCopy = JSON.parse(JSON.stringify(selected));
+
+    // Important: Don't close the dialog yet - we'll let the parent component do it
+    // after the save operation is complete
+
+    // Call the onApply callback with the selected milestones
+    // This will trigger the save operation in the parent component
+    onApply(selectedCopy);
+
+    // Don't close here - let the parent component handle closing
+    // This ensures the state updates complete before the dialog closes
   };
 
   const isAllSelected = selectedMilestones.size === suggestedMilestones.length;

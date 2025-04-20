@@ -472,42 +472,58 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {(data.nextPeriodActivities || []).map((item, index) => {
-                      // Handle both string and object formats
-                      const description =
-                        typeof item === "string" ? item : item.description;
-                      const date =
-                        typeof item === "string" ? "" : item.date || "";
-                      const completion =
-                        typeof item === "string" ? 0 : item.completion || 0;
-                      const assignee =
-                        typeof item === "string" ? "" : item.assignee || "";
+                    {/* Sort activities by date and map them */}
+                    {(data.nextPeriodActivities || [])
+                      .slice() // Create a copy to avoid mutating the original array
+                      .sort((a, b) => {
+                        // Get dates for comparison
+                        const dateA = typeof a === "string" ? "" : a.date || "";
+                        const dateB = typeof b === "string" ? "" : b.date || "";
+                        // Sort by date (ascending)
+                        return dateA.localeCompare(dateB);
+                      })
+                      .map((item, index) => {
+                        // Handle both string and object formats
+                        const description =
+                          typeof item === "string" ? item : item.description;
+                        const date =
+                          typeof item === "string" ? "" : item.date || "";
+                        const completion =
+                          typeof item === "string" ? 0 : item.completion || 0;
+                        const assignee =
+                          typeof item === "string" ? "" : item.assignee || "";
 
-                      return (
-                        <tr key={index} className="border-b border-gray-300">
-                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            {description}
-                          </td>
-                          <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                            {date}
-                          </td>
-                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            <div className="w-16 h-5 bg-gray-200 rounded-full overflow-hidden relative">
-                              <div
-                                className={`h-full ${completion === 100 ? "bg-blue-500" : completion >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
-                                style={{ width: `${completion}%` }}
-                              ></div>
-                              <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
-                                {completion}%
+                        // Truncate description to 35 characters
+                        const truncatedDescription =
+                          description.length > 35
+                            ? `${description.substring(0, 35)}...`
+                            : description;
+
+                        return (
+                          <tr key={index} className="border-b border-gray-300">
+                            <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                              {truncatedDescription}
+                            </td>
+                            <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
+                              {date}
+                            </td>
+                            <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                              <div className="w-16 h-5 bg-gray-200 rounded-full overflow-hidden relative">
+                                <div
+                                  className={`h-full ${completion === 100 ? "bg-blue-500" : completion >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
+                                  style={{ width: `${completion}%` }}
+                                ></div>
+                                <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
+                                  {completion}%
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            {assignee}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                            <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                              {assignee}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -595,26 +611,34 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {(data.milestones || []).map((milestone, index) => (
-                      <React.Fragment key={index}>
-                        <tr className="border-b border-gray-300">
-                          <td className="py-1 pr-4">
-                            <div
-                              className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion || 0, milestone.status || "green")}`}
-                            >
-                              {milestone.completion || 0}%
-                            </div>
-                          </td>
-                          <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                            {milestone.date || ""}
-                          </td>
-                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
-                            {milestone.milestone || ""}
-                          </td>
-                        </tr>
-                        {/* Tasks are hidden from Status Sheet view */}
-                      </React.Fragment>
-                    ))}
+                    {(data.milestones || [])
+                      .slice() // Create a copy to avoid mutating the original array
+                      .sort((a, b) => {
+                        // Convert dates to timestamps for comparison
+                        const dateA = new Date(a.date || "").getTime();
+                        const dateB = new Date(b.date || "").getTime();
+                        return dateA - dateB; // Sort earliest to latest
+                      })
+                      .map((milestone, index) => (
+                        <React.Fragment key={index}>
+                          <tr className="border-b border-gray-300">
+                            <td className="py-1 pr-4">
+                              <div
+                                className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion || 0, milestone.status || "green")}`}
+                              >
+                                {milestone.completion || 0}%
+                              </div>
+                            </td>
+                            <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
+                              {milestone.date || ""}
+                            </td>
+                            <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
+                              {milestone.milestone || ""}
+                            </td>
+                          </tr>
+                          {/* Tasks are hidden from Status Sheet view */}
+                        </React.Fragment>
+                      ))}
                   </tbody>
                 </table>
               </div>

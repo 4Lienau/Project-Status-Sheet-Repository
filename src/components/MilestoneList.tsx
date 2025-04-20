@@ -1,36 +1,19 @@
 /**
  * File: MilestoneList.tsx
- * Purpose: Component for managing a list of draggable milestone items
- * Description: This component renders a list of milestone items that can be reordered via drag
- * and drop. It uses dnd-kit for the drag and drop functionality and manages the state of the
- * milestones list. The component also calculates weighted completion percentages based on milestone
- * weights and handles drag events with proper state updates.
+ * Purpose: Component for managing a list of milestone items sorted by date
+ * Description: This component renders a list of milestone items sorted by date (earliest to latest).
+ * The component calculates weighted completion percentages based on milestone weights and ensures
+ * milestones are always displayed in chronological order.
  *
  * Imports from:
  * - React core libraries
- * - dnd-kit for drag and drop functionality
- * - MilestoneSortableItem component for individual milestone items
+ * - MilestoneItem component for individual milestone items
  *
  * Called by: src/components/ProjectForm.tsx
  */
 
-import React from "react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { MilestoneSortableItem } from "./MilestoneSortableItem";
+import React, { useEffect } from "react";
+import { MilestoneItem } from "./MilestoneItem";
 
 interface Task {
   id?: string;
@@ -64,14 +47,30 @@ export function MilestoneList({
   onMilestonesChange,
   onUpdate,
   onDelete,
-  setIsDragging,
 }: MilestoneListProps) {
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  // Sort milestones by date whenever they change
+  useEffect(() => {
+    // Only sort if there are milestones to sort
+    if (milestones.length > 1) {
+      const sortedMilestones = [...milestones].sort((a, b) => {
+        // Convert dates to timestamps for comparison
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB; // Sort earliest to latest
+      });
+
+      // Check if the order has changed
+      const hasOrderChanged = sortedMilestones.some((milestone, index) => {
+        return milestone !== milestones[index];
+      });
+
+      // Only update if the order has changed
+      if (hasOrderChanged) {
+        console.log("Sorting milestones by date");
+        onMilestonesChange(sortedMilestones);
+      }
+    }
+  }, [milestones, onMilestonesChange]);
 
   // Calculate weighted completion percentage
   const calculateWeightedCompletion = (milestones: Milestone[]) => {
@@ -94,82 +93,16 @@ export function MilestoneList({
     return Math.round((weightedSum / totalPossibleWeighted) * 100);
   };
 
-  const handleDragStart = () => {
-    console.log("Drag operation started");
-    if (setIsDragging) {
-      setIsDragging(true);
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = milestones.findIndex(
-        (_, index) => `milestone-${index}` === active.id,
-      );
-      const newIndex = milestones.findIndex(
-        (_, index) => `milestone-${index}` === over.id,
-      );
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        // Create a deep copy of milestones to ensure all properties are preserved
-        const milestonesToMove = JSON.parse(JSON.stringify(milestones));
-        const newMilestones = arrayMove(milestonesToMove, oldIndex, newIndex);
-
-        // Log the weights before and after to verify they're preserved
-        console.log(
-          "Weights before reordering:",
-          milestones.map((m) => m.weight || 3),
-        );
-        console.log(
-          "Weights after reordering:",
-          newMilestones.map((m) => m.weight || 3),
-        );
-
-        // Update milestones without triggering form submission
-        const formElement = document.querySelector("form");
-        if (formElement) {
-          formElement.setAttribute("data-has-changes", "true");
-          formElement.setAttribute("data-user-interaction", "true");
-        }
-        onMilestonesChange(newMilestones);
-      }
-    }
-
-    // Important: Set a small delay before turning off the dragging flag
-    // This prevents the loading screen from appearing during state updates
-    setTimeout(() => {
-      console.log("Drag operation ended");
-      if (setIsDragging) {
-        setIsDragging(false);
-      }
-    }, 300); // Increased delay to ensure state updates complete
-  };
-
-  const items = milestones.map((_, index) => `milestone-${index}`);
-
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      {/* Column headers removed as requested */}
-      <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <div className="space-y-4">
-          {milestones.map((milestone, index) => (
-            <MilestoneSortableItem
-              key={`milestone-${index}`}
-              id={`milestone-${index}`}
-              milestone={milestone}
-              onUpdate={(values) => onUpdate(index, values)}
-              onDelete={() => onDelete(index)}
-            />
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+    <div className="space-y-1">
+      {milestones.map((milestone, index) => (
+        <MilestoneItem
+          key={`milestone-${index}`}
+          milestone={milestone}
+          onUpdate={(values) => onUpdate(index, values)}
+          onDelete={() => onDelete(index)}
+        />
+      ))}
+    </div>
   );
 }
