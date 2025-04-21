@@ -74,7 +74,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     setPendingGenerationType,
     isGeneratingAnalysis,
     isAnalysisExpanded,
-    setIsAnalysisExpanded,
     isAnalysisLoading,
     handleSubmit,
     handleGenerateContent,
@@ -83,6 +82,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     handleConfirmOverwrite,
     handleCancelOverwrite,
     generateContent,
+    handleToggleAnalysis,
   } = useProjectForm(initialData, onSubmit, projectId);
 
   return (
@@ -122,7 +122,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             handleGenerateContent={handleGenerateContent}
             isGeneratingAnalysis={isGeneratingAnalysis}
             isAnalysisExpanded={isAnalysisExpanded}
-            setIsAnalysisExpanded={setIsAnalysisExpanded}
+            setIsAnalysisExpanded={handleToggleAnalysis}
             isAnalysisLoading={isAnalysisLoading}
             showGanttChart={showGanttChart}
             setShowGanttChart={setShowGanttChart}

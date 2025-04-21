@@ -195,31 +195,75 @@ export const projectService = {
     }
   },
 
-  // Special method to update only the project analysis field
+  // Method to create a new project summary and mark previous ones as not current
   async updateProjectAnalysis(
     id: string,
     analysisContent: string,
   ): Promise<boolean> {
-    console.log("[DEBUG] Updating project analysis for project ID:", id);
+    console.log("[DEBUG] Creating new project summary for project ID:", id);
     console.log(
       "[DEBUG] Analysis content length:",
       analysisContent?.length || 0,
     );
 
     try {
+      // First, mark all existing summaries for this project as not current
+      const { error: updateError } = await supabase
+        .from("project_summaries")
+        .update({ is_current: false })
+        .eq("project_id", id)
+        .eq("is_current", true);
+
+      if (updateError) {
+        console.error(
+          "[DEBUG] Error updating existing summaries:",
+          updateError,
+        );
+        // Continue anyway to try to insert the new summary
+      } else {
+        console.log(
+          "[DEBUG] Successfully marked existing summaries as not current",
+        );
+      }
+
+      // Create timestamp for the new summary
+      const timestamp = new Date().toISOString();
+      console.log("[DEBUG] Creating new summary with timestamp:", timestamp);
+
+      // Insert the new summary
       const { data, error } = await supabase
+        .from("project_summaries")
+        .insert({
+          project_id: id,
+          content: analysisContent,
+          is_current: true,
+          created_at: timestamp,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("[DEBUG] Error inserting new project summary:", error);
+        return false;
+      }
+
+      // Also update the project record with the latest analysis for backward compatibility
+      const { error: projectUpdateError } = await supabase
         .from("projects")
         .update({
           project_analysis: analysisContent,
         })
         .eq("id", id);
 
-      if (error) {
-        console.error("[DEBUG] Error updating project analysis:", error);
-        return false;
+      if (projectUpdateError) {
+        console.error(
+          "[DEBUG] Error updating project analysis field:",
+          projectUpdateError,
+        );
+        // Continue anyway since we've already saved to the summaries table
       }
 
-      console.log("[DEBUG] Project analysis updated successfully");
+      console.log("[DEBUG] Project summary created successfully:", data?.id);
       return true;
     } catch (error) {
       console.error(
@@ -227,6 +271,110 @@ export const projectService = {
         error,
       );
       return false;
+    }
+  },
+
+  // Method to get the latest project summary
+  async getLatestProjectSummary(projectId: string): Promise<{
+    content: string;
+    created_at: string;
+    is_stale: boolean;
+  } | null> {
+    try {
+      console.log("[DEBUG] Fetching latest summary for project ID:", projectId);
+
+      const { data, error } = await supabase
+        .from("project_summaries")
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("is_current", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // No rows returned - this is not an error, just no summary yet
+          console.log("[DEBUG] No current summary found for project");
+          return null;
+        }
+        console.error("[DEBUG] Error fetching project summary:", error);
+        return null;
+      }
+
+      if (!data) {
+        console.log("[DEBUG] No summary found for project ID:", projectId);
+        return null;
+      }
+
+      // Check if the summary is older than 1 week (stale)
+      const summaryDate = new Date(data.created_at);
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const isStale = summaryDate < oneWeekAgo;
+
+      console.log(
+        "[DEBUG] Found summary, created at:",
+        data.created_at,
+        "is stale:",
+        isStale,
+      );
+      console.log("[DEBUG] Summary content length:", data.content?.length || 0);
+
+      // Ensure we're returning a properly formatted timestamp
+      const formattedTimestamp = data.created_at
+        ? new Date(data.created_at).toISOString()
+        : null;
+      console.log("[DEBUG] Formatted timestamp:", formattedTimestamp);
+
+      return {
+        content: data.content || "",
+        created_at: formattedTimestamp || "",
+        is_stale: isStale,
+      };
+    } catch (error) {
+      console.error(
+        "[DEBUG] Unexpected error in getLatestProjectSummary:",
+        error,
+      );
+      return null;
+    }
+  },
+
+  // Method to get all summaries for a project
+  async getProjectSummaryHistory(projectId: string): Promise<
+    Array<{
+      id: string;
+      content: string;
+      created_at: string;
+      is_current: boolean;
+    }>
+  > {
+    try {
+      console.log(
+        "[DEBUG] Fetching summary history for project ID:",
+        projectId,
+      );
+
+      const { data, error } = await supabase
+        .from("project_summaries")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("[DEBUG] Error fetching project summary history:", error);
+        return [];
+      }
+
+      console.log("[DEBUG] Found", data?.length || 0, "summaries in history");
+      return data || [];
+    } catch (error) {
+      console.error(
+        "[DEBUG] Unexpected error in getProjectSummaryHistory:",
+        error,
+      );
+      return [];
     }
   },
   async updateProject(

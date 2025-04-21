@@ -54,11 +54,21 @@ const ProjectDashboard = ({
   const [versions, setVersions] = useState([]);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1); // -1 means current
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
+  const [formattedData, setFormattedData] = useState(null);
 
   // Add state to track when milestones were recently added
   const [milestonesAddedTimestamp, setMilestonesAddedTimestamp] = useState<
     number | null
   >(null);
+
+  // Add a ref to track if we're in a drag operation to prevent loading screen
+  const isDraggingRef = React.useRef(false);
+
+  // Function to set the dragging state that can be passed down to children
+  const setIsDragging = (dragging: boolean) => {
+    console.log("Setting isDragging to:", dragging);
+    isDraggingRef.current = dragging;
+  };
 
   // Check form attributes for milestone additions
   useEffect(() => {
@@ -86,15 +96,6 @@ const ProjectDashboard = ({
 
     return () => clearInterval(interval);
   }, []);
-
-  // Add a ref to track if we're in a drag operation to prevent loading screen
-  const isDraggingRef = React.useRef(false);
-
-  // Function to set the dragging state that can be passed down to children
-  const setIsDragging = (dragging: boolean) => {
-    console.log("Setting isDragging to:", dragging);
-    isDraggingRef.current = dragging;
-  };
 
   // Load project versions
   useEffect(() => {
@@ -439,51 +440,8 @@ const ProjectDashboard = ({
     }
   }, [loading, project, error]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-muted-foreground">Loading project data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const handleBack = () => {
-    if (onBack) {
-      // Use the callback from props if provided
-      onBack();
-    } else {
-      // Otherwise navigate directly
-      navigate("/");
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-red-500">{error}</p>
-        <Link to="/">
-          <Button onClick={handleBack}>Back to Projects</Button>
-        </Link>
-      </div>
-    );
-  }
-
-  const formatCurrency = (value: number | null | undefined) => {
-    return value
-      ? value
-          .toLocaleString("en-US", {
-            style: "currency",
-            currency: "USD",
-          })
-          .replace("$", "")
-      : "0.00";
-  };
-
   // Format project data for the form
-  const getFormattedData = () => {
+  const getFormattedData = async () => {
     if (!project) {
       console.log("No project data available for formatting");
       return {
@@ -491,6 +449,8 @@ const ProjectDashboard = ({
         description: "",
         valueStatement: "",
         projectAnalysis: "",
+        summaryCreatedAt: null,
+        summaryIsStale: false,
         status: "active",
         health_calculation_type: "automatic",
         manual_health_percentage: 0,
@@ -510,11 +470,42 @@ const ProjectDashboard = ({
       };
     }
 
+    // Get the latest summary with metadata if available
+    let summaryData = {
+      content: project.project_analysis || "",
+      created_at: null,
+      is_stale: false,
+    };
+
+    if (project.id) {
+      try {
+        const latestSummary = await projectService.getLatestProjectSummary(
+          project.id,
+        );
+        if (latestSummary) {
+          console.log(
+            "Retrieved latest summary for formatting:",
+            latestSummary,
+          );
+          summaryData = latestSummary;
+        }
+      } catch (error) {
+        console.error("Error fetching latest summary:", error);
+        // Continue with the existing project_analysis field
+      }
+    }
+
+    console.log("Summary data being passed to form:", summaryData);
+    console.log("Summary content length:", summaryData.content?.length || 0);
+    console.log("Summary timestamp:", summaryData.created_at);
+
     return {
       title: project.title || "",
       description: project.description || "",
       valueStatement: project.value_statement || "",
-      projectAnalysis: project.project_analysis || "",
+      projectAnalysis: summaryData.content || project.project_analysis || "",
+      summaryCreatedAt: summaryData.created_at || null,
+      summaryIsStale: summaryData.is_stale || false,
       status: project.status || "active",
       health_calculation_type: project.health_calculation_type || "automatic",
       manual_health_percentage: project.manual_health_percentage || 0,
@@ -530,6 +521,7 @@ const ProjectDashboard = ({
           ? formatCurrency(project.budget_forecast)
           : "0.00",
       },
+      isAnalysisExpanded: false, // Always default to collapsed analysis section
       charterLink: project.charter_link || "",
       sponsors: project.sponsors || "",
       businessLeads: project.business_leads || "",
@@ -562,7 +554,36 @@ const ProjectDashboard = ({
     };
   };
 
-  const formattedData = getFormattedData();
+  // Load formatted data asynchronously
+  useEffect(() => {
+    const loadFormattedData = async () => {
+      const data = await getFormattedData();
+      setFormattedData(data);
+    };
+
+    loadFormattedData();
+  }, [project]);
+
+  const formatCurrency = (value: number | null | undefined) => {
+    return value
+      ? value
+          .toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD",
+          })
+          .replace("$", "")
+      : "0.00";
+  };
+
+  const handleBack = () => {
+    if (onBack) {
+      // Use the callback from props if provided
+      onBack();
+    } else {
+      // Otherwise navigate directly
+      navigate("/");
+    }
+  };
 
   // Function to check for unsaved changes
   const checkUnsavedChanges = (callback: () => void) => {
@@ -587,6 +608,40 @@ const ProjectDashboard = ({
       callback();
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-muted-foreground">Loading project data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <p className="text-red-500">{error}</p>
+        <Link to="/">
+          <Button onClick={handleBack}>Back to Projects</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (!formattedData && !loading) {
+    // Show loading state while formatted data is being prepared
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-muted-foreground">Preparing project data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -925,6 +980,9 @@ const ProjectDashboard = ({
                 )
               : [],
             changes: Array.isArray(project.changes) ? project.changes : [],
+            projectAnalysis: formattedData?.projectAnalysis || "",
+            summaryCreatedAt: formattedData?.summaryCreatedAt,
+            summaryIsStale: formattedData?.summaryIsStale,
           }}
         />
       )}

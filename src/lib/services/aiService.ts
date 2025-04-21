@@ -19,8 +19,10 @@
 
 import OpenAI from "openai";
 
+// Check if API key is available, otherwise use a placeholder
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY || "";
 const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  apiKey,
   dangerouslyAllowBrowser: true,
 });
 
@@ -74,90 +76,197 @@ export const aiService = {
     description?: string,
     projectData?: any,
   ) {
-    // Try using Netlify function first
+    // Try using Netlify function first with a timeout
     try {
+      console.log(
+        `Attempting to generate ${type} content via Netlify function`,
+      );
       // Get the base URL from the current window location
       const baseUrl = window.location.origin;
-      const response = await fetch(
-        `${baseUrl}/.netlify/functions/generate-content`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type,
-            title,
-            description,
-            projectData,
-          }),
-        },
-      );
 
-      if (response.ok) {
-        const data = await response.json();
-        if (type === "milestones") {
-          return this.processMilestones(data.content);
+      // Create an AbortController to handle timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+      try {
+        const response = await fetch(
+          `${baseUrl}/.netlify/functions/generate-content`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              type,
+              title,
+              description,
+              projectData,
+            }),
+            signal: controller.signal,
+          },
+        );
+
+        // Clear the timeout since the request completed
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          console.log(
+            `Successfully generated ${type} content via Netlify function`,
+          );
+          const data = await response.json();
+          if (type === "milestones") {
+            return this.processMilestones(data.content);
+          }
+          return data.content;
+        } else {
+          console.error(`Netlify function returned error: ${response.status}`);
+          const errorText = await response.text();
+          console.error(`Error details: ${errorText}`);
+          throw new Error(
+            `Netlify function error: ${response.status} - ${errorText}`,
+          );
         }
-        return data.content;
+      } catch (fetchError) {
+        // Clear the timeout to prevent memory leaks
+        clearTimeout(timeoutId);
+        // Re-throw to be caught by the outer try/catch
+        throw fetchError;
       }
     } catch (e) {
       // If Netlify function fails, fall back to direct OpenAI call
-      console.log("Falling back to direct OpenAI call");
+      console.log(
+        `Netlify function failed: ${e.message}. Falling back to direct OpenAI call`,
+      );
+
+      // Direct OpenAI call as fallback
+      // Prepare the content for the AI based on the type
+      let userContent =
+        title + (description ? "\n\nProject Description: " + description : "");
+
+      // For analysis, include filtered project data with explanations
+      if (type === "analysis" && projectData) {
+        // Create a simplified version of the project data with explanations
+        const filteredData = {
+          title: projectData.title,
+          status: projectData.status,
+          description: projectData.description,
+          budget: {
+            total: projectData.budget?.total || 0,
+            actuals: projectData.budget?.actuals || 0,
+            forecast: projectData.budget?.forecast || 0,
+            note: "Zero actuals may indicate a new project, not necessarily a problem",
+          },
+          milestones:
+            projectData.milestones?.map((m) => ({
+              milestone: m.milestone,
+              completion: m.completion, // This is the primary indicator of progress (0-100%)
+              status: m.status, // This is secondary to completion percentage
+              date: m.date,
+              owner: m.owner,
+            })) || [],
+          accomplishments: projectData.accomplishments || [],
+          risks: projectData.risks || [],
+          next_period_activities: projectData.nextPeriodActivities || [],
+        };
+
+        userContent +=
+          "\n\nProject Data: " +
+          JSON.stringify(filteredData, null, 2) +
+          "\n\nIMPORTANT: Milestone completion percentage (0-100%) is the true measure of progress. A milestone with 0% completion has NOT been achieved, regardless of status.";
+      }
+
+      // Check if OpenAI API key is available
+      if (!apiKey) {
+        console.error(
+          "OpenAI API key is not set. Please add VITE_OPENAI_API_KEY to your environment variables.",
+        );
+        // Return a fallback response for testing/development
+        if (type === "analysis") {
+          return `<p>This is a placeholder analysis since no OpenAI API key is available. The project "${title}" appears to be in the early stages with limited data available for comprehensive analysis.</p><p>To generate a real analysis, please set the VITE_OPENAI_API_KEY environment variable.</p>`;
+        } else if (type === "milestones") {
+          return JSON.stringify([
+            {
+              date: new Date().toISOString().split("T")[0],
+              milestone: "Project Kickoff",
+              owner: "Project Manager",
+              completion: 0,
+              status: "green",
+            },
+            {
+              date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split("T")[0],
+              milestone: "Requirements Gathering",
+              owner: "Business Analyst",
+              completion: 0,
+              status: "green",
+            },
+          ]);
+        } else if (type === "description") {
+          return `This project aims to ${title.toLowerCase()}. It will deliver value through improved processes and outcomes.`;
+        } else {
+          return `This project provides business value by improving efficiency and reducing costs related to ${title.toLowerCase()}.`;
+        }
+      }
+
+      try {
+        console.log(`Making direct OpenAI API call for ${type} generation`);
+
+        // Add a timeout for the OpenAI API call
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () =>
+              reject(new Error("OpenAI API call timed out after 30 seconds")),
+            30000,
+          );
+        });
+
+        // Create the API call promise
+        const apiCallPromise = openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: getPrompt(type) },
+            { role: "user", content: userContent },
+          ],
+          max_tokens: type === "milestones" || type === "analysis" ? 1500 : 500,
+          temperature: 0.7,
+        });
+
+        // Race the API call against the timeout
+        const completion = await Promise.race([apiCallPromise, timeoutPromise]);
+        console.log(`OpenAI API call successful for ${type} generation`);
+
+        const content = completion.choices[0].message?.content || "";
+        if (content.trim() === "") {
+          throw new Error("OpenAI API returned empty content");
+        }
+
+        if (type === "milestones") {
+          return this.processMilestones(content);
+        }
+        return content;
+      } catch (error) {
+        console.error(`Error in OpenAI API call: ${error.message}`);
+        // Provide fallback content in case of API error
+        if (type === "analysis") {
+          return `<p>Unable to generate analysis due to an API error: ${error.message}</p><p>Please try again later or check your API key configuration.</p>`;
+        } else if (type === "milestones") {
+          return this.processMilestones(
+            JSON.stringify([
+              {
+                date: new Date().toISOString().split("T")[0],
+                milestone: "Project Kickoff",
+                owner: "Project Manager",
+                completion: 0,
+                status: "green",
+              },
+            ]),
+          );
+        } else {
+          return `Unable to generate content due to an API error. Please try again later.`;
+        }
+      }
     }
-
-    // Direct OpenAI call as fallback
-    // Prepare the content for the AI based on the type
-    let userContent =
-      title + (description ? "\n\nProject Description: " + description : "");
-
-    // For analysis, include filtered project data with explanations
-    if (type === "analysis" && projectData) {
-      // Create a simplified version of the project data with explanations
-      const filteredData = {
-        title: projectData.title,
-        status: projectData.status,
-        description: projectData.description,
-        budget: {
-          total: projectData.budget?.total || 0,
-          actuals: projectData.budget?.actuals || 0,
-          forecast: projectData.budget?.forecast || 0,
-          note: "Zero actuals may indicate a new project, not necessarily a problem",
-        },
-        milestones:
-          projectData.milestones?.map((m) => ({
-            milestone: m.milestone,
-            completion: m.completion, // This is the primary indicator of progress (0-100%)
-            status: m.status, // This is secondary to completion percentage
-            date: m.date,
-            owner: m.owner,
-          })) || [],
-        accomplishments: projectData.accomplishments || [],
-        risks: projectData.risks || [],
-        next_period_activities: projectData.nextPeriodActivities || [],
-      };
-
-      userContent +=
-        "\n\nProject Data: " +
-        JSON.stringify(filteredData, null, 2) +
-        "\n\nIMPORTANT: Milestone completion percentage (0-100%) is the true measure of progress. A milestone with 0% completion has NOT been achieved, regardless of status.";
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: getPrompt(type) },
-        { role: "user", content: userContent },
-      ],
-      max_tokens: type === "milestones" || type === "analysis" ? 1500 : 500,
-      temperature: 0.7,
-    });
-
-    const content = completion.choices[0].message?.content || "";
-    if (type === "milestones") {
-      return this.processMilestones(content);
-    }
-    return content;
   },
 
   processMilestones(content: string) {

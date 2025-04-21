@@ -10,6 +10,9 @@ const defaultFormData = {
   description: "",
   valueStatement: "",
   projectAnalysis: "",
+  summaryCreatedAt: null,
+  summaryIsStale: false,
+  isAnalysisExpanded: false,
   status: "active" as const,
   health_calculation_type: "automatic" as const,
   manual_health_percentage: 0,
@@ -49,11 +52,19 @@ export const useProjectForm = (
       ...defaultFormData,
       ...initialData,
       manual_status_color: initialData?.manual_status_color || "green",
+      // Ensure summary metadata is included
+      summaryCreatedAt: initialData?.summaryCreatedAt || null,
+      summaryIsStale: initialData?.summaryIsStale || false,
     };
     console.log(
       "Initial formData with manual_status_color:",
       mergedData.manual_status_color,
     );
+    console.log("Initial formData with summary metadata:", {
+      summaryCreatedAt: mergedData.summaryCreatedAt,
+      summaryIsStale: mergedData.summaryIsStale,
+      projectAnalysis: mergedData.projectAnalysis?.substring(0, 50) + "...",
+    });
 
     // Normalize considerations to ensure they are always strings
     if (Array.isArray(mergedData.considerations)) {
@@ -86,6 +97,11 @@ export const useProjectForm = (
   >(null);
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
+
+  // Debug log for tracking analysis expanded state
+  useEffect(() => {
+    console.log("Analysis expanded state changed to:", isAnalysisExpanded);
+  }, [isAnalysisExpanded]);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
@@ -201,10 +217,24 @@ export const useProjectForm = (
         ...defaultFormData,
         ...initialData,
         manual_status_color: initialData?.manual_status_color || "green",
+        // Ensure summary metadata is included
+        summaryCreatedAt: initialData?.summaryCreatedAt || null,
+        summaryIsStale: initialData?.summaryIsStale || false,
+        projectAnalysis: initialData?.projectAnalysis || "",
       };
       console.log(
         "Updating formData with new initialData, manual_status_color:",
         updatedFormData.manual_status_color,
+      );
+      console.log("Updating formData with summary metadata:", {
+        summaryCreatedAt: updatedFormData.summaryCreatedAt,
+        summaryIsStale: updatedFormData.summaryIsStale,
+        projectAnalysis:
+          updatedFormData.projectAnalysis?.substring(0, 50) + "...",
+      });
+      console.log(
+        "Project analysis content length:",
+        updatedFormData.projectAnalysis?.length || 0,
       );
 
       // Log considerations before normalization
@@ -465,6 +495,13 @@ export const useProjectForm = (
       setIsAnalysisLoading(true);
       setIsAnalysisExpanded(true);
 
+      // Set a flag to prevent form data reset during analysis generation
+      setIsAddingMilestones(true); // Reuse this flag to prevent data reset
+      const formElement = document.querySelector("form");
+      if (formElement) {
+        formElement.setAttribute("data-adding-milestones", "true");
+      }
+
       // Clear any existing analysis to ensure we don't show stale content
       setFormData((prev) => ({
         ...prev,
@@ -496,24 +533,56 @@ export const useProjectForm = (
         toast({
           title: "Analyzing Project",
           description: "Generating executive summary based on project data...",
-          duration: 10000, // 10 seconds or until dismissed
+          duration: 30000, // 30 seconds or until dismissed - increased from 10s
         });
       } else if (type === "milestones") {
         toast({
           title: "Generating Milestones",
           description:
             "Creating milestone suggestions based on your project...",
-          duration: 5000,
+          duration: 15000, // Increased from 5s to 15s
         });
       }
 
-      // For analysis, we need to pass the entire form data to get a comprehensive analysis
-      const content = await aiService.generateContent(
-        type,
-        formData.title,
-        formData.description,
-        type === "analysis" ? formData : undefined,
-      );
+      // Add retry logic for content generation
+      let retryCount = 0;
+      const maxRetries = 2;
+      let content = null;
+      let lastError = null;
+
+      while (retryCount <= maxRetries && !content) {
+        try {
+          if (retryCount > 0) {
+            console.log(`Retry attempt ${retryCount} for ${type} generation`);
+            toast({
+              title: "Retrying",
+              description: `Retrying ${type} generation (attempt ${retryCount} of ${maxRetries})`,
+              duration: 3000,
+            });
+          }
+
+          // For analysis, we need to pass the entire form data to get a comprehensive analysis
+          content = await aiService.generateContent(
+            type,
+            formData.title,
+            formData.description,
+            type === "analysis" ? formData : undefined,
+          );
+
+          // If we got here, we have content
+          break;
+        } catch (error) {
+          lastError = error;
+          retryCount++;
+          if (retryCount > maxRetries) {
+            throw error; // Re-throw if we've exhausted retries
+          }
+          // Wait before retrying (exponential backoff)
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * retryCount),
+          );
+        }
+      }
 
       if (type === "milestones") {
         try {
@@ -543,35 +612,77 @@ export const useProjectForm = (
         // Store the analysis content in a variable
         const analysisContent = content;
 
-        // Save the analysis to the database immediately
-        if (safeProjectId) {
+        try {
+          // Save the analysis to the database immediately
+          if (safeProjectId) {
+            console.log(
+              "Saving analysis to database for project:",
+              safeProjectId,
+            );
+            await projectService.updateProjectAnalysis(
+              safeProjectId,
+              analysisContent,
+            );
+          }
+
+          // Get the current timestamp for the newly generated analysis
+          const currentTimestamp = new Date().toISOString();
+
+          // Update the form data with the analysis content and metadata
+          setFormData((prev) => ({
+            ...prev,
+            projectAnalysis: analysisContent,
+            summaryCreatedAt: currentTimestamp,
+            summaryIsStale: false,
+          }));
+
           console.log(
-            "Saving analysis to database for project:",
-            safeProjectId,
+            "Form data updated with analysis content and timestamp:",
+            currentTimestamp,
           );
-          await projectService.updateProjectAnalysis(
-            safeProjectId,
-            analysisContent,
-          );
-        }
 
-        // Update the form data with the analysis content
-        setFormData((prev) => ({
-          ...prev,
-          projectAnalysis: analysisContent,
-        }));
+          // Update UI states after a short delay to ensure state is updated
+          setTimeout(() => {
+            setIsGeneratingAnalysis(false);
+            setIsAnalysisLoading(false);
+            // Reset the flag that prevents form data reset
+            setIsAddingMilestones(false);
+            const formElement = document.querySelector("form");
+            if (formElement) {
+              formElement.setAttribute("data-adding-milestones", "false");
+            }
 
-        // Update UI states after a short delay to ensure state is updated
-        setTimeout(() => {
+            toast({
+              title: "Analysis Complete",
+              description: "Executive summary has been generated and saved",
+              className: "bg-green-50 border-green-200",
+            });
+          }, 100);
+        } catch (error) {
+          console.error("Error saving analysis to database:", error);
+
+          // Still update the form data even if database save fails
+          setFormData((prev) => ({
+            ...prev,
+            projectAnalysis: analysisContent,
+          }));
+
           setIsGeneratingAnalysis(false);
           setIsAnalysisLoading(false);
+          // Reset the flag that prevents form data reset
+          setIsAddingMilestones(false);
+          const formElement = document.querySelector("form");
+          if (formElement) {
+            formElement.setAttribute("data-adding-milestones", "false");
+          }
 
           toast({
-            title: "Analysis Complete",
-            description: "Executive summary has been generated and saved",
-            className: "bg-green-50 border-green-200",
+            title: "Analysis Generated",
+            description:
+              "Executive summary has been generated but could not be saved to the database",
+            variant: "default",
           });
-        }, 100);
+        }
       } else {
         setFormData((prev) => ({
           ...prev,
@@ -579,15 +690,33 @@ export const useProjectForm = (
         }));
       }
     } catch (error) {
+      console.error(`Error generating ${type}:`, error);
       if (type === "analysis") {
         setIsGeneratingAnalysis(false);
         setIsAnalysisLoading(false);
+        // Reset the flag that prevents form data reset
+        setIsAddingMilestones(false);
+        const formElement = document.querySelector("form");
+        if (formElement) {
+          formElement.setAttribute("data-adding-milestones", "false");
+        }
       }
       toast({
         title: "Error",
-        description: `Failed to generate ${type}`,
+        description: `Failed to generate ${type}: ${error.message || "Unknown error"}`,
         variant: "destructive",
+        duration: 5000, // Show error for longer
       });
+
+      // For analysis, provide a fallback message in the analysis section
+      if (type === "analysis") {
+        setFormData((prev) => ({
+          ...prev,
+          projectAnalysis: `<p>Unable to generate analysis at this time. Please try again later.</p><p>Error: ${error.message || "Unknown error"}</p>`,
+          summaryCreatedAt: new Date().toISOString(),
+          summaryIsStale: false,
+        }));
+      }
     }
   };
 

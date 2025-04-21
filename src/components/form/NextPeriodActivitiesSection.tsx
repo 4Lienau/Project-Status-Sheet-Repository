@@ -65,13 +65,25 @@ const NextPeriodActivitiesSection: React.FC<
           <div className="font-medium text-sm text-blue-800">Assignee</div>
           <div></div>
         </div>
-        {/* Sort activities by date before mapping */}
-        {formData.nextPeriodActivities
-          .slice() // Create a copy to avoid mutating the original array
-          .sort((a, b) => a.date.localeCompare(b.date)) // Sort by date (ascending)
-          .map((item, index) => (
+        {/* Create a sorted array with original indices */}
+        {(() => {
+          // Create array of [item, originalIndex] pairs
+          const itemsWithIndices = formData.nextPeriodActivities.map(
+            (item, index) => ({
+              item,
+              originalIndex: index,
+            }),
+          );
+
+          // Sort by date
+          const sortedItems = [...itemsWithIndices].sort((a, b) =>
+            a.item.date.localeCompare(b.item.date),
+          );
+
+          // Render the sorted items
+          return sortedItems.map(({ item, originalIndex }) => (
             <div
-              key={index}
+              key={originalIndex}
               className="grid grid-cols-[1fr_140px_180px_150px_auto] gap-2 items-start"
             >
               <Input
@@ -81,7 +93,9 @@ const NextPeriodActivitiesSection: React.FC<
                     ...prev,
                     nextPeriodActivities: prev.nextPeriodActivities.map(
                       (a, i) =>
-                        i === index ? { ...a, description: e.target.value } : a,
+                        i === originalIndex
+                          ? { ...a, description: e.target.value }
+                          : a,
                     ),
                   }))
                 }
@@ -96,7 +110,9 @@ const NextPeriodActivitiesSection: React.FC<
                     ...prev,
                     nextPeriodActivities: prev.nextPeriodActivities.map(
                       (a, i) =>
-                        i === index ? { ...a, date: e.target.value } : a,
+                        i === originalIndex
+                          ? { ...a, date: e.target.value }
+                          : a,
                     ),
                   }))
                 }
@@ -113,7 +129,7 @@ const NextPeriodActivitiesSection: React.FC<
                       ...prev,
                       nextPeriodActivities: prev.nextPeriodActivities.map(
                         (a, i) =>
-                          i === index
+                          i === originalIndex
                             ? { ...a, completion: Number(e.target.value) }
                             : a,
                       ),
@@ -132,7 +148,9 @@ const NextPeriodActivitiesSection: React.FC<
                     ...prev,
                     nextPeriodActivities: prev.nextPeriodActivities.map(
                       (a, i) =>
-                        i === index ? { ...a, assignee: e.target.value } : a,
+                        i === originalIndex
+                          ? { ...a, assignee: e.target.value }
+                          : a,
                     ),
                   }))
                 }
@@ -147,7 +165,7 @@ const NextPeriodActivitiesSection: React.FC<
                   setFormData((prev) => ({
                     ...prev,
                     nextPeriodActivities: prev.nextPeriodActivities.filter(
-                      (_, i) => i !== index,
+                      (_, i) => i !== originalIndex,
                     ),
                   }))
                 }
@@ -156,7 +174,8 @@ const NextPeriodActivitiesSection: React.FC<
                 <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
               </Button>
             </div>
-          ))}
+          ));
+        })()}
         <Button
           type="button"
           variant="outline"

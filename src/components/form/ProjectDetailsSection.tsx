@@ -50,6 +50,22 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
   setPendingNavigationAction,
   setShowUnsavedChangesDialog,
 }) => {
+  // Function to safely toggle the analysis section
+  const toggleAnalysisSection = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Toggling analysis section to:", !isAnalysisExpanded);
+    if (typeof setIsAnalysisExpanded === "function") {
+      try {
+        setIsAnalysisExpanded(!isAnalysisExpanded);
+      } catch (error) {
+        console.error("Error toggling analysis section:", error);
+      }
+    } else {
+      console.error("setIsAnalysisExpanded is not a function");
+    }
+  };
+
   return (
     <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm">
       <div className="flex items-center justify-between mb-6">
@@ -214,8 +230,8 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
       {/* Project Analysis Section */}
       <div className="space-y-2 mt-4 border-t pt-4">
         <div
-          className="flex items-center justify-between cursor-pointer"
-          onClick={() => setIsAnalysisExpanded(!isAnalysisExpanded)}
+          className="flex items-center justify-between cursor-pointer hover:bg-purple-50/50 p-2 rounded-md transition-colors"
+          onClick={toggleAnalysisSection}
         >
           <div className="flex items-center gap-1">
             {isAnalysisExpanded ? (
@@ -223,17 +239,31 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             ) : (
               <ChevronRight className="h-4 w-4 text-purple-600" />
             )}
-            <Label htmlFor="projectAnalysis" className="cursor-pointer">
-              Project Analysis
+            <Label
+              htmlFor="projectAnalysis"
+              className="cursor-pointer"
+              onClick={toggleAnalysisSection}
+            >
+              Project Analysis{" "}
+              {!isAnalysisExpanded && formData.projectAnalysis
+                ? "(Click to expand)"
+                : ""}
             </Label>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger
+                asChild
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
                 <Info className="h-4 w-4 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
                   Generate an executive summary of the current project status
-                  based on all project data.
+                  based on all project data. Summaries older than 1 week are
+                  considered stale.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -245,8 +275,15 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               handleGenerateContent("analysis");
-              setIsAnalysisExpanded(true);
-              console.log("Expanding analysis section");
+              // Always expand the section when generating analysis
+              if (typeof setIsAnalysisExpanded === "function") {
+                try {
+                  setIsAnalysisExpanded(true);
+                  console.log("Expanding analysis section");
+                } catch (error) {
+                  console.error("Error expanding analysis section:", error);
+                }
+              }
             }}
             disabled={isGeneratingAnalysis}
             className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200"
@@ -264,34 +301,73 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             )}
           </Button>
         </div>
-        {isAnalysisExpanded && (
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mt-2 transition-all duration-300">
-            {isAnalysisLoading ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
-                <span className="ml-2 text-purple-600">
-                  Loading analysis...
-                </span>
-              </div>
-            ) : (
-              <>
-                {formData.projectAnalysis ? (
+        <div
+          className={`bg-purple-50 border border-purple-200 rounded-lg p-4 mt-2 transition-all duration-300 overflow-hidden ${isAnalysisExpanded ? "block" : "hidden"}`}
+        >
+          {isAnalysisLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+              <span className="ml-2 text-purple-600">Loading analysis...</span>
+            </div>
+          ) : (
+            <>
+              {formData.projectAnalysis ? (
+                <div className="space-y-2">
+                  {/* Summary metadata - timestamp and staleness indicator */}
+                  {formData.summaryCreatedAt && (
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                      <div>
+                        Generated on{" "}
+                        {new Date(
+                          formData.summaryCreatedAt,
+                        ).toLocaleDateString()}{" "}
+                        at{" "}
+                        {new Date(
+                          formData.summaryCreatedAt,
+                        ).toLocaleTimeString()}
+                      </div>
+                      {formData.summaryIsStale && (
+                        <div className="flex items-center gap-1 text-amber-600 font-medium">
+                          <Info className="h-3 w-3" />
+                          Summary is over 1 week old
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!formData.summaryCreatedAt && formData.projectAnalysis && (
+                    <div className="flex items-center text-xs text-gray-500 mb-2">
+                      <div className="italic">
+                        No timestamp available for this summary
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary content */}
                   <div
                     className="prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{
                       __html: formData.projectAnalysis,
                     }}
                   />
-                ) : (
-                  <div className="text-center text-gray-500 py-4">
-                    No analysis available. Click the "AI Executive Summary"
-                    button to generate one.
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  {isGeneratingAnalysis ? (
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="animate-spin h-6 w-6 border-2 border-purple-500 rounded-full border-t-transparent"></div>
+                      <p>Generating analysis...</p>
+                    </div>
+                  ) : (
+                    <>
+                      No analysis available. Click the "AI Executive Summary"
+                      button to generate one.
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
