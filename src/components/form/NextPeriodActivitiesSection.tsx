@@ -149,6 +149,7 @@ const ProgressPill: React.FC<ProgressPillProps> = ({
       className="w-full h-7 bg-gray-200 rounded-full overflow-hidden relative cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
       onClick={() => setIsEditing(true)}
       title="Click to edit completion percentage"
+      style={{ width: "100%" }}
     >
       <div
         className={`h-full ${bgColorClass}`}
@@ -186,13 +187,11 @@ const NextPeriodActivitiesSection: React.FC<
       </div>
       <div className="space-y-2 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm mt-0">
         {/* Column Headers */}
-        <div className="grid grid-cols-[1fr_140px_180px_150px_auto] gap-2 items-start">
-          <div className="font-medium text-sm text-blue-800">Activity</div>
+        <div className="grid grid-cols-[140px_1fr_80px_150px_auto] gap-2 items-start">
           <div className="font-medium text-sm text-blue-800">Date</div>
-          <div className="flex items-center gap-1">
-            <div className="font-medium text-sm text-blue-800">
-              Completion %
-            </div>
+          <div className="font-medium text-sm text-blue-800">Activity</div>
+          <div className="font-medium text-sm text-blue-800 flex items-center gap-1 -ml-4">
+            <span>% Complete</span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -245,24 +244,8 @@ const NextPeriodActivitiesSection: React.FC<
           return sortedItems.map(({ item, originalIndex }) => (
             <div
               key={originalIndex}
-              className="grid grid-cols-[1fr_140px_180px_150px_auto] gap-2 items-start"
+              className="grid grid-cols-[140px_1fr_80px_150px_auto] gap-2 items-start"
             >
-              <Input
-                value={item.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    nextPeriodActivities: prev.nextPeriodActivities.map(
-                      (a, i) =>
-                        i === originalIndex
-                          ? { ...a, description: e.target.value }
-                          : a,
-                    ),
-                  }))
-                }
-                placeholder="Enter activity"
-                className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-              />
               <Input
                 type="date"
                 value={item.date}
@@ -277,6 +260,22 @@ const NextPeriodActivitiesSection: React.FC<
                     ),
                   }))
                 }
+                className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+              />
+              <Input
+                value={item.description}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    nextPeriodActivities: prev.nextPeriodActivities.map(
+                      (a, i) =>
+                        i === originalIndex
+                          ? { ...a, description: e.target.value }
+                          : a,
+                    ),
+                  }))
+                }
+                placeholder="Enter activity"
                 className="bg-white/50 backdrop-blur-sm border-gray-200/50"
               />
               <div className="flex flex-row items-center">

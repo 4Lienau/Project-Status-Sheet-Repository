@@ -180,7 +180,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
             <div className="font-medium text-sm text-blue-800">Owner</div>
             <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
               <div className="font-medium text-sm text-blue-800">
-                Completion %
+                % Complete
               </div>
               <div className="font-medium text-sm text-blue-800">Weight</div>
               <div className="font-medium text-sm text-blue-800">Status</div>
