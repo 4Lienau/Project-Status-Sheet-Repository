@@ -192,6 +192,38 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
     }
   };
 
+  // Get progress pill color based on completion and due date
+  const getProgressPillColor = (completion: number, dueDate?: string) => {
+    // If task is complete, use green (not blue)
+    if (completion === 100) return "bg-green-100 text-green-800";
+
+    // If no due date, base on completion only
+    if (!dueDate) {
+      if (completion >= 50) return "bg-green-100 text-green-800";
+      return "bg-yellow-100 text-yellow-800";
+    }
+
+    // Check if task is past due
+    const today = new Date();
+    const dueDateTime = new Date(dueDate);
+
+    // If past due and not complete, use red
+    if (dueDateTime < today && completion < 100) {
+      return "bg-red-100 text-red-800";
+    }
+
+    // Check if task is at risk (due within 5 days)
+    const fiveDaysFromNow = new Date();
+    fiveDaysFromNow.setDate(today.getDate() + 5);
+
+    if (dueDateTime <= fiveDaysFromNow && completion < 100) {
+      return "bg-yellow-100 text-yellow-800";
+    }
+
+    // Otherwise, task is on track
+    return "bg-green-100 text-green-800";
+  };
+
   const handleExportToJpg = async () => {
     const element = document.getElementById("status-sheet");
     if (!element) return;
@@ -512,13 +544,31 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
                               <div className="w-16 h-5 bg-gray-200 rounded-full overflow-hidden relative">
-                                <div
-                                  className={`h-full ${completion === 100 ? "bg-blue-500" : completion >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
-                                  style={{ width: `${completion}%` }}
-                                ></div>
-                                <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
-                                  {completion}%
-                                </div>
+                                {/* Get color classes once to avoid multiple function calls */}
+                                {(() => {
+                                  const colorClasses = getProgressPillColor(
+                                    completion,
+                                    date,
+                                  );
+                                  const bgColorClass =
+                                    colorClasses.split(" ")[0];
+                                  const textColorClass =
+                                    colorClasses.split(" ")[1] || "";
+
+                                  return (
+                                    <>
+                                      <div
+                                        className={`h-full ${bgColorClass}`}
+                                        style={{ width: `${completion}%` }}
+                                      ></div>
+                                      <div
+                                        className={`absolute inset-0 flex items-center justify-center text-xs font-medium ${textColorClass}`}
+                                      >
+                                        {completion}%
+                                      </div>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">

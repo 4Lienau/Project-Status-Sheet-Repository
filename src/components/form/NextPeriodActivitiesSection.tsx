@@ -14,21 +14,58 @@ interface NextPeriodActivitiesSectionProps {
   setFormData: (updater: (prev: any) => any) => void;
 }
 
-const ProgressPill: React.FC<{ completion: number }> = ({ completion }) => {
-  // Determine color based on completion percentage
+const ProgressPill: React.FC<{ completion: number; dueDate?: string }> = ({
+  completion,
+  dueDate,
+}) => {
+  // Determine color based on completion percentage and due date
   const getBackgroundColor = () => {
-    if (completion === 100) return "bg-blue-500";
-    if (completion >= 50) return "bg-green-500";
-    return "bg-yellow-500";
+    // If task is complete, use green (not blue)
+    if (completion === 100) return "bg-green-100 text-green-800";
+
+    // If no due date, base on completion only
+    if (!dueDate) {
+      if (completion >= 50) return "bg-green-100 text-green-800";
+      return "bg-yellow-100 text-yellow-800";
+    }
+
+    // Check if task is past due or due within 14 days
+    const today = new Date();
+    const dueDateTime = new Date(dueDate);
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(today.getDate() + 14);
+
+    // If past due and not complete, use red
+    if (dueDateTime < today && completion < 100) {
+      return "bg-red-100 text-red-800";
+    }
+
+    // Check if task is at risk (due within 5 days)
+    const fiveDaysFromNow = new Date();
+    fiveDaysFromNow.setDate(today.getDate() + 5);
+
+    if (dueDateTime <= fiveDaysFromNow && completion < 100) {
+      return "bg-yellow-100 text-yellow-800";
+    }
+
+    // Otherwise, task is on track
+    return "bg-green-100 text-green-800";
   };
+
+  // Get the background and text color classes
+  const colorClasses = getBackgroundColor();
+  const bgColorClass = colorClasses.split(" ")[0];
+  const textColorClass = colorClasses.split(" ")[1] || "";
 
   return (
     <div className="w-full h-5 bg-gray-200 rounded-full overflow-hidden relative">
       <div
-        className={`h-full ${getBackgroundColor()}`}
+        className={`h-full ${bgColorClass}`}
         style={{ width: `${completion}%` }}
       ></div>
-      <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
+      <div
+        className={`absolute inset-0 flex items-center justify-center text-xs font-medium ${textColorClass}`}
+      >
         {completion}%
       </div>
     </div>
@@ -138,7 +175,10 @@ const NextPeriodActivitiesSection: React.FC<
                   className="bg-white/50 backdrop-blur-sm border-gray-200/50 w-16 text-xs"
                 />
                 <div className="flex-1">
-                  <ProgressPill completion={item.completion} />
+                  <ProgressPill
+                    completion={item.completion}
+                    dueDate={item.date}
+                  />
                 </div>
               </div>
               <Input
