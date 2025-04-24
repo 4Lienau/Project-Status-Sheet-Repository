@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import ProjectPilot from "@/components/chat/ProjectPilot";
 
 // Import refactored form components
 import ProjectDetailsSection from "@/components/form/ProjectDetailsSection";
@@ -88,6 +89,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   return (
     <TooltipProvider>
       <div className="relative">
+        <ProjectPilot
+          projectId={projectId}
+          projectTitle={
+            formData.title
+              ? formData.title.replace(/<[^>]*>/g, "")
+              : "Untitled Project"
+          }
+        />
         <form
           data-adding-milestones="false"
           onSubmit={(e) => {
