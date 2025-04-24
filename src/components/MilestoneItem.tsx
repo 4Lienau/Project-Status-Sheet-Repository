@@ -41,12 +41,18 @@ interface MilestoneItemProps {
   };
   onUpdate: (values: any) => void;
   onDelete: () => void;
+  ProgressPillComponent?: React.ComponentType<{
+    completion: number;
+    status: string;
+    onChange: (value: number) => void;
+  }>;
 }
 
 export function MilestoneItem({
   milestone,
   onUpdate,
   onDelete,
+  ProgressPillComponent,
 }: MilestoneItemProps) {
   const [showTasks, setShowTasks] = useState(false);
 
@@ -121,14 +127,24 @@ export function MilestoneItem({
             onChange={(e) => onUpdate({ owner: e.target.value })}
           />
           <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
-            <Input
-              placeholder="Completion %"
-              type="number"
-              min="0"
-              max="100"
-              value={milestone.completion}
-              onChange={(e) => onUpdate({ completion: Number(e.target.value) })}
-            />
+            {ProgressPillComponent ? (
+              <ProgressPillComponent
+                completion={milestone.completion}
+                status={milestone.status}
+                onChange={(value) => onUpdate({ completion: value })}
+              />
+            ) : (
+              <Input
+                placeholder="Completion %"
+                type="number"
+                min="0"
+                max="100"
+                value={milestone.completion}
+                onChange={(e) =>
+                  onUpdate({ completion: Number(e.target.value) })
+                }
+              />
+            )}
             <div className="relative">
               <select
                 value={milestone.weight !== undefined ? milestone.weight : 3}

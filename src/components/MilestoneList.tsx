@@ -40,6 +40,11 @@ interface MilestoneListProps {
   onUpdate: (index: number, values: Partial<Milestone>) => void;
   onDelete: (index: number) => void;
   setIsDragging?: (dragging: boolean) => void;
+  ProgressPillComponent?: React.ComponentType<{
+    completion: number;
+    status: string;
+    onChange: (value: number) => void;
+  }>;
 }
 
 export function MilestoneList({
@@ -47,6 +52,7 @@ export function MilestoneList({
   onMilestonesChange,
   onUpdate,
   onDelete,
+  ProgressPillComponent,
 }: MilestoneListProps) {
   // Sort milestones by date whenever they change
   useEffect(() => {
@@ -101,6 +107,7 @@ export function MilestoneList({
           milestone={milestone}
           onUpdate={(values) => onUpdate(index, values)}
           onDelete={() => onDelete(index)}
+          ProgressPillComponent={ProgressPillComponent}
         />
       ))}
     </div>

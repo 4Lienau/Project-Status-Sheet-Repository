@@ -194,8 +194,8 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
 
   // Get progress pill color based on completion and due date
   const getProgressPillColor = (completion: number, dueDate?: string) => {
-    // If task is complete, use green (not blue)
-    if (completion === 100) return "bg-green-100 text-green-800";
+    // If task is complete, use blue
+    if (completion === 100) return "bg-blue-100 text-blue-800";
 
     // If no due date, base on completion only
     if (!dueDate) {
@@ -203,16 +203,33 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
       return "bg-yellow-100 text-yellow-800";
     }
 
-    // Check if task is past due
+    // Check if task is past due or due within 14 days
     const today = new Date();
     const dueDateTime = new Date(dueDate);
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(today.getDate() + 14);
 
     // If past due and not complete, use red
     if (dueDateTime < today && completion < 100) {
       return "bg-red-100 text-red-800";
     }
 
-    // Check if task is at risk (due within 5 days)
+    // Progressive risk calculation based on due date proximity
+    // 1. If due within 1 day and less than 80% completion → red
+    const oneDayFromNow = new Date();
+    oneDayFromNow.setDate(today.getDate() + 1);
+    if (dueDateTime <= oneDayFromNow && completion < 80) {
+      return "bg-red-100 text-red-800";
+    }
+
+    // 2. If due within 2 days and less than 40% completion → red
+    const twoDaysFromNow = new Date();
+    twoDaysFromNow.setDate(today.getDate() + 2);
+    if (dueDateTime <= twoDaysFromNow && completion < 40) {
+      return "bg-red-100 text-red-800";
+    }
+
+    // 3. Check if task is at risk (due within 5 days)
     const fiveDaysFromNow = new Date();
     fiveDaysFromNow.setDate(today.getDate() + 5);
 
@@ -744,25 +761,26 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-100"></div>
               <span className="text-sm text-gray-900 dark:text-gray-900">
-                Completed
+                Completed (100%)
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-100"></div>
               <span className="text-sm text-gray-900 dark:text-gray-900">
-                On Schedule
+                On Track
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-yellow-100"></div>
               <span className="text-sm text-gray-900 dark:text-gray-900">
-                Risk
+                Due within 5 days
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-red-100"></div>
               <span className="text-sm text-gray-900 dark:text-gray-900">
-                High Risk
+                At Risk (Past due, due within 1 day with &lt;80% completion, or
+                due within 2 days with &lt;40% completion)
               </span>
             </div>
           </div>
