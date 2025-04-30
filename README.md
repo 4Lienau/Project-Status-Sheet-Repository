@@ -1,6 +1,6 @@
-========================================
+================================
 PRODUCT REQUIREMENTS DOCUMENT
-========================================
+================================
 
 Overview: The Project Status Sheet Repository is a modern project management dashboard designed to enable teams to track project progress, milestones, and key metrics in real-time. It offers a centralized, visual solution for monitoring project health, managing budgets, tracking milestones, and fostering team collaboration. The application aims to improve project transparency, accountability, and overall success rates.
 Goals: 
