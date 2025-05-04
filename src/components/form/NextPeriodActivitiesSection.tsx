@@ -226,6 +226,7 @@ const NextPeriodActivitiesSection: React.FC<
               id="truncate-activities"
               checked={truncateActivities}
               onCheckedChange={updateTruncatePreference}
+              className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300"
             />
             <Label
               htmlFor="truncate-activities"
