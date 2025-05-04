@@ -17,6 +17,7 @@ const defaultFormData = {
   health_calculation_type: "automatic" as const,
   manual_health_percentage: 0,
   manual_status_color: "green" as "green" | "yellow" | "red",
+  // truncateActivities removed - now using localStorage
   budget: {
     total: "0",
     actuals: "0",

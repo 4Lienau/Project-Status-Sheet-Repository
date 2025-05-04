@@ -865,6 +865,7 @@ const ProjectDashboard = ({
                   budget_forecast: parseFloat(
                     data.budget.forecast.replace(/[^0-9.-]+/g, ""),
                   ),
+                  // truncateActivities removed - now using localStorage
                   charter_link: data.charterLink,
                   sponsors: data.sponsors,
                   business_leads: data.businessLeads,

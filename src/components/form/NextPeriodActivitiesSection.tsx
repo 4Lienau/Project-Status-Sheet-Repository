@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Info, Trash2 } from "lucide-react";
+import { Info, Trash2, TextCursorInput } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Tooltip,
   TooltipContent,
@@ -164,26 +166,75 @@ const ProgressPill: React.FC<ProgressPillProps> = ({
   );
 };
 
+const STORAGE_KEY = "truncate_activities_preference";
+
 const NextPeriodActivitiesSection: React.FC<
   NextPeriodActivitiesSectionProps
 > = ({ formData, setFormData }) => {
+  // Initialize from localStorage or default to true
+  const [truncateActivities, setTruncateActivities] = useState(() => {
+    const savedPreference = localStorage.getItem(STORAGE_KEY);
+    return savedPreference !== null ? savedPreference === "true" : true;
+  });
+
+  // Update localStorage when preference changes
+  const updateTruncatePreference = useCallback((checked: boolean) => {
+    setTruncateActivities(checked);
+    localStorage.setItem(STORAGE_KEY, checked.toString());
+  }, []);
+
+  // Sync with localStorage on mount
+  useEffect(() => {
+    const savedPreference = localStorage.getItem(STORAGE_KEY);
+    if (savedPreference !== null) {
+      setTruncateActivities(savedPreference === "true");
+    }
+  }, []);
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-1 mb-2 -mt-2">
-        <h3 className="text-2xl font-bold text-blue-800">
-          Next Period Activities
-        </h3>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="max-w-xs">
-              List activities planned for the next reporting period, including
-              dates, completion percentages, and assignees.
-            </p>
-          </TooltipContent>
-        </Tooltip>
+      <div className="flex items-center justify-between mb-2 -mt-2">
+        <div className="flex items-center gap-1">
+          <h3 className="text-2xl font-bold text-blue-800">
+            Next Period Activities
+          </h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">
+                List activities planned for the next reporting period, including
+                dates, completion percentages, and assignees.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TextCursorInput className="h-4 w-4 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">
+                Toggle whether activity descriptions should be truncated in the
+                status sheet view.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="truncate-activities"
+              checked={truncateActivities}
+              onCheckedChange={updateTruncatePreference}
+            />
+            <Label
+              htmlFor="truncate-activities"
+              className="text-sm text-gray-600"
+            >
+              Truncate activities in status sheet
+            </Label>
+          </div>
+        </div>
       </div>
       <div className="space-y-2 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm mt-0">
         {/* Column Headers */}

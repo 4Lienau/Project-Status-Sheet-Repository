@@ -542,16 +542,23 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                         const assignee =
                           typeof item === "string" ? "" : item.assignee || "";
 
-                        // Truncate description to 35 characters
+                        // Get truncation preference from localStorage
+                        const savedPreference = localStorage.getItem(
+                          "truncate_activities_preference",
+                        );
+                        const shouldTruncate =
+                          savedPreference !== null
+                            ? savedPreference === "true"
+                            : true;
                         const truncatedDescription =
-                          description.length > 35
+                          shouldTruncate && description.length > 35
                             ? `${description.substring(0, 35)}...`
                             : description;
 
                         return (
                           <tr key={index} className="border-b border-gray-300">
                             <td
-                              className="py-1 pr-4 text-gray-900 dark:text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis"
+                              className={`py-1 pr-4 text-gray-900 dark:text-gray-900 ${shouldTruncate ? "whitespace-nowrap overflow-hidden text-ellipsis" : "break-words"}`}
                               style={{ maxWidth: "200px" }}
                             >
                               {truncatedDescription}
