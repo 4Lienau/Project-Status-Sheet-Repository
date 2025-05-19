@@ -3,7 +3,7 @@
  * Purpose: Component for managing a list of milestone items sorted by date
  * Description: This component renders a list of milestone items sorted by date (earliest to latest).
  * The component calculates weighted completion percentages based on milestone weights and ensures
- * milestones are always displayed in chronological order.
+ * milestones are always displayed in chronological order without modifying the original data.
  *
  * Imports from:
  * - React core libraries
@@ -12,7 +12,7 @@
  * Called by: src/components/ProjectForm.tsx
  */
 
-import React, { useEffect } from "react";
+import React, { useMemo } from "react";
 import { MilestoneItem } from "./MilestoneItem";
 
 interface Task {
@@ -54,29 +54,18 @@ export function MilestoneList({
   onDelete,
   ProgressPillComponent,
 }: MilestoneListProps) {
-  // Sort milestones by date whenever they change
-  useEffect(() => {
-    // Only sort if there are milestones to sort
-    if (milestones.length > 1) {
-      const sortedMilestones = [...milestones].sort((a, b) => {
+  // Create a sorted view of milestones for display purposes only
+  // This doesn't modify the original array, just creates a sorted reference to it
+  const sortedMilestonesWithIndices = useMemo(() => {
+    return milestones
+      .map((milestone, originalIndex) => ({ milestone, originalIndex }))
+      .sort((a, b) => {
         // Convert dates to timestamps for comparison
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
+        const dateA = new Date(a.milestone.date).getTime();
+        const dateB = new Date(b.milestone.date).getTime();
         return dateA - dateB; // Sort earliest to latest
       });
-
-      // Check if the order has changed
-      const hasOrderChanged = sortedMilestones.some((milestone, index) => {
-        return milestone !== milestones[index];
-      });
-
-      // Only update if the order has changed
-      if (hasOrderChanged) {
-        console.log("Sorting milestones by date");
-        onMilestonesChange(sortedMilestones);
-      }
-    }
-  }, [milestones, onMilestonesChange]);
+  }, [milestones]);
 
   // Calculate weighted completion percentage
   const calculateWeightedCompletion = (milestones: Milestone[]) => {
@@ -101,12 +90,13 @@ export function MilestoneList({
 
   return (
     <div className="space-y-1">
-      {milestones.map((milestone, index) => (
+      {/* Map over the sorted milestones for display, but keep original indices for updates */}
+      {sortedMilestonesWithIndices.map(({ milestone, originalIndex }) => (
         <MilestoneItem
-          key={`milestone-${index}`}
+          key={`milestone-${originalIndex}`}
           milestone={milestone}
-          onUpdate={(values) => onUpdate(index, values)}
-          onDelete={() => onDelete(index)}
+          onUpdate={(values) => onUpdate(originalIndex, values)}
+          onDelete={() => onDelete(originalIndex)}
           ProgressPillComponent={ProgressPillComponent}
         />
       ))}
