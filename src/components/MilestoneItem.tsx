@@ -15,11 +15,20 @@
  * Called by: src/components/MilestoneList.tsx
  */
 
-import { Trash2, ChevronDown, ChevronRight, ListChecks } from "lucide-react";
+import {
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  ListChecks,
+  CalendarIcon,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useState } from "react";
 import { TaskList } from "./TaskList";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
+import { format } from "date-fns";
 
 interface Task {
   id?: string;
@@ -55,6 +64,7 @@ export function MilestoneItem({
   ProgressPillComponent,
 }: MilestoneItemProps) {
   const [showTasks, setShowTasks] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleTasksChange = (tasks: Task[]) => {
     console.log("[DEBUG] MilestoneItem - Tasks changed:", tasks);
@@ -85,12 +95,53 @@ export function MilestoneItem({
     <div className="border-b border-gray-200 py-1 bg-white">
       <div className="grid grid-cols-[1fr] gap-2">
         <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
-          <Input
-            placeholder="Date"
-            type="date"
-            value={milestone.date}
-            onChange={(e) => onUpdate({ date: e.target.value })}
-          />
+          <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal h-10"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {milestone.date ? (
+                  format(new Date(milestone.date), "MM/dd/yyyy")
+                ) : (
+                  <span className="text-muted-foreground">Select date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={milestone.date ? new Date(milestone.date) : undefined}
+                defaultMonth={
+                  milestone.date ? new Date(milestone.date) : undefined
+                }
+                onSelect={(date) => {
+                  if (date) {
+                    // Add a day to compensate for timezone shift
+                    const adjustedDate = new Date(date);
+                    adjustedDate.setDate(adjustedDate.getDate() + 1);
+
+                    // Extract date components from the adjusted date
+                    const year = adjustedDate.getFullYear();
+                    const month = String(adjustedDate.getMonth() + 1).padStart(
+                      2,
+                      "0",
+                    ); // +1 because months are 0-indexed
+                    const day = String(adjustedDate.getDate()).padStart(2, "0");
+
+                    // Manually construct YYYY-MM-DD format
+                    const formattedDate = `${year}-${month}-${day}`;
+
+                    onUpdate({ date: formattedDate });
+                    // Close the popover after selection
+                    setIsCalendarOpen(false);
+                  }
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
           <div className="flex items-center gap-2">
             <Button
               type="button"
