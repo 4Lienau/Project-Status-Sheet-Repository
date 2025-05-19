@@ -25,6 +25,7 @@ import { FileText, Download, FileOutput } from "lucide-react";
 import { exportToPowerPoint } from "@/lib/services/pptExport";
 import { useToast } from "./ui/use-toast";
 import html2canvas from "html2canvas";
+import { format } from "date-fns";
 import {
   Tooltip,
   TooltipContent,
@@ -564,7 +565,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                               {truncatedDescription}
                             </td>
                             <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                              {date}
+                              {date ? format(new Date(date), "MM/dd/yy") : ""}
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
                               <div className="w-16 h-5 bg-gray-200 rounded-full overflow-hidden relative">
@@ -707,7 +708,9 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                               </div>
                             </td>
                             <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                              {milestone.date || ""}
+                              {milestone.date
+                                ? format(new Date(milestone.date), "MM/dd/yy")
+                                : ""}
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
                               {milestone.milestone || ""}
