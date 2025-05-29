@@ -478,36 +478,52 @@ const AuthForm = () => {
 
   return (
     <div className="w-full space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Welcome to ReWa Project Status Sheet Repository
-        </h2>
-        <p className="text-gray-600">
-          Sign in with your organization account to continue
-        </p>
-      </div>
-
       {error && (
-        <Alert className="bg-red-50 border-red-200 text-red-800">
+        <Alert className="bg-red-50 border-red-200 text-red-800 rounded-xl">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Authentication Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <Button
-        type="button"
-        className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 py-6 text-lg"
-        onClick={handleAzureSignIn}
-        disabled={loading}
-      >
-        <Cloud className="h-5 w-5" />
-        {loading ? "Signing in..." : "Sign in with Azure AD"}
-      </Button>
+      <div className="space-y-4">
+        <Button
+          type="button"
+          className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          onClick={handleAzureSignIn}
+          disabled={loading}
+        >
+          <Cloud className="h-5 w-5" />
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+              Signing in...
+            </>
+          ) : (
+            "Sign in with Azure AD"
+          )}
+        </Button>
 
-      <div className="text-center text-sm text-gray-500 mt-4">
-        <p>Access is restricted to authorized ReWa personnel only.</p>
-        <p>For access issues, please contact your system administrator.</p>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-4 bg-white text-gray-500">
+              Secure Authentication
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center space-y-2">
+        <p className="text-sm text-gray-600 font-medium">
+          Access is restricted to authorized ReWa personnel only.
+        </p>
+        <p className="text-sm text-gray-500">
+          For support or issues, please contact the ReWa ServiceDesk at
+          extension 411
+        </p>
       </div>
     </div>
   );
