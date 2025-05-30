@@ -28,6 +28,8 @@ const getCorsHeaders = (origin: string | undefined) => {
     "Access-Control-Allow-Origin": isAllowedOrigin ? origin : allowedOrigins[0],
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none';",
   };
 };
 
