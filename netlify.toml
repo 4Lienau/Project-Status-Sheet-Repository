@@ -6,6 +6,12 @@
   SECRETS_SCAN_OMIT_KEYS = "OPENAI_API_KEY,VITE_OPENAI_API_KEY"
 
 [[redirects]]
+  from = "https://rewapss.lienau.tech/*"
+  to = "https://projects.re-wa.org/:splat"
+  status = 301
+  force = true
+  
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
