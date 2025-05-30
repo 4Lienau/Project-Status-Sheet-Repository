@@ -13,7 +13,7 @@
 [functions]
   directory = "netlify/functions"
 
-# Content Security Policy Headers
+# Security Headers - Content Security Policy
 [[headers]]
   for = "/*"
   [headers.values]

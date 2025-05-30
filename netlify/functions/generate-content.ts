@@ -15,14 +15,27 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// CORS headers for all responses
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+// Allowed origins for CORS - restricted to production domains for security
+const allowedOrigins = [
+  "https://projects.re-wa.org",
+  "https://rewapss.lienau.tech",
+];
+
+// Function to get CORS headers based on request origin
+const getCorsHeaders = (origin: string | undefined) => {
+  const isAllowedOrigin = origin && allowedOrigins.includes(origin);
+  return {
+    "Access-Control-Allow-Origin": isAllowedOrigin ? origin : allowedOrigins[0],
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
 };
 
 export const handler: Handler = async (event) => {
+  // Get CORS headers based on request origin
+  const origin = event.headers.origin || event.headers.Origin;
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle OPTIONS request for CORS preflight
   if (event.httpMethod === "OPTIONS") {
     return {
