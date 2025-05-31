@@ -202,6 +202,8 @@ const Home = () => {
   console.log(
     "Home component: Authenticated user confirmed, rendering home page",
   );
+  console.log("[DEBUG] User email:", user?.email);
+  console.log("[DEBUG] User object:", user);
 
   return (
     <Layout>
@@ -344,13 +346,15 @@ const Home = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button
-                  onClick={() => setMode("overview")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-                >
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Projects Overview
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setMode("overview")}
+                    className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Projects Overview
+                  </Button>
+                </div>
               </div>
               <ProjectList
                 onSelectProject={handleSelectProject}

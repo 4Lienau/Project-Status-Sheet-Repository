@@ -212,9 +212,21 @@ const Navbar = () => {
                     <span>Profile</span>
                   </DropdownMenuItem>
 
-                  {(user.email === "4lienau@gmail.com" ||
-                    user.email === "chrisl@re-wa.org") && (
-                    <DropdownMenuItem onClick={() => navigate("/admin")}>
+                  {user.email === "chrisl@re-wa.org" && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        console.log(
+                          "[DEBUG] Admin Dashboard clicked from navbar",
+                        );
+                        console.log(
+                          "[DEBUG] Current location:",
+                          window.location.pathname,
+                        );
+
+                        // Force navigation using window.location as a reliable fallback
+                        window.location.href = "/admin";
+                      }}
+                    >
                       <Shield className="mr-2 h-4 w-4" />
                       <span>Admin Dashboard</span>
                     </DropdownMenuItem>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import KnowledgeManager from "@/components/admin/KnowledgeManager";
 import DepartmentManager from "@/components/admin/DepartmentManager";
-import PendingUsersManager from "@/components/admin/PendingUsersManager";
 import SupabaseMetrics from "@/components/admin/SupabaseMetrics";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -37,17 +36,11 @@ import {
   Cell,
 } from "recharts";
 import {
-  Users,
   BarChart3,
   PieChart as PieChartIcon,
   FileSpreadsheet,
   ArrowLeft,
-  UserPlus,
-  Trash2,
-  Mail,
   Shield,
-  ShieldAlert,
-  ShieldCheck,
   Activity,
   Database,
   RefreshCw,
@@ -61,13 +54,21 @@ const AdminPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Add comprehensive debugging
+  console.log("[DEBUG AdminPage] Component loaded");
+  console.log("[DEBUG AdminPage] User:", user);
+  console.log("[DEBUG AdminPage] User email:", user?.email);
+  console.log("[DEBUG AdminPage] Admin emails:", ADMIN_EMAILS);
+  console.log(
+    "[DEBUG AdminPage] Is user email in admin list?",
+    user?.email && ADMIN_EMAILS.includes(user.email),
+  );
+  console.log("[DEBUG AdminPage] Environment mode:", import.meta.env.MODE);
+  console.log("[DEBUG AdminPage] Current URL:", window.location.href);
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
   const [stats, setStats] = useState({
-    totalUsers: 0,
     totalProjects: 0,
     activeProjects: 0,
     completedProjects: 0,
@@ -81,138 +82,35 @@ const AdminPage = () => {
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
+    // Debug logging for admin access
+    console.log("[AdminPage Debug] useEffect triggered");
+    console.log("[AdminPage Debug] Current user:", user);
+    console.log("[AdminPage Debug] User email:", user?.email);
+    console.log("[AdminPage Debug] Admin emails:", ADMIN_EMAILS);
+    console.log(
+      "[AdminPage Debug] Is admin?",
+      user?.email && ADMIN_EMAILS.includes(user.email),
+    );
+    console.log("[AdminPage Debug] User exists?", !!user);
+    console.log(
+      "[AdminPage Debug] Email check result:",
+      user?.email && ADMIN_EMAILS.includes(user.email),
+    );
+
     // Redirect if not admin
     if (user && !ADMIN_EMAILS.includes(user.email)) {
+      console.log("[AdminPage Debug] Access denied - redirecting to home");
       navigate("/");
       return;
+    } else if (user && ADMIN_EMAILS.includes(user.email)) {
+      console.log("[AdminPage Debug] Access granted - user is admin");
+    } else {
+      console.log("[AdminPage Debug] User not loaded yet or no user");
     }
-
-    // Fix for Supabase admin API not being available in the free tier
-    const fetchUsers = async () => {
-      try {
-        // Try to get users from profiles table instead
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("*");
-
-        if (profilesData) {
-          setUsers(
-            profilesData.map((profile) => ({
-              id: profile.id,
-              email: profile.email || "Unknown",
-              created_at: profile.created_at,
-              last_sign_in_at: null,
-              banned: false,
-            })),
-          );
-
-          setStats((prev) => ({
-            ...prev,
-            totalUsers: profilesData.length,
-          }));
-        }
-      } catch (error) {
-        console.error("Error fetching profiles:", error);
-      }
-    };
 
     const loadData = async () => {
       setLoading(true);
       try {
-        // Get auth users data using service role key (if available)
-        // This is a workaround since we can't directly access auth.users in the free tier
-        const { data: authUsersData, error: authError } = await supabase.rpc(
-          "get_auth_users_data",
-        );
-
-        if (authError) {
-          console.error("Error fetching auth users data:", authError);
-          console.log("Auth error details:", {
-            message: authError.message,
-            details: authError.details,
-            hint: authError.hint,
-          });
-        } else {
-          console.log("Auth users data fetched successfully:", authUsersData);
-        }
-
-        // Fallback to profiles if RPC function is not available
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("*");
-
-        // Create a map of user IDs to auth data for quick lookup
-        const authUserMap = {};
-        if (authUsersData && Array.isArray(authUsersData)) {
-          console.log(
-            "Auth users data received:",
-            authUsersData.length,
-            "users",
-          );
-          authUsersData.forEach((user) => {
-            // Make sure we're using the correct ID format
-            authUserMap[user.id] = {
-              id: user.id,
-              email: user.email,
-              created_at: user.created_at,
-              last_sign_in_at: user.last_sign_in_at,
-              // Remove banned field as it doesn't exist in the function return
-            };
-            console.log(
-              `Mapping auth data for user ID: ${user.id}`,
-              authUserMap[user.id],
-            );
-          });
-        } else {
-          console.log("No auth users data received or not in expected format");
-        }
-
-        if (profilesData) {
-          const mappedUsers = profilesData.map((profile) => {
-            // Try to get auth data for this user
-            const authData = authUserMap[profile.id] || {};
-
-            // Log for debugging
-            if (profile.id in authUserMap) {
-              console.log(
-                `Found auth data for user ${profile.email || profile.id}`,
-                authData,
-              );
-            } else {
-              console.log(
-                `No auth data found for user ${profile.email || profile.id}`,
-                profile,
-              );
-            }
-
-            // Ensure we have valid date strings
-            const createdAt = authData.created_at || profile.created_at || null;
-            const lastSignIn = authData.last_sign_in_at || null;
-
-            console.log(`User ${profile.email} dates:`, {
-              createdAt,
-              lastSignIn,
-              profileCreatedAt: profile.created_at,
-              authDataCreatedAt: authData.created_at,
-            });
-
-            return {
-              id: profile.id,
-              email: profile.email || profile.id,
-              created_at: createdAt,
-              last_sign_in_at: lastSignIn,
-              banned: false, // Hardcoded to false since we removed this field from the function
-            };
-          });
-
-          setUsers(mappedUsers);
-
-          setStats((prev) => ({
-            ...prev,
-            totalUsers: profilesData.length,
-          }));
-        }
-
         // Load projects
         const { data: projectsData } = await supabase
           .from("projects")
@@ -237,7 +135,6 @@ const AdminPage = () => {
         }, 0);
 
         setStats({
-          totalUsers: profilesData?.length || 0,
           totalProjects: projectsData?.length || 0,
           activeProjects,
           completedProjects,
@@ -269,93 +166,6 @@ const AdminPage = () => {
       loadData();
     }
   }, [user, navigate, toast]);
-
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
-    try {
-      // Use signUp instead of admin API
-      const { error } = await supabase.auth.signUp({
-        email: newUserEmail,
-        password: newUserPassword,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "User created successfully. Verification email sent.",
-      });
-
-      // Refresh user list by fetching profiles
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("*");
-
-      if (profilesData) {
-        setUsers(
-          profilesData.map((profile) => ({
-            id: profile.id,
-            email: profile.email || profile.id,
-            created_at: profile.created_at,
-            last_sign_in_at: null,
-            banned: false,
-          })),
-        );
-      }
-
-      // Clear form
-      setNewUserEmail("");
-      setNewUserPassword("");
-    } catch (error) {
-      console.error("Error creating user:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create user",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteUser = async (userId) => {
-    try {
-      // Delete from profiles table instead
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      });
-
-      // Refresh user list
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("*");
-
-      if (profilesData) {
-        setUsers(
-          profilesData.map((profile) => ({
-            id: profile.id,
-            email: profile.email || profile.id,
-            created_at: profile.created_at,
-            last_sign_in_at: null,
-            banned: false,
-          })),
-        );
-      }
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete user",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleAzureAdSync = async () => {
     setIsSyncing(true);
@@ -435,6 +245,14 @@ const AdminPage = () => {
             <p className="text-muted-foreground">
               You do not have permission to access this page.
             </p>
+            <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left text-sm">
+              <p>
+                <strong>Debug Info:</strong>
+              </p>
+              <p>Your email: {user?.email || "undefined"}</p>
+              <p>Admin emails: {ADMIN_EMAILS.join(", ")}</p>
+              <p>Environment: {import.meta.env.MODE}</p>
+            </div>
           </div>
         </div>
       </Layout>
@@ -449,7 +267,9 @@ const AdminPage = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/")}
+              onClick={() => {
+                window.location.href = "/";
+              }}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Dashboard
@@ -461,18 +281,7 @@ const AdminPage = () => {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-800">
-                {stats.totalUsers}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">
@@ -517,18 +326,10 @@ const AdminPage = () => {
         </div>
 
         <Tabs
-          defaultValue="users"
+          defaultValue="departments"
           className="space-y-4 bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm rounded-2xl border border-gray-100/50 shadow-sm p-4"
         >
           <TabsList className="bg-blue-50 border border-blue-100">
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Users Management
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4" />
-              Pending Approvals
-            </TabsTrigger>
             <TabsTrigger
               value="departments"
               className="flex items-center gap-2"
@@ -544,10 +345,6 @@ const AdminPage = () => {
               <Database className="h-4 w-4" />
               Supabase Metrics
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Security
-            </TabsTrigger>
             <TabsTrigger value="knowledge" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Project Pilot Knowledge
@@ -557,171 +354,6 @@ const AdminPage = () => {
               Azure AD Sync
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="pending" className="space-y-4">
-            <PendingUsersManager />
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
-            <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-blue-800">Create New User</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreateUser} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={newUserEmail}
-                        onChange={(e) => setNewUserEmail(e.target.value)}
-                        placeholder="user@example.com"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={newUserPassword}
-                        onChange={(e) => setNewUserPassword(e.target.value)}
-                        placeholder="••••••••"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    Create User
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-blue-800">User Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-4">Loading users...</div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Created At</TableHead>
-                        <TableHead>Last Sign In</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center">
-                            No users found
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        users.map((user) => (
-                          <TableRow key={user.id}>
-                            <TableCell className="font-medium">
-                              {user.email}
-                            </TableCell>
-                            <TableCell>
-                              {user.created_at &&
-                              !isNaN(new Date(user.created_at).getTime())
-                                ? new Date(
-                                    user.created_at,
-                                  ).toLocaleDateString() +
-                                  " " +
-                                  new Date(user.created_at).toLocaleTimeString(
-                                    [],
-                                    { hour: "2-digit", minute: "2-digit" },
-                                  )
-                                : "Unknown"}
-                            </TableCell>
-                            <TableCell>
-                              {user.last_sign_in_at &&
-                              !isNaN(new Date(user.last_sign_in_at).getTime())
-                                ? new Date(
-                                    user.last_sign_in_at,
-                                  ).toLocaleDateString() +
-                                  " " +
-                                  new Date(
-                                    user.last_sign_in_at,
-                                  ).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })
-                                : "Never"}
-                              {/* Add a hidden debug span to help troubleshoot */}
-                              <span className="hidden">
-                                {JSON.stringify({
-                                  rawLastSignIn: user.last_sign_in_at,
-                                  isValid: user.last_sign_in_at
-                                    ? !isNaN(
-                                        new Date(
-                                          user.last_sign_in_at,
-                                        ).getTime(),
-                                      )
-                                    : false,
-                                })}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                  user.banned
-                                    ? "bg-red-100 text-red-800"
-                                    : "bg-green-100 text-green-800"
-                                }`}
-                              >
-                                {user.banned ? "Banned" : "Active"}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  // Send password reset email
-                                  supabase.auth.resetPasswordForEmail(
-                                    user.email,
-                                  );
-                                  toast({
-                                    title: "Password Reset Email Sent",
-                                    description: `A password reset email has been sent to ${user.email}`,
-                                  });
-                                }}
-                              >
-                                <Mail className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="statistics" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -787,76 +419,6 @@ const AdminPage = () => {
                 </CardContent>
               </Card>
             </div>
-
-            <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-blue-800">
-                  Project Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project Title</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Project Manager</TableHead>
-                      <TableHead>Budget</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projects.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center">
-                          No projects found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      projects.map((project) => (
-                        <TableRow key={project.id}>
-                          <TableCell className="font-medium">
-                            {project.title}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                {
-                                  active:
-                                    "bg-green-100 text-green-800 border border-green-200",
-                                  on_hold:
-                                    "bg-yellow-100 text-yellow-800 border border-yellow-200",
-                                  completed:
-                                    "bg-blue-100 text-blue-800 border border-blue-200",
-                                  cancelled:
-                                    "bg-red-100 text-red-800 border border-red-200",
-                                  draft:
-                                    "bg-gray-100 text-gray-800 border border-gray-200",
-                                }[project.status || "active"]
-                              }`}
-                            >
-                              {project.status
-                                ?.replace("_", " ")
-                                .charAt(0)
-                                .toUpperCase() +
-                                project.status?.slice(1).replace("_", " ") ||
-                                "Active"}
-                            </span>
-                          </TableCell>
-                          <TableCell>{project.project_manager}</TableCell>
-                          <TableCell>
-                            ${project.budget_total?.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(project.created_at).toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="departments" className="space-y-4">
@@ -869,74 +431,6 @@ const AdminPage = () => {
 
           <TabsContent value="supabase" className="space-y-4">
             <SupabaseMetrics />
-          </TabsContent>
-
-          <TabsContent value="security" className="space-y-4">
-            <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-800">
-                  <ShieldAlert className="h-5 w-5" />
-                  Security Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Two-Factor Authentication</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Require 2FA for all admin users
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <ShieldCheck className="h-4 w-4" />
-                      Enable
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Login Attempts</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Maximum failed login attempts before account lockout
-                      </p>
-                    </div>
-                    <Input
-                      type="number"
-                      defaultValue="5"
-                      className="w-20 text-center"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Session Timeout</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Automatically log out users after inactivity (minutes)
-                      </p>
-                    </div>
-                    <Input
-                      type="number"
-                      defaultValue="30"
-                      className="w-20 text-center"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl">
-                    Save Security Settings
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="azure-ad" className="space-y-4">
