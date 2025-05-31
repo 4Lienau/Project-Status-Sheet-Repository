@@ -45,6 +45,8 @@ export const adminService = {
     summary?: any;
   }> {
     try {
+      console.log("Invoking Azure AD sync edge function...");
+
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-azure-ad-sync",
         {
@@ -52,11 +54,28 @@ export const adminService = {
         },
       );
 
+      console.log("Edge function response:", { data, error });
+
       if (error) {
         console.error("Error triggering Azure AD sync:", error);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
         return {
           success: false,
-          message: error.message || "Failed to trigger Azure AD sync",
+          message: `Edge function error: ${error.message || "Unknown error"} ${error.details ? `(${error.details})` : ""}`,
+        };
+      }
+
+      // Check if the response indicates an error
+      if (data && data.success === false) {
+        console.error("Azure AD sync failed:", data.error);
+        return {
+          success: false,
+          message: data.error || "Azure AD sync failed",
         };
       }
 
@@ -68,9 +87,14 @@ export const adminService = {
       );
     } catch (error) {
       console.error("Error triggering Azure AD sync:", error);
+      console.error("Catch block error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
       return {
         success: false,
-        message: error.message || "Failed to trigger Azure AD sync",
+        message: `Unexpected error: ${error.message || "Failed to trigger Azure AD sync"}`,
       };
     }
   },
