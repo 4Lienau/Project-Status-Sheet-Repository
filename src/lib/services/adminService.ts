@@ -138,6 +138,57 @@ export const adminService = {
     }
   },
 
+  async getSyncConfiguration(): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from("sync_configurations")
+        .select("*")
+        .eq("sync_type", "azure_ad_sync")
+        .single();
+
+      if (error) {
+        console.error("Error fetching sync configuration:", error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error fetching sync configuration:", error);
+      return null;
+    }
+  },
+
+  async updateSyncConfiguration(
+    frequencyHours: number,
+    isEnabled: boolean,
+  ): Promise<boolean> {
+    try {
+      // Calculate next run time based on current time + frequency
+      const nextRunTime = new Date();
+      nextRunTime.setHours(nextRunTime.getHours() + frequencyHours);
+
+      const { error } = await supabase
+        .from("sync_configurations")
+        .update({
+          frequency_hours: frequencyHours,
+          is_enabled: isEnabled,
+          next_run_at: nextRunTime.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("sync_type", "azure_ad_sync");
+
+      if (error) {
+        console.error("Error updating sync configuration:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error updating sync configuration:", error);
+      return false;
+    }
+  },
+
   async approveUser(userId: string, email: string): Promise<boolean> {
     try {
       // First, update the user's metadata in auth.users via admin API

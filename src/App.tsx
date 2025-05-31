@@ -38,20 +38,15 @@ import { useAuth } from "./lib/hooks/useAuth";
 const checkAuthStatus = (user, loading, initialCheckComplete) => {
   // Still loading authentication state
   if (loading || !initialCheckComplete) {
-    console.log("ProtectedRoute: Still loading authentication state");
     return "loading";
   }
 
   // Not authenticated
   if (!user) {
-    console.log("ProtectedRoute: No authenticated user, redirecting to login");
     return "unauthenticated";
   }
 
   // Authenticated
-  console.log(
-    "ProtectedRoute: User authenticated, rendering protected content",
-  );
   return "authenticated";
 };
 
@@ -61,34 +56,17 @@ const ProtectedRoute = ({ children }) => {
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
   const location = useLocation();
 
-  console.log("[DEBUG ProtectedRoute] Rendering for path:", location.pathname);
-  console.log("[DEBUG ProtectedRoute] User:", user);
-  console.log("[DEBUG ProtectedRoute] Loading:", loading);
-  console.log(
-    "[DEBUG ProtectedRoute] Initial check complete:",
-    initialCheckComplete,
-  );
-
   // Set a flag when initial check is complete
   useEffect(() => {
     if (!loading) {
       setInitialCheckComplete(true);
-      console.log(
-        "[DEBUG ProtectedRoute] Initial auth check complete for path:",
-        location.pathname,
-      );
     }
   }, [loading, location.pathname]);
 
   const authStatus = checkAuthStatus(user, loading, initialCheckComplete);
-  console.log("[DEBUG ProtectedRoute] Auth status:", authStatus);
 
   // Show loading state while checking authentication
   if (authStatus === "loading") {
-    console.log(
-      "[DEBUG ProtectedRoute] Showing loading state for:",
-      location.pathname,
-    );
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -103,32 +81,15 @@ const ProtectedRoute = ({ children }) => {
 
   // Redirect to login if not authenticated
   if (authStatus === "unauthenticated") {
-    console.log(
-      "[DEBUG ProtectedRoute] Redirecting to login from:",
-      location.pathname,
-    );
     return <Navigate to="/login" replace />;
   }
 
   // Render children if authenticated
-  console.log(
-    "[DEBUG ProtectedRoute] Rendering children for:",
-    location.pathname,
-  );
   return children;
 };
 
 function App() {
   const location = useLocation();
-  console.log("[DEBUG App.tsx] Current location:", location.pathname);
-  console.log("[DEBUG App.tsx] Full location object:", location);
-
-  // Monitor location changes
-  useEffect(() => {
-    console.log("[DEBUG App.tsx] Location changed to:", location.pathname);
-    console.log("[DEBUG App.tsx] Location state:", location.state);
-    console.log("[DEBUG App.tsx] Location search:", location.search);
-  }, [location]);
 
   // Define main application routes that should never be handled by Tempo
   const isMainAppRoute =
@@ -140,32 +101,13 @@ function App() {
     location.pathname.startsWith("/project") ||
     location.pathname.startsWith("/profile");
 
-  console.log("[DEBUG App.tsx] Is main app route?", isMainAppRoute);
-  console.log(
-    "[DEBUG App.tsx] Is admin route?",
-    location.pathname.startsWith("/admin"),
-  );
-
   // Only handle Tempo routes if we're NOT on a main application route
   if (import.meta.env.VITE_TEMPO === "true" && !isMainAppRoute) {
-    console.log("[DEBUG App.tsx] Attempting to handle Tempo routes");
     const tempoRoutes = useRoutes(routes);
     if (tempoRoutes) {
-      console.log("[DEBUG App.tsx] Tempo routes matched, rendering them");
       return <Suspense fallback={<p>Loading...</p>}>{tempoRoutes}</Suspense>;
     }
-    console.log("[DEBUG App.tsx] No Tempo routes matched");
-  } else {
-    console.log(
-      "[DEBUG App.tsx] Skipping Tempo routes - on main app route or Tempo disabled",
-    );
   }
-
-  console.log("[DEBUG App.tsx] Rendering main Routes component");
-  console.log(
-    "[DEBUG App.tsx] Current pathname for Routes:",
-    location.pathname,
-  );
 
   return (
     <Suspense fallback={<p>Loading...</p>}>
@@ -173,28 +115,11 @@ function App() {
         {/* Admin route - HIGHEST PRIORITY */}
         <Route
           path="/admin"
-          element={(() => {
-            console.log("[DEBUG App.tsx] Admin route element being rendered");
-            console.log(
-              "[DEBUG App.tsx] Current path:",
-              window.location.pathname,
-            );
-            console.log("[DEBUG App.tsx] Current location:", location.pathname);
-            console.log(
-              "[DEBUG App.tsx] Route pathname matches:",
-              location.pathname === "/admin",
-            );
-            console.log(
-              "[DEBUG App.tsx] Window location matches:",
-              window.location.pathname === "/admin",
-            );
-
-            // Temporary bypass for debugging - remove ProtectedRoute wrapper
-            console.log(
-              "[DEBUG App.tsx] Rendering AdminPage directly (bypassing ProtectedRoute for debugging)",
-            );
-            return <AdminPage />;
-          })()}
+          element={
+            <ProtectedRoute>
+              <AdminPage />
+            </ProtectedRoute>
+          }
         />
 
         {/* Public routes */}

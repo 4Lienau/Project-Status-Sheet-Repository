@@ -1,7 +1,8 @@
 /**
  * Azure AD Sync Edge Function
  *
- * This function syncs user data from Azure Active Directory to Supabase
+ * This function syncs ACTIVE user data from Azure Active Directory to Supabase
+ * Only users with accountEnabled=true AND department is not null are synchronized
  * Runs every 6 hours via cron schedule
  * Can also be triggered manually from the admin dashboard
  */
@@ -121,10 +122,10 @@ serve(async (req) => {
       const accessToken = tokenData.access_token;
       console.log("Azure AD access token obtained successfully");
 
-      // Fetch users from Azure AD
-      console.log("Fetching users from Azure AD...");
+      // Fetch ACTIVE users from Azure AD (only accountEnabled=true AND department is not null)
+      console.log("Fetching active users with departments from Azure AD...");
       let allUsers: AzureUser[] = [];
-      let nextLink = `https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,jobTitle,department,accountEnabled,createdDateTime&$top=999`;
+      let nextLink = `https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,jobTitle,department,accountEnabled,createdDateTime&$filter=accountEnabled eq true and department ne null&$top=999`;
 
       while (nextLink) {
         const usersResponse = await fetch(nextLink, {
@@ -146,11 +147,13 @@ serve(async (req) => {
         nextLink = usersData["@odata.nextLink"];
 
         console.log(
-          `Fetched ${usersData.value?.length || 0} users, total so far: ${allUsers.length}`,
+          `Fetched ${usersData.value?.length || 0} active users with departments, total so far: ${allUsers.length}`,
         );
       }
 
-      console.log(`Total users fetched from Azure AD: ${allUsers.length}`);
+      console.log(
+        `Total active users with departments fetched from Azure AD: ${allUsers.length}`,
+      );
 
       // Process users in batches
       const batchSize = 100;
@@ -178,7 +181,7 @@ serve(async (req) => {
               account_enabled: azureUser.accountEnabled,
               created_date_time: azureUser.createdDateTime,
               last_synced: new Date().toISOString(),
-              sync_status: azureUser.accountEnabled ? "active" : "inactive",
+              sync_status: "active", // All fetched users are active with departments due to filter
             };
 
             // Upsert user data
@@ -226,7 +229,9 @@ serve(async (req) => {
         }
       }
 
-      // Mark users as inactive if they no longer exist in Azure AD
+      // Mark users as inactive if they no longer exist in the active Azure AD users with departments
+      // Since we only fetch active users with departments, any previously active user not in this list
+      // has either been deactivated, deleted from Azure AD, or had their department removed
       const azureUserIds = allUsers.map((u) => u.id);
       if (azureUserIds.length > 0) {
         const { data: deactivatedUsers, error: deactivateError } =
@@ -272,7 +277,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Azure AD sync completed successfully",
+          message:
+            "Azure AD sync completed successfully (active users with departments only)",
           summary: {
             usersProcessed,
             usersCreated,

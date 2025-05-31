@@ -54,18 +54,6 @@ const AdminPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Add comprehensive debugging
-  console.log("[DEBUG AdminPage] Component loaded");
-  console.log("[DEBUG AdminPage] User:", user);
-  console.log("[DEBUG AdminPage] User email:", user?.email);
-  console.log("[DEBUG AdminPage] Admin emails:", ADMIN_EMAILS);
-  console.log(
-    "[DEBUG AdminPage] Is user email in admin list?",
-    user?.email && ADMIN_EMAILS.includes(user.email),
-  );
-  console.log("[DEBUG AdminPage] Environment mode:", import.meta.env.MODE);
-  console.log("[DEBUG AdminPage] Current URL:", window.location.href);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [stats, setStats] = useState({
@@ -80,32 +68,15 @@ const AdminPage = () => {
   const [directoryUsers, setDirectoryUsers] = useState([]);
   const [syncLogs, setSyncLogs] = useState([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncConfig, setSyncConfig] = useState(null);
+  const [newFrequency, setNewFrequency] = useState(6);
+  const [isUpdatingFrequency, setIsUpdatingFrequency] = useState(false);
 
   useEffect(() => {
-    // Debug logging for admin access
-    console.log("[AdminPage Debug] useEffect triggered");
-    console.log("[AdminPage Debug] Current user:", user);
-    console.log("[AdminPage Debug] User email:", user?.email);
-    console.log("[AdminPage Debug] Admin emails:", ADMIN_EMAILS);
-    console.log(
-      "[AdminPage Debug] Is admin?",
-      user?.email && ADMIN_EMAILS.includes(user.email),
-    );
-    console.log("[AdminPage Debug] User exists?", !!user);
-    console.log(
-      "[AdminPage Debug] Email check result:",
-      user?.email && ADMIN_EMAILS.includes(user.email),
-    );
-
     // Redirect if not admin
     if (user && !ADMIN_EMAILS.includes(user.email)) {
-      console.log("[AdminPage Debug] Access denied - redirecting to home");
       navigate("/");
       return;
-    } else if (user && ADMIN_EMAILS.includes(user.email)) {
-      console.log("[AdminPage Debug] Access granted - user is admin");
-    } else {
-      console.log("[AdminPage Debug] User not loaded yet or no user");
     }
 
     const loadData = async () => {
@@ -150,6 +121,13 @@ const AdminPage = () => {
 
         const syncLogsData = await adminService.getAzureSyncLogs();
         setSyncLogs(syncLogsData);
+
+        // Load sync configuration
+        const syncConfigData = await adminService.getSyncConfiguration();
+        setSyncConfig(syncConfigData);
+        if (syncConfigData) {
+          setNewFrequency(syncConfigData.frequency_hours);
+        }
       } catch (error) {
         console.error("Error loading admin data:", error);
         toast({
@@ -186,6 +164,10 @@ const AdminPage = () => {
 
           const syncLogsData = await adminService.getAzureSyncLogs();
           setSyncLogs(syncLogsData);
+
+          // Refresh sync configuration
+          const syncConfigData = await adminService.getSyncConfiguration();
+          setSyncConfig(syncConfigData);
         }, 2000);
       } else {
         toast({
@@ -203,6 +185,43 @@ const AdminPage = () => {
       });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleUpdateFrequency = async () => {
+    setIsUpdatingFrequency(true);
+    try {
+      const success = await adminService.updateSyncConfiguration(
+        newFrequency,
+        syncConfig?.is_enabled ?? true,
+      );
+
+      if (success) {
+        toast({
+          title: "Sync Frequency Updated",
+          description: `Azure AD sync frequency updated to ${newFrequency} hours`,
+          className: "bg-green-50 border-green-200",
+        });
+
+        // Refresh sync configuration
+        const syncConfigData = await adminService.getSyncConfiguration();
+        setSyncConfig(syncConfigData);
+      } else {
+        toast({
+          title: "Update Failed",
+          description: "Failed to update sync frequency",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating sync frequency:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update sync frequency",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingFrequency(false);
     }
   };
 
@@ -245,14 +264,6 @@ const AdminPage = () => {
             <p className="text-muted-foreground">
               You do not have permission to access this page.
             </p>
-            <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left text-sm">
-              <p>
-                <strong>Debug Info:</strong>
-              </p>
-              <p>Your email: {user?.email || "undefined"}</p>
-              <p>Admin emails: {ADMIN_EMAILS.join(", ")}</p>
-              <p>Environment: {import.meta.env.MODE}</p>
-            </div>
           </div>
         </div>
       </Layout>
@@ -447,28 +458,81 @@ const AdminPage = () => {
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">
                       Sync user data from Azure Active Directory to the local
-                      directory_users table. The sync runs automatically every 6
-                      hours, or you can trigger it manually.
+                      directory_users table. The sync runs automatically every{" "}
+                      {syncConfig?.frequency_hours || 6} hours, or you can
+                      trigger it manually.
                     </p>
+                    {syncConfig && (
+                      <div className="text-xs text-blue-600">
+                        Next scheduled run:{" "}
+                        {syncConfig.next_run_at
+                          ? new Date(syncConfig.next_run_at).toLocaleString()
+                          : "Not scheduled"}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div>
-                      <h3 className="font-medium text-blue-900">Manual Sync</h3>
-                      <p className="text-sm text-blue-700">
-                        Trigger an immediate sync with Azure AD
-                      </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div>
+                        <h3 className="font-medium text-blue-900">
+                          Manual Sync
+                        </h3>
+                        <p className="text-sm text-blue-700">
+                          Trigger an immediate sync with Azure AD
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleAzureAdSync}
+                        disabled={isSyncing}
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                      >
+                        <RefreshCw
+                          className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+                        />
+                        {isSyncing ? "Syncing..." : "Sync Now"}
+                      </Button>
                     </div>
-                    <Button
-                      onClick={handleAzureAdSync}
-                      disabled={isSyncing}
-                      className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
-                    >
-                      <RefreshCw
-                        className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
-                      />
-                      {isSyncing ? "Syncing..." : "Sync Now"}
-                    </Button>
+
+                    <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-amber-900">
+                            Sync Frequency
+                          </h3>
+                          <p className="text-sm text-amber-700">
+                            Configure how often the sync runs automatically
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="frequency" className="text-sm">
+                            Hours:
+                          </Label>
+                          <Input
+                            id="frequency"
+                            type="number"
+                            min="1"
+                            max="168"
+                            value={newFrequency}
+                            onChange={(e) =>
+                              setNewFrequency(parseInt(e.target.value) || 6)
+                            }
+                            className="w-20"
+                          />
+                          <Button
+                            onClick={handleUpdateFrequency}
+                            disabled={
+                              isUpdatingFrequency ||
+                              newFrequency === syncConfig?.frequency_hours
+                            }
+                            size="sm"
+                            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
+                          >
+                            {isUpdatingFrequency ? "Updating..." : "Update"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-4">
