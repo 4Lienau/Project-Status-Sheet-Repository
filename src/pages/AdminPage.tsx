@@ -49,6 +49,8 @@ import {
   ShieldCheck,
   Activity,
   Database,
+  RefreshCw,
+  Cloud,
 } from "lucide-react";
 
 // Admin emails - add your email here to get admin access
@@ -73,6 +75,9 @@ const AdminPage = () => {
     draftProjects: 0,
     totalMilestones: 0,
   });
+  const [directoryUsers, setDirectoryUsers] = useState([]);
+  const [syncLogs, setSyncLogs] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     // Redirect if not admin
@@ -240,6 +245,13 @@ const AdminPage = () => {
           draftProjects,
           totalMilestones,
         });
+
+        // Load directory users and sync logs
+        const directoryUsersData = await adminService.getDirectoryUsers();
+        setDirectoryUsers(directoryUsersData);
+
+        const syncLogsData = await adminService.getAzureSyncLogs();
+        setSyncLogs(syncLogsData);
       } catch (error) {
         console.error("Error loading admin data:", error);
         toast({
@@ -341,6 +353,45 @@ const AdminPage = () => {
         description: error.message || "Failed to delete user",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleAzureAdSync = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await adminService.triggerAzureAdSync();
+
+      if (result.success) {
+        toast({
+          title: "Azure AD Sync Started",
+          description: result.message,
+          className: "bg-green-50 border-green-200",
+        });
+
+        // Refresh directory users and sync logs after a short delay
+        setTimeout(async () => {
+          const directoryUsersData = await adminService.getDirectoryUsers();
+          setDirectoryUsers(directoryUsersData);
+
+          const syncLogsData = await adminService.getAzureSyncLogs();
+          setSyncLogs(syncLogsData);
+        }, 2000);
+      } else {
+        toast({
+          title: "Azure AD Sync Failed",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error triggering Azure AD sync:", error);
+      toast({
+        title: "Error",
+        description: "Failed to trigger Azure AD sync",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -499,6 +550,10 @@ const AdminPage = () => {
             <TabsTrigger value="knowledge" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Project Pilot Knowledge
+            </TabsTrigger>
+            <TabsTrigger value="azure-ad" className="flex items-center gap-2">
+              <Cloud className="h-4 w-4" />
+              Azure AD Sync
             </TabsTrigger>
           </TabsList>
 
@@ -879,6 +934,188 @@ const AdminPage = () => {
                     Save Security Settings
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="azure-ad" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Azure AD Sync Control */}
+              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-blue-800">
+                    <Cloud className="h-5 w-5" />
+                    Azure AD Sync Control
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Sync user data from Azure Active Directory to the local
+                      directory_users table. The sync runs automatically every 6
+                      hours, or you can trigger it manually.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div>
+                      <h3 className="font-medium text-blue-900">Manual Sync</h3>
+                      <p className="text-sm text-blue-700">
+                        Trigger an immediate sync with Azure AD
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleAzureAdSync}
+                      disabled={isSyncing}
+                      className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                    >
+                      <RefreshCw
+                        className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+                      />
+                      {isSyncing ? "Syncing..." : "Sync Now"}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-4">
+                    <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="text-2xl font-bold text-green-800">
+                        {directoryUsers.length}
+                      </div>
+                      <div className="text-sm text-green-600">
+                        Directory Users
+                      </div>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-2xl font-bold text-blue-800">
+                        {
+                          directoryUsers.filter(
+                            (u) => u.sync_status === "active",
+                          ).length
+                        }
+                      </div>
+                      <div className="text-sm text-blue-600">Active Users</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Sync Logs */}
+              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-blue-800">
+                    <Activity className="h-5 w-5" />
+                    Recent Sync Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {syncLogs.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No sync logs available
+                      </p>
+                    ) : (
+                      syncLogs.slice(0, 5).map((log) => (
+                        <div
+                          key={log.id}
+                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  log.sync_status === "completed"
+                                    ? "bg-green-100 text-green-800"
+                                    : log.sync_status === "failed"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-yellow-100 text-yellow-800"
+                                }`}
+                              >
+                                {log.sync_status}
+                              </span>
+                              <span className="text-sm text-gray-600">
+                                {new Date(log.sync_started_at).toLocaleString()}
+                              </span>
+                            </div>
+                            {log.sync_status === "completed" && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {log.users_processed} processed,{" "}
+                                {log.users_created} created, {log.users_updated}{" "}
+                                updated
+                              </div>
+                            )}
+                            {log.error_message && (
+                              <div className="text-xs text-red-600 mt-1">
+                                {log.error_message}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Directory Users Table */}
+            <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-blue-800">Directory Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Display Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Job Title</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Last Synced</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {directoryUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                          No directory users found. Run a sync to populate data.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      directoryUsers.slice(0, 10).map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">
+                            {user.display_name}
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{user.job_title || "-"}</TableCell>
+                          <TableCell>{user.department || "-"}</TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                user.sync_status === "active"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {user.sync_status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {user.last_synced
+                              ? new Date(user.last_synced).toLocaleString()
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+                {directoryUsers.length > 10 && (
+                  <div className="text-center text-sm text-muted-foreground mt-4">
+                    Showing 10 of {directoryUsers.length} users
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

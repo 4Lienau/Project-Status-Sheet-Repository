@@ -39,6 +39,81 @@ export const adminService = {
     return data || [];
   },
 
+  async triggerAzureAdSync(): Promise<{
+    success: boolean;
+    message: string;
+    summary?: any;
+  }> {
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "supabase-functions-azure-ad-sync",
+        {
+          body: { manual: true },
+        },
+      );
+
+      if (error) {
+        console.error("Error triggering Azure AD sync:", error);
+        return {
+          success: false,
+          message: error.message || "Failed to trigger Azure AD sync",
+        };
+      }
+
+      return (
+        data || {
+          success: true,
+          message: "Azure AD sync triggered successfully",
+        }
+      );
+    } catch (error) {
+      console.error("Error triggering Azure AD sync:", error);
+      return {
+        success: false,
+        message: error.message || "Failed to trigger Azure AD sync",
+      };
+    }
+  },
+
+  async getDirectoryUsers(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from("directory_users")
+        .select("*")
+        .order("last_synced", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching directory users:", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching directory users:", error);
+      return [];
+    }
+  },
+
+  async getAzureSyncLogs(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from("azure_sync_logs")
+        .select("*")
+        .order("sync_started_at", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error("Error fetching Azure sync logs:", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching Azure sync logs:", error);
+      return [];
+    }
+  },
+
   async approveUser(userId: string, email: string): Promise<boolean> {
     try {
       // First, update the user's metadata in auth.users via admin API
