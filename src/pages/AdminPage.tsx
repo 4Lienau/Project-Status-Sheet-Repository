@@ -7,6 +7,7 @@ import SupabaseMetrics from "@/components/admin/SupabaseMetrics";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { adminService } from "@/lib/services/adminService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
