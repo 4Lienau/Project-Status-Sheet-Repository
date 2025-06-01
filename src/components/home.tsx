@@ -54,6 +54,39 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
+// Helper functions for localStorage persistence
+const getStorageKey = (userId: string, filterType: string) =>
+  `projectFilters_${userId}_${filterType}`;
+
+const saveFilterToStorage = (
+  userId: string,
+  filterType: string,
+  value: any,
+) => {
+  try {
+    localStorage.setItem(
+      getStorageKey(userId, filterType),
+      JSON.stringify(value),
+    );
+  } catch (error) {
+    console.warn("Failed to save filter to localStorage:", error);
+  }
+};
+
+const loadFilterFromStorage = (
+  userId: string,
+  filterType: string,
+  defaultValue: any,
+) => {
+  try {
+    const stored = localStorage.getItem(getStorageKey(userId, filterType));
+    return stored ? JSON.parse(stored) : defaultValue;
+  } catch (error) {
+    console.warn("Failed to load filter from localStorage:", error);
+    return defaultValue;
+  }
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,6 +104,45 @@ const Home = () => {
   const [departments, setDepartments] = useState<string[]>([]);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
+  const [filtersLoaded, setFiltersLoaded] = useState(false);
+
+  // Clear all filters function
+  const clearAllFilters = () => {
+    setSelectedManagers([]);
+    setSelectedStatus("all");
+    setSelectedDepartment("all");
+
+    // Save cleared filters to localStorage
+    if (user?.id) {
+      saveFilterToStorage(user.id, "managers", []);
+      saveFilterToStorage(user.id, "status", "all");
+      saveFilterToStorage(user.id, "department", "all");
+    }
+  };
+
+  // Load persistent filters from localStorage when user is available
+  useEffect(() => {
+    if (user?.id && !filtersLoaded) {
+      const savedManagers = loadFilterFromStorage(user.id, "managers", []);
+      const savedStatus = loadFilterFromStorage(user.id, "status", "all");
+      const savedDepartment = loadFilterFromStorage(
+        user.id,
+        "department",
+        "all",
+      );
+
+      setSelectedManagers(savedManagers);
+      setSelectedStatus(savedStatus);
+      setSelectedDepartment(savedDepartment);
+      setFiltersLoaded(true);
+
+      console.log("Loaded persistent filters:", {
+        managers: savedManagers,
+        status: savedStatus,
+        department: savedDepartment,
+      });
+    }
+  }, [user?.id, filtersLoaded]);
 
   // Check if user profile is complete
   useEffect(() => {
@@ -215,7 +287,12 @@ const Home = () => {
                 <div className="flex items-center gap-4">
                   <Select
                     value={selectedDepartment}
-                    onValueChange={setSelectedDepartment}
+                    onValueChange={(value) => {
+                      setSelectedDepartment(value);
+                      if (user?.id) {
+                        saveFilterToStorage(user.id, "department", value);
+                      }
+                    }}
                   >
                     <SelectTrigger className="w-[280px] text-white border-white/30 bg-white/10 hover:bg-white/20">
                       <SelectValue
@@ -265,6 +342,13 @@ const Home = () => {
                                 onSelect={() => {
                                   setSelectedManagers([]);
                                   setManagerPopoverOpen(false);
+                                  if (user?.id) {
+                                    saveFilterToStorage(
+                                      user.id,
+                                      "managers",
+                                      [],
+                                    );
+                                  }
                                 }}
                                 className="flex items-center justify-between"
                               >
@@ -277,11 +361,19 @@ const Home = () => {
                                 <CommandItem
                                   key={manager}
                                   onSelect={() => {
-                                    setSelectedManagers((prev) =>
-                                      prev.includes(manager)
+                                    setSelectedManagers((prev) => {
+                                      const newManagers = prev.includes(manager)
                                         ? prev.filter((m) => m !== manager)
-                                        : [...prev, manager],
-                                    );
+                                        : [...prev, manager];
+                                      if (user?.id) {
+                                        saveFilterToStorage(
+                                          user.id,
+                                          "managers",
+                                          newManagers,
+                                        );
+                                      }
+                                      return newManagers;
+                                    });
                                   }}
                                   className="flex items-center justify-between"
                                 >
@@ -302,16 +394,26 @@ const Home = () => {
                           <Badge
                             key={manager}
                             variant="secondary"
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1 bg-white/20 text-white border-white/30 hover:bg-white/30"
                           >
                             {manager}
                             <X
-                              className="h-3 w-3 cursor-pointer"
+                              className="h-3 w-3 cursor-pointer text-white hover:text-gray-200"
                               onClick={(e) => {
                                 e.stopPropagation(); // Prevent triggering popover
-                                setSelectedManagers((prev) =>
-                                  prev.filter((m) => m !== manager),
-                                );
+                                setSelectedManagers((prev) => {
+                                  const newManagers = prev.filter(
+                                    (m) => m !== manager,
+                                  );
+                                  if (user?.id) {
+                                    saveFilterToStorage(
+                                      user.id,
+                                      "managers",
+                                      newManagers,
+                                    );
+                                  }
+                                  return newManagers;
+                                });
                               }}
                             />
                           </Badge>
@@ -319,10 +421,13 @@ const Home = () => {
                         {selectedManagers.length > 1 && (
                           <Badge
                             variant="outline"
-                            className="cursor-pointer"
+                            className="cursor-pointer bg-white/10 text-white border-white/30 hover:bg-white/20"
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent triggering popover
                               setSelectedManagers([]);
+                              if (user?.id) {
+                                saveFilterToStorage(user.id, "managers", []);
+                              }
                             }}
                           >
                             Clear all
@@ -334,7 +439,12 @@ const Home = () => {
 
                   <Select
                     value={selectedStatus}
-                    onValueChange={setSelectedStatus}
+                    onValueChange={(value) => {
+                      setSelectedStatus(value);
+                      if (user?.id) {
+                        saveFilterToStorage(user.id, "status", value);
+                      }
+                    }}
                   >
                     <SelectTrigger className="w-[200px] text-white border-white/30 bg-white/10 hover:bg-white/20">
                       <SelectValue
@@ -353,6 +463,14 @@ const Home = () => {
                   </Select>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    onClick={clearAllFilters}
+                    variant="outline"
+                    className="text-white border-white/30 bg-white/10 hover:bg-white/20 hover:text-white font-semibold flex items-center gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear Filters
+                  </Button>
                   <Button
                     onClick={() => setMode("overview")}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 shadow-lg"
