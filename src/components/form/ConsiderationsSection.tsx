@@ -20,7 +20,7 @@ const ConsiderationsSection: React.FC<ConsiderationsSectionProps> = ({
   return (
     <>
       <div className="flex items-center gap-1 mb-4">
-        <h3 className="text-2xl font-bold text-blue-800">
+        <h3 className="text-2xl font-bold text-white">
           Questions/Items for Consideration
         </h3>
         <Tooltip>
@@ -35,7 +35,7 @@ const ConsiderationsSection: React.FC<ConsiderationsSectionProps> = ({
           </TooltipContent>
         </Tooltip>
       </div>
-      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm">
+      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
         {formData.considerations.map((item, index) => (
           <div key={index} className="flex gap-2">
             <Input

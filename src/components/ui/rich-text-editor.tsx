@@ -128,10 +128,11 @@ export function RichTextEditor({
       attributes: {
         class: cn(
           "prose prose-sm max-w-none focus:outline-none",
-          "min-h-[120px] p-3 rounded-md border border-input bg-background",
+          "min-h-[120px] p-3 rounded-xl border border-input",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "placeholder:text-muted-foreground",
           "tiptap-editor", // Add a class for custom styling
+          className, // Apply the passed className which includes bg-white
         ),
         style: `min-height: ${minHeight}`,
       },
@@ -368,7 +369,11 @@ export function RichTextEditor({
         </div>
       )}
 
-      <div className="relative" onClick={() => editor.commands.focus()}>
+      <div
+        className="relative rounded-xl overflow-hidden"
+        onClick={() => editor.commands.focus()}
+        style={{ borderRadius: "0.75rem" }}
+      >
         <EditorContent editor={editor} />
         {editor.isEmpty && (
           <div className="absolute top-[1.125rem] left-[1.125rem] text-muted-foreground pointer-events-none">

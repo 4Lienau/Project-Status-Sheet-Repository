@@ -144,7 +144,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
     <TooltipProvider>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-1">
-          <h3 className="text-2xl font-bold text-blue-800">Milestones</h3>
+          <h3 className="text-2xl font-bold text-white">Milestones</h3>
           <Tooltip>
             <TooltipTrigger asChild>
               <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -170,20 +170,36 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
         </Button>
       </div>
 
-      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm">
+      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
         {/* Column Headers */}
-        <div className="grid grid-cols-[30px_1fr] gap-2">
+        <div className="grid grid-cols-[30px_1fr] gap-2 mb-3 pb-2 border-b border-gray-200">
           <div></div>
           <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
-            <div className="font-medium text-sm text-blue-800">Date</div>
-            <div className="font-medium text-sm text-blue-800">Milestone</div>
-            <div className="font-medium text-sm text-blue-800">Owner</div>
+            <div className="font-semibold text-sm text-gray-800">Date</div>
+            <div className="font-semibold text-sm text-gray-800">Milestone</div>
+            <div className="font-semibold text-sm text-gray-800">Owner</div>
             <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
-              <div className="font-medium text-sm text-blue-800">
+              <div className="font-semibold text-sm text-gray-800">
                 % Complete
               </div>
-              <div className="font-medium text-sm text-blue-800">Weight</div>
-              <div className="font-medium text-sm text-blue-800">Status</div>
+              <div className="font-semibold text-sm text-gray-800 flex items-center gap-1">
+                Weight
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      Milestone weight (1-5) determines the relative importance
+                      of each milestone in calculating overall project
+                      completion. Higher weights (4-5) have greater impact on
+                      the project's weighted completion percentage. Weight 3 is
+                      the default standard importance.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="font-semibold text-sm text-gray-800">Status</div>
               <div></div>
             </div>
           </div>
@@ -231,7 +247,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
               ],
             }))
           }
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 font-medium mt-4"
         >
           Add Milestone
         </Button>

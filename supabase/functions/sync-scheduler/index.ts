@@ -59,6 +59,26 @@ serve(async (req) => {
             continue;
         }
 
+        // Update the sync configuration before triggering
+        const nextRunTime = new Date();
+        nextRunTime.setHours(nextRunTime.getHours() + config.frequency_hours);
+
+        const { error: updateError } = await supabase
+          .from("sync_configurations")
+          .update({
+            last_run_at: new Date().toISOString(),
+            next_run_at: nextRunTime.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", config.id);
+
+        if (updateError) {
+          console.error(
+            `Error updating sync config for ${config.sync_type}:`,
+            updateError,
+          );
+        }
+
         // Trigger the sync function
         const { data: syncResult, error: syncError } =
           await supabase.functions.invoke(functionName, {

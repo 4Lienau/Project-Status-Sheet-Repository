@@ -657,7 +657,7 @@ const ProjectDashboard = ({
                 handleBack();
               }
             }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Projects

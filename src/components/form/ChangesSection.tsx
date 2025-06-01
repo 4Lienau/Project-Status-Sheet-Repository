@@ -20,7 +20,7 @@ const ChangesSection: React.FC<ChangesSectionProps> = ({
   return (
     <>
       <div className="flex items-center gap-1 mb-4">
-        <h3 className="text-2xl font-bold text-blue-800">Changes</h3>
+        <h3 className="text-2xl font-bold text-white">Changes</h3>
         <Tooltip>
           <TooltipTrigger asChild>
             <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -33,7 +33,7 @@ const ChangesSection: React.FC<ChangesSectionProps> = ({
           </TooltipContent>
         </Tooltip>
       </div>
-      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm">
+      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
         {/* Column Headers */}
         <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-start">
           <div className="font-medium text-sm text-blue-800">Change</div>

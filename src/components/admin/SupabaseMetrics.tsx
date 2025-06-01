@@ -19,7 +19,14 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { Loader2, Database, Users, FileText, HardDrive } from "lucide-react";
+import {
+  Loader2,
+  Database,
+  Users,
+  FileText,
+  HardDrive,
+  Play,
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -35,9 +42,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshCw } from "lucide-react";
+import { adminService } from "@/lib/services/adminService";
 
 const SupabaseMetrics: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const [isCheckingDueSync, setIsCheckingDueSync] = useState(false);
   const { toast } = useToast();
   const [metrics, setMetrics] = useState({
     totalUsers: 0,
@@ -67,6 +76,8 @@ const SupabaseMetrics: React.FC = () => {
     lastChecked: null,
     error: null,
   });
+
+  const [syncConfig, setSyncConfig] = useState(null);
 
   const checkAuthFunction = async () => {
     try {
@@ -121,6 +132,45 @@ const SupabaseMetrics: React.FC = () => {
     }
   };
 
+  const handleCheckDueSync = async () => {
+    setIsCheckingDueSync(true);
+    try {
+      const result = await adminService.checkAndTriggerDueSyncs();
+      if (result.success) {
+        if (result.syncTriggered) {
+          toast({
+            title: "Sync Triggered",
+            description:
+              "Azure AD sync was due and has been triggered automatically.",
+            className: "bg-green-50 border-green-200",
+          });
+          // Refresh sync config after sync trigger
+          const syncConfigData = await adminService.getSyncConfiguration();
+          setSyncConfig(syncConfigData);
+        } else {
+          toast({
+            title: "No Sync Needed",
+            description: "Azure AD sync is not due yet.",
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to check due syncs",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCheckingDueSync(false);
+    }
+  };
+
   const fetchMetrics = async () => {
     setLoading(true);
     try {
@@ -145,6 +195,10 @@ const SupabaseMetrics: React.FC = () => {
         totalUsers: usersCount || 0,
         totalProjects: projectsCount || 0,
       }));
+
+      // Load sync configuration
+      const syncConfigData = await adminService.getSyncConfiguration();
+      setSyncConfig(syncConfigData);
     } catch (error) {
       console.error("Error fetching Supabase metrics:", error);
       toast({
@@ -165,16 +219,30 @@ const SupabaseMetrics: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Supabase Project Metrics</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchMetrics}
-          disabled={loading}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCheckDueSync}
+            disabled={isCheckingDueSync}
+            className="flex items-center gap-2"
+          >
+            <Play
+              className={`h-4 w-4 ${isCheckingDueSync ? "animate-spin" : ""}`}
+            />
+            {isCheckingDueSync ? "Checking..." : "Check Sync"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchMetrics}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {!authFunctionStatus.exists && (
@@ -209,6 +277,71 @@ const SupabaseMetrics: React.FC = () => {
                     <strong>Error:</strong> {authFunctionStatus.error}
                   </p>
                 )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Show sync timing information */}
+      {syncConfig && (
+        <Card className="bg-blue-50 border-blue-200 mb-4">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-2">
+              <div className="bg-blue-100 p-2 rounded-full">
+                <Database className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-800">
+                  Azure AD Sync Status
+                </h3>
+                <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Last Sync:</span>
+                    <span>
+                      {syncConfig.last_run_at
+                        ? new Date(syncConfig.last_run_at).toLocaleString()
+                        : "Never"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Next Sync Due:</span>
+                    <span
+                      className={
+                        syncConfig.next_run_at &&
+                        new Date(syncConfig.next_run_at) <= new Date()
+                          ? "text-red-600 font-semibold"
+                          : ""
+                      }
+                    >
+                      {syncConfig.next_run_at
+                        ? new Date(syncConfig.next_run_at).toLocaleString()
+                        : "Not scheduled"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Frequency:</span>
+                    <span>{syncConfig.frequency_hours} hours</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Status:</span>
+                    <span
+                      className={
+                        syncConfig.is_enabled
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }
+                    >
+                      {syncConfig.is_enabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
+                </div>
+                {syncConfig.next_run_at &&
+                  new Date(syncConfig.next_run_at) <= new Date() && (
+                    <div className="text-red-600 font-medium text-center mt-3 p-2 bg-red-50 rounded border border-red-200">
+                      ⚠️ Sync is overdue! Click "Check Sync" to trigger it.
+                    </div>
+                  )}
               </div>
             </div>
           </CardContent>

@@ -67,7 +67,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
   };
 
   return (
-    <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm">
+    <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-2xl font-bold text-blue-800">Project Details</h3>
         <div className="flex items-center gap-4">
@@ -131,7 +131,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             setFormData((prev) => ({ ...prev, title: value }))
           }
           placeholder="Enter project title"
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          className="bg-white border-gray-200 rounded-none"
           minHeight="50px"
           // Enter key handling is now managed at the form level
         />
@@ -176,7 +176,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             }))
           }
           placeholder="Enter project description"
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          className="bg-white border-gray-200 rounded-none"
           minHeight="120px"
           // Enter key handling is now managed at the form level
         />
@@ -221,7 +221,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             }))
           }
           placeholder="Enter value statement"
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          className="bg-white border-gray-200 rounded-none"
           minHeight="120px"
           // Enter key handling is now managed at the form level
         />

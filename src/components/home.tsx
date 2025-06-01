@@ -207,7 +207,7 @@ const Home = () => {
 
   return (
     <Layout>
-      <div className="p-6 bg-background">
+      <div className="p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {mode === "list" && (
             <div className="space-y-6">
@@ -217,8 +217,11 @@ const Home = () => {
                     value={selectedDepartment}
                     onValueChange={setSelectedDepartment}
                   >
-                    <SelectTrigger className="w-[280px]">
-                      <SelectValue placeholder="Filter by Department" />
+                    <SelectTrigger className="w-[280px] text-white border-white/30 bg-white/10 hover:bg-white/20">
+                      <SelectValue
+                        placeholder="Filter by Department"
+                        className="text-white"
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Departments</SelectItem>
@@ -240,7 +243,7 @@ const Home = () => {
                           variant="outline"
                           role="combobox"
                           aria-expanded={managerPopoverOpen}
-                          className="w-full justify-between"
+                          className="w-full justify-between text-white border-white/30 bg-white/10 hover:bg-white/20 hover:text-white"
                         >
                           {selectedManagers.length > 0
                             ? `${selectedManagers.length} manager${selectedManagers.length > 1 ? "s" : ""} selected`
@@ -333,8 +336,11 @@ const Home = () => {
                     value={selectedStatus}
                     onValueChange={setSelectedStatus}
                   >
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Filter by Status" />
+                    <SelectTrigger className="w-[200px] text-white border-white/30 bg-white/10 hover:bg-white/20">
+                      <SelectValue
+                        placeholder="Filter by Status"
+                        className="text-white"
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
@@ -349,7 +355,7 @@ const Home = () => {
                 <div className="flex gap-2">
                   <Button
                     onClick={() => setMode("overview")}
-                    className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 shadow-lg"
                   >
                     <FileSpreadsheet className="h-4 w-4" />
                     Projects Overview
@@ -369,8 +375,14 @@ const Home = () => {
           {mode === "form" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold">Create New Project</h2>
-                <Button variant="outline" onClick={() => setMode("list")}>
+                <h2 className="text-2xl font-semibold text-white">
+                  Create New Project
+                </h2>
+                <Button
+                  variant="outline"
+                  onClick={() => setMode("list")}
+                  className="text-white border-white/30 hover:bg-white/10 hover:text-white"
+                >
                   Cancel
                 </Button>
               </div>

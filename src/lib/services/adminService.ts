@@ -144,13 +144,20 @@ export const adminService = {
         .from("sync_configurations")
         .select("*")
         .eq("sync_type", "azure_ad_sync")
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Error fetching sync configuration:", error);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
         return null;
       }
 
+      console.log("Fetched sync configuration:", data);
       return data;
     } catch (error) {
       console.error("Error fetching sync configuration:", error);
@@ -163,16 +170,18 @@ export const adminService = {
     isEnabled: boolean,
   ): Promise<boolean> {
     try {
-      // Calculate next run time based on current time + frequency
-      const nextRunTime = new Date();
-      nextRunTime.setHours(nextRunTime.getHours() + frequencyHours);
+      // Calculate next run time based on current time + frequency (only if enabled)
+      const nextRunTime = isEnabled ? new Date() : null;
+      if (nextRunTime) {
+        nextRunTime.setHours(nextRunTime.getHours() + frequencyHours);
+      }
 
       const { error } = await supabase
         .from("sync_configurations")
         .update({
           frequency_hours: frequencyHours,
           is_enabled: isEnabled,
-          next_run_at: nextRunTime.toISOString(),
+          next_run_at: nextRunTime ? nextRunTime.toISOString() : null,
           updated_at: new Date().toISOString(),
         })
         .eq("sync_type", "azure_ad_sync");
@@ -182,10 +191,258 @@ export const adminService = {
         return false;
       }
 
+      // After updating configuration, check if any syncs are due (only if enabled)
+      if (isEnabled) {
+        await this.checkAndTriggerDueSyncs();
+      }
+
       return true;
     } catch (error) {
       console.error("Error updating sync configuration:", error);
       return false;
+    }
+  },
+
+  async enableSyncConfiguration(): Promise<boolean> {
+    try {
+      console.log("Attempting to enable sync configuration...");
+
+      // First ensure the configuration exists
+      await this.ensureSyncConfiguration();
+
+      // Get current configuration to preserve frequency
+      const currentConfig = await this.getSyncConfiguration();
+      console.log("Current config before enable:", currentConfig);
+
+      const frequencyHours = currentConfig?.frequency_hours || 6;
+
+      // Calculate next run time
+      const nextRunTime = new Date();
+      nextRunTime.setHours(nextRunTime.getHours() + frequencyHours);
+
+      console.log(
+        "Updating sync configuration to enabled with next run at:",
+        nextRunTime.toISOString(),
+      );
+
+      const { data, error } = await supabase
+        .from("sync_configurations")
+        .update({
+          is_enabled: true,
+          next_run_at: nextRunTime.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("sync_type", "azure_ad_sync")
+        .select();
+
+      if (error) {
+        console.error("Error enabling sync configuration:", error);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+        return false;
+      }
+
+      console.log("Sync configuration enabled successfully:", data);
+      return true;
+    } catch (error) {
+      console.error("Error enabling sync configuration:", error);
+      return false;
+    }
+  },
+
+  async disableSyncConfiguration(): Promise<boolean> {
+    try {
+      console.log("Attempting to disable sync configuration...");
+
+      // First ensure the configuration exists
+      await this.ensureSyncConfiguration();
+
+      const { data, error } = await supabase
+        .from("sync_configurations")
+        .update({
+          is_enabled: false,
+          next_run_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("sync_type", "azure_ad_sync")
+        .select();
+
+      if (error) {
+        console.error("Error disabling sync configuration:", error);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+        return false;
+      }
+
+      console.log("Sync configuration disabled successfully:", data);
+      return true;
+    } catch (error) {
+      console.error("Error disabling sync configuration:", error);
+      return false;
+    }
+  },
+
+  async ensureSyncConfiguration(): Promise<boolean> {
+    try {
+      console.log("Checking if sync configuration exists...");
+
+      // Check if sync configuration exists
+      const existingConfig = await this.getSyncConfiguration();
+      console.log("Existing config:", existingConfig);
+
+      if (!existingConfig) {
+        console.log(
+          "No sync configuration found. This should have been created by migration.",
+        );
+        console.log("Attempting to create default sync configuration...");
+
+        // Try to create default sync configuration
+        const { data, error } = await supabase
+          .from("sync_configurations")
+          .insert({
+            sync_type: "azure_ad_sync",
+            frequency_hours: 6,
+            is_enabled: false, // Start disabled by default
+            next_run_at: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select();
+
+        if (error) {
+          console.error("Error creating sync configuration:", error);
+          console.error("Error details:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+          });
+
+          // If it's an RLS policy violation, provide specific guidance
+          if (error.code === "42501") {
+            console.error(
+              "RLS Policy Violation: The sync_configurations table has Row Level Security enabled but no policy allows INSERT operations for the current user.",
+            );
+            console.error(
+              "Please run the migration: supabase/migrations/20250208000001_fix_sync_configurations_rls_and_default.sql",
+            );
+          }
+
+          return false;
+        }
+
+        console.log("Default sync configuration created successfully:", data);
+      } else {
+        console.log("Sync configuration already exists");
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error ensuring sync configuration:", error);
+      return false;
+    }
+  },
+
+  async checkAndTriggerDueSyncs(): Promise<{
+    success: boolean;
+    message: string;
+    syncTriggered?: boolean;
+  }> {
+    try {
+      console.log("Checking for due syncs...");
+
+      // Call the database function to check if sync is due
+      const { data, error } = await supabase.rpc("trigger_sync_if_due");
+
+      if (error) {
+        console.error("Error checking due syncs:", error);
+        return {
+          success: false,
+          message: `Error checking due syncs: ${error.message}`,
+        };
+      }
+
+      console.log("Sync check result:", data);
+
+      // If sync was triggered, also call the Azure AD sync function
+      if (data?.sync_triggered) {
+        console.log("Sync is due, triggering Azure AD sync...");
+        const syncResult = await this.triggerAzureAdSync();
+
+        return {
+          success: true,
+          message: `Sync was due and triggered. ${syncResult.message}`,
+          syncTriggered: true,
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message || "Sync check completed",
+        syncTriggered: false,
+      };
+    } catch (error) {
+      console.error("Error in checkAndTriggerDueSyncs:", error);
+      return {
+        success: false,
+        message: `Unexpected error: ${error.message}`,
+      };
+    }
+  },
+
+  async triggerSyncScheduler(): Promise<{
+    success: boolean;
+    message: string;
+    results?: any;
+  }> {
+    try {
+      console.log("Invoking sync scheduler edge function...");
+
+      const { data, error } = await supabase.functions.invoke(
+        "supabase-functions-sync-scheduler",
+        {
+          body: { manual: true },
+        },
+      );
+
+      console.log("Sync scheduler response:", { data, error });
+
+      if (error) {
+        console.error("Error triggering sync scheduler:", error);
+        return {
+          success: false,
+          message: `Sync scheduler error: ${error.message || "Unknown error"}`,
+        };
+      }
+
+      // Check if the response indicates an error
+      if (data && data.success === false) {
+        console.error("Sync scheduler failed:", data.error);
+        return {
+          success: false,
+          message: data.error || "Sync scheduler failed",
+        };
+      }
+
+      return {
+        success: true,
+        message: data?.message || "Sync scheduler triggered successfully",
+        results: data?.results,
+      };
+    } catch (error) {
+      console.error("Error triggering sync scheduler:", error);
+      return {
+        success: false,
+        message: `Unexpected error: ${error.message || "Failed to trigger sync scheduler"}`,
+      };
     }
   },
 

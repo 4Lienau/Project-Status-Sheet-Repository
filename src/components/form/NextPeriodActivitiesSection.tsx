@@ -194,7 +194,7 @@ const NextPeriodActivitiesSection: React.FC<
     <TooltipProvider>
       <div className="flex items-center justify-between mb-2 -mt-2">
         <div className="flex items-center gap-1">
-          <h3 className="text-2xl font-bold text-blue-800">
+          <h3 className="text-2xl font-bold text-white">
             Next Period Activities
           </h3>
           <Tooltip>
@@ -212,7 +212,7 @@ const NextPeriodActivitiesSection: React.FC<
         <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <TextCursorInput className="h-4 w-4 text-muted-foreground cursor-help" />
+              <TextCursorInput className="h-4 w-4 text-white cursor-help" />
             </TooltipTrigger>
             <TooltipContent>
               <p className="max-w-xs">
@@ -228,16 +228,13 @@ const NextPeriodActivitiesSection: React.FC<
               onCheckedChange={updateTruncatePreference}
               className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300"
             />
-            <Label
-              htmlFor="truncate-activities"
-              className="text-sm text-gray-600"
-            >
+            <Label htmlFor="truncate-activities" className="text-sm text-white">
               Truncate activities in status sheet
             </Label>
           </div>
         </div>
       </div>
-      <div className="space-y-2 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm mt-0">
+      <div className="space-y-2 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm mt-0">
         {/* Column Headers */}
         <div className="grid grid-cols-[140px_1fr_80px_150px_auto] gap-2 items-start">
           <div className="font-medium text-sm text-blue-800">Date</div>

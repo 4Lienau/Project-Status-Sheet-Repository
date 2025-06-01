@@ -25,7 +25,7 @@ const ProjectStatusSection: React.FC<ProjectStatusSectionProps> = ({
   setFormData,
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
       <div className="space-y-2">
         <div className="flex items-center gap-1 mb-4">
           <h3 className="text-xl font-bold text-blue-800">Project Status</h3>
