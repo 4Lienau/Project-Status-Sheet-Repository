@@ -31,6 +31,7 @@ import AdminPage from "./pages/AdminPage";
 import AuthCallback from "./pages/AuthCallback";
 import LoginPage from "./pages/LoginPage";
 import ProjectDashboard from "./pages/ProjectDashboard";
+import ProjectKPIsPage from "./pages/ProjectKPIsPage";
 import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
 
@@ -149,6 +150,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kpis"
+          element={
+            <ProtectedRoute>
+              <ProjectKPIsPage />
             </ProtectedRoute>
           }
         />

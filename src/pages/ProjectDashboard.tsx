@@ -359,6 +359,41 @@ const ProjectDashboard = ({
         console.log("Versions data received:", versionsData.length);
 
         if (projectData) {
+          // Check if project has milestones but no duration data - trigger calculation
+          if (
+            projectData.milestones &&
+            projectData.milestones.length > 0 &&
+            (!projectData.total_days || !projectData.working_days)
+          ) {
+            console.log(
+              "[DEBUG] Project has milestones but no duration data, triggering calculation",
+            );
+            try {
+              const { projectDurationService } = await import(
+                "@/lib/services/projectDurationService"
+              );
+              const success =
+                await projectDurationService.updateProjectDuration(
+                  projectData.id,
+                );
+              if (success) {
+                console.log(
+                  "[DEBUG] Successfully calculated duration, refetching project data",
+                );
+                // Refetch the project data to get the updated duration
+                const updatedProjectData = await projectService.getProject(id);
+                if (updatedProjectData) {
+                  projectData = updatedProjectData;
+                }
+              }
+            } catch (error) {
+              console.error(
+                "[DEBUG] Error calculating project duration:",
+                error,
+              );
+            }
+          }
+
           // Final checks before updating state
           const finalFormElement = document.querySelector("form");
 
@@ -455,6 +490,13 @@ const ProjectDashboard = ({
         health_calculation_type: "automatic",
         manual_health_percentage: 0,
         manual_status_color: "green",
+        // Initialize duration fields as null when no project data
+        total_days: null,
+        working_days: null,
+        calculated_start_date: null,
+        calculated_end_date: null,
+        total_days_remaining: null,
+        working_days_remaining: null,
         budget: { total: "0.00", actuals: "0.00", forecast: "0.00" },
         charterLink: "",
         sponsors: "",
@@ -499,6 +541,17 @@ const ProjectDashboard = ({
     console.log("Summary content length:", summaryData.content?.length || 0);
     console.log("Summary timestamp:", summaryData.created_at);
 
+    // Debug duration fields
+    console.log("[DEBUG] Project duration fields:", {
+      total_days: project.total_days,
+      working_days: project.working_days,
+      calculated_start_date: project.calculated_start_date,
+      calculated_end_date: project.calculated_end_date,
+      total_days_remaining: project.total_days_remaining,
+      working_days_remaining: project.working_days_remaining,
+      milestones_count: project.milestones?.length || 0,
+    });
+
     return {
       title: project.title || "",
       description: project.description || "",
@@ -510,6 +563,13 @@ const ProjectDashboard = ({
       health_calculation_type: project.health_calculation_type || "automatic",
       manual_health_percentage: project.manual_health_percentage || 0,
       manual_status_color: project.manual_status_color || "green",
+      // Include duration fields from the database
+      total_days: project.total_days || null,
+      working_days: project.working_days || null,
+      calculated_start_date: project.calculated_start_date || null,
+      calculated_end_date: project.calculated_end_date || null,
+      total_days_remaining: project.total_days_remaining || null,
+      working_days_remaining: project.working_days_remaining || null,
       budget: {
         total: project.budget_total
           ? formatCurrency(project.budget_total)

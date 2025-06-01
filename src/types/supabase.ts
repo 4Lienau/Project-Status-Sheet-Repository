@@ -516,6 +516,8 @@ export type Database = {
           budget_forecast: number
           budget_total: number | null
           business_leads: string
+          calculated_end_date: string | null
+          calculated_start_date: string | null
           charter_link: string
           created_at: string | null
           department: string | null
@@ -529,14 +531,20 @@ export type Database = {
           sponsors: string
           status: string | null
           title: string
+          total_days: number | null
+          total_days_remaining: number | null
           updated_at: string | null
           value_statement: string | null
+          working_days: number | null
+          working_days_remaining: number | null
         }
         Insert: {
           budget_actuals: number
           budget_forecast: number
           budget_total?: number | null
           business_leads: string
+          calculated_end_date?: string | null
+          calculated_start_date?: string | null
           charter_link: string
           created_at?: string | null
           department?: string | null
@@ -550,14 +558,20 @@ export type Database = {
           sponsors: string
           status?: string | null
           title: string
+          total_days?: number | null
+          total_days_remaining?: number | null
           updated_at?: string | null
           value_statement?: string | null
+          working_days?: number | null
+          working_days_remaining?: number | null
         }
         Update: {
           budget_actuals?: number
           budget_forecast?: number
           budget_total?: number | null
           business_leads?: string
+          calculated_end_date?: string | null
+          calculated_start_date?: string | null
           charter_link?: string
           created_at?: string | null
           department?: string | null
@@ -571,8 +585,12 @@ export type Database = {
           sponsors?: string
           status?: string | null
           title?: string
+          total_days?: number | null
+          total_days_remaining?: number | null
           updated_at?: string | null
           value_statement?: string | null
+          working_days?: number | null
+          working_days_remaining?: number | null
         }
         Relationships: []
       }

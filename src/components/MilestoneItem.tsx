@@ -30,6 +30,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { format } from "date-fns";
 import UserSelectionInput from "./ui/user-selection-input";
+import { projectService } from "@/lib/services/project";
+import { projectDurationService } from "@/lib/services/projectDurationService";
 
 interface Task {
   id?: string;
@@ -51,6 +53,7 @@ interface MilestoneItemProps {
   };
   onUpdate: (values: any) => void;
   onDelete: () => void;
+  projectId?: string;
   ProgressPillComponent?: React.ComponentType<{
     completion: number;
     status: string;
@@ -62,6 +65,7 @@ export function MilestoneItem({
   milestone,
   onUpdate,
   onDelete,
+  projectId,
   ProgressPillComponent,
 }: MilestoneItemProps) {
   const [showTasks, setShowTasks] = useState(false);
@@ -135,6 +139,37 @@ export function MilestoneItem({
                     const formattedDate = `${year}-${month}-${day}`;
 
                     onUpdate({ date: formattedDate });
+
+                    // Update project duration if projectId is provided
+                    if (projectId) {
+                      console.log(
+                        "[MILESTONE_ITEM] Date changed, updating project duration for:",
+                        projectId,
+                      );
+                      setTimeout(async () => {
+                        try {
+                          const success =
+                            await projectDurationService.updateProjectDuration(
+                              projectId,
+                            );
+                          if (success) {
+                            console.log(
+                              "[MILESTONE_ITEM] Successfully updated project duration",
+                            );
+                          } else {
+                            console.error(
+                              "[MILESTONE_ITEM] Failed to update project duration",
+                            );
+                          }
+                        } catch (error) {
+                          console.error(
+                            "[MILESTONE_ITEM] Error updating project duration:",
+                            error,
+                          );
+                        }
+                      }, 100);
+                    }
+
                     // Close the popover after selection
                     setIsCalendarOpen(false);
                   }

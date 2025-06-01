@@ -140,6 +140,31 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
   setFormData,
   handleGenerateContent,
 }) => {
+  // Helper function to calculate the date for a new milestone
+  const getNewMilestoneDate = () => {
+    if (!formData.milestones || formData.milestones.length === 0) {
+      // If no milestones exist, use today's date
+      return new Date().toISOString().split("T")[0];
+    }
+
+    // Find the latest date among existing milestones
+    const latestDate = formData.milestones
+      .map((milestone) => milestone.date)
+      .filter((date) => date && date.trim() !== "") // Filter out empty dates
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+
+    if (!latestDate) {
+      // If no valid dates found, use today's date
+      return new Date().toISOString().split("T")[0];
+    }
+
+    // Add 7 days (1 week) to the latest date
+    const newDate = new Date(latestDate);
+    newDate.setDate(newDate.getDate() + 7);
+
+    return newDate.toISOString().split("T")[0];
+  };
+
   return (
     <TooltipProvider>
       <div className="flex items-center justify-between mb-4">
@@ -227,6 +252,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
             }))
           }
           ProgressPillComponent={ProgressPill}
+          projectId={formData.id}
         />
         <Button
           type="button"
@@ -237,7 +263,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
               milestones: [
                 ...prev.milestones,
                 {
-                  date: new Date().toISOString().split("T")[0],
+                  date: getNewMilestoneDate(),
                   milestone: "",
                   owner: "",
                   completion: 0,

@@ -3,6 +3,8 @@ import Layout from "@/components/layout/Layout";
 import KnowledgeManager from "@/components/admin/KnowledgeManager";
 import DepartmentManager from "@/components/admin/DepartmentManager";
 import SupabaseMetrics from "@/components/admin/SupabaseMetrics";
+import PendingUsersManager from "@/components/admin/PendingUsersManager";
+import ProjectDurationManager from "@/components/admin/ProjectDurationManager";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -50,6 +52,10 @@ import {
   CheckCircle,
   Power,
   PowerOff,
+  Clock,
+  Users,
+  Building,
+  Brain,
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
@@ -613,8 +619,12 @@ const AdminPage = () => {
               value="departments"
               className="flex items-center gap-2"
             >
-              <FileSpreadsheet className="h-4 w-4" />
+              <Building className="h-4 w-4" />
               Departments
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Users
             </TabsTrigger>
             <TabsTrigger value="statistics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -625,8 +635,12 @@ const AdminPage = () => {
               Supabase Metrics
             </TabsTrigger>
             <TabsTrigger value="knowledge" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
+              <Brain className="h-4 w-4" />
               Project Pilot Knowledge
+            </TabsTrigger>
+            <TabsTrigger value="duration" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Project Duration
             </TabsTrigger>
             <TabsTrigger value="azure-ad" className="flex items-center gap-2">
               <Cloud className="h-4 w-4" />
@@ -709,8 +723,16 @@ const AdminPage = () => {
             <DepartmentManager />
           </TabsContent>
 
+          <TabsContent value="users" className="space-y-4">
+            <PendingUsersManager />
+          </TabsContent>
+
           <TabsContent value="knowledge" className="space-y-4">
             <KnowledgeManager />
+          </TabsContent>
+
+          <TabsContent value="duration" className="space-y-4">
+            <ProjectDurationManager />
           </TabsContent>
 
           <TabsContent value="supabase" className="space-y-4">

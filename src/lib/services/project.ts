@@ -53,6 +53,12 @@ export interface ProjectWithRelations
   risks: Risk[];
   considerations: string[];
   changes: Change[];
+  calculated_start_date?: string | null;
+  calculated_end_date?: string | null;
+  total_days?: number | null;
+  working_days?: number | null;
+  total_days_remaining?: number | null;
+  working_days_remaining?: number | null;
 }
 
 // Calculate weighted completion percentage for milestones
@@ -76,7 +82,175 @@ export const calculateWeightedCompletion = (milestones: Milestone[]) => {
   return Math.round((weightedSum / totalPossibleWeighted) * 100);
 };
 
+// Calculate project duration based on milestone dates
+export const calculateProjectDuration = (milestones: Milestone[]) => {
+  if (!milestones.length) {
+    return {
+      startDate: null,
+      endDate: null,
+      totalDays: null,
+      workingDays: null,
+      totalDaysRemaining: null,
+      workingDaysRemaining: null,
+    };
+  }
+
+  // Find earliest and latest milestone dates
+  const dates = milestones
+    .map((m) => new Date(m.date))
+    .filter((date) => !isNaN(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  if (dates.length === 0) {
+    return {
+      startDate: null,
+      endDate: null,
+      totalDays: null,
+      workingDays: null,
+      totalDaysRemaining: null,
+      workingDaysRemaining: null,
+    };
+  }
+
+  const startDate = dates[0];
+  const endDate = dates[dates.length - 1];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+
+  // Calculate total days
+  const totalDays = Math.ceil(
+    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  // Calculate working days (excluding weekends)
+  let workingDays = 0;
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dayOfWeek = currentDate.getDay();
+    // 0 = Sunday, 6 = Saturday
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      workingDays++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  // Calculate remaining days
+  let totalDaysRemaining = null;
+  let workingDaysRemaining = null;
+
+  // Always calculate remaining days (can be negative for overdue projects)
+  totalDaysRemaining = Math.ceil(
+    (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  // Calculate working days remaining (can be negative for overdue projects)
+  workingDaysRemaining = 0;
+  const startCalcDate = new Date(Math.min(today.getTime(), endDate.getTime()));
+  const endCalcDate = new Date(Math.max(today.getTime(), endDate.getTime()));
+  const calcDate = new Date(startCalcDate);
+
+  while (calcDate <= endCalcDate) {
+    const dayOfWeek = calcDate.getDay();
+    // 0 = Sunday, 6 = Saturday
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      workingDaysRemaining++;
+    }
+    calcDate.setDate(calcDate.getDate() + 1);
+  }
+
+  // If project is overdue, make working days remaining negative
+  if (endDate < today) {
+    workingDaysRemaining = -workingDaysRemaining;
+  }
+
+  return {
+    startDate: startDate.toISOString().split("T")[0],
+    endDate: endDate.toISOString().split("T")[0],
+    totalDays: totalDays || 0,
+    workingDays,
+    totalDaysRemaining,
+    workingDaysRemaining,
+  };
+};
+
 export const projectService = {
+  // Method to update project duration based on milestones
+  async updateProjectDuration(projectId: string): Promise<boolean> {
+    try {
+      console.log(
+        "[DEBUG] Updating project duration for project ID:",
+        projectId,
+      );
+
+      // Fetch project milestones
+      const { data: milestones, error: milestonesError } = await supabase
+        .from("milestones")
+        .select("*")
+        .eq("project_id", projectId);
+
+      if (milestonesError) {
+        console.error("[DEBUG] Error fetching milestones:", milestonesError);
+        return false;
+      }
+
+      // Calculate duration
+      const duration = calculateProjectDuration(milestones || []);
+      console.log("[DEBUG] Calculated duration:", duration);
+
+      // Update project with calculated duration
+      const { error: updateError } = await supabase
+        .from("projects")
+        .update({
+          calculated_start_date: duration.startDate,
+          calculated_end_date: duration.endDate,
+          total_days: duration.totalDays,
+          working_days: duration.workingDays,
+          total_days_remaining: duration.totalDaysRemaining,
+          working_days_remaining: duration.workingDaysRemaining,
+        })
+        .eq("id", projectId);
+
+      if (updateError) {
+        console.error("[DEBUG] Error updating project duration:", updateError);
+        return false;
+      }
+
+      console.log("[DEBUG] Successfully updated project duration");
+      return true;
+    } catch (error) {
+      console.error(
+        "[DEBUG] Unexpected error in updateProjectDuration:",
+        error,
+      );
+      return false;
+    }
+  },
+
+  // Method to recalculate duration for all projects (deprecated - use projectDurationService instead)
+  async recalculateAllProjectDurations(): Promise<number> {
+    try {
+      console.log(
+        "[PROJECT_SERVICE] Delegating to projectDurationService.recalculateAllProjectDurations",
+      );
+
+      // Import and use the proper service
+      const { projectDurationService } = await import(
+        "./projectDurationService"
+      );
+      const result =
+        await projectDurationService.recalculateAllProjectDurations();
+
+      console.log(`[PROJECT_SERVICE] Recalculation result:`, result);
+      return result.updatedCount;
+    } catch (error) {
+      console.error(
+        "[PROJECT_SERVICE] Unexpected error in recalculateAllProjectDurations:",
+        error,
+      );
+      return 0;
+    }
+  },
   async getAllProjects(): Promise<ProjectWithRelations[]> {
     try {
       console.log("[DEBUG] Fetching all projects with relations");
@@ -640,6 +814,32 @@ export const projectService = {
       // Execute all insert operations
       await Promise.all(insertPromises);
 
+      // Update project duration after saving milestones
+      console.log(
+        "[PROJECT_SERVICE] Updating project duration after milestone save for project:",
+        id,
+      );
+      try {
+        const { projectDurationService } = await import(
+          "./projectDurationService"
+        );
+        const success = await projectDurationService.updateProjectDuration(id);
+        if (success) {
+          console.log(
+            "[PROJECT_SERVICE] Successfully updated project duration after milestone save",
+          );
+        } else {
+          console.error(
+            "[PROJECT_SERVICE] Failed to update project duration after milestone save",
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[PROJECT_SERVICE] Error updating project duration after milestone save:",
+          error,
+        );
+      }
+
       return this.getProject(id);
     } catch (error) {
       console.error("[DEBUG] Unexpected error in updateProject:", error);
@@ -902,6 +1102,35 @@ export const projectService = {
         "All related data inserted, fetching complete project with ID:",
         project.id,
       );
+
+      // Update project duration after creating milestones
+      console.log(
+        "[PROJECT_SERVICE] Updating project duration after project creation for project:",
+        project.id,
+      );
+      try {
+        const { projectDurationService } = await import(
+          "./projectDurationService"
+        );
+        const success = await projectDurationService.updateProjectDuration(
+          project.id,
+        );
+        if (success) {
+          console.log(
+            "[PROJECT_SERVICE] Successfully updated project duration after project creation",
+          );
+        } else {
+          console.error(
+            "[PROJECT_SERVICE] Failed to update project duration after project creation",
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[PROJECT_SERVICE] Error updating project duration after project creation:",
+          error,
+        );
+      }
+
       const completeProject = await this.getProject(project.id);
       console.log(
         "Complete project fetched:",

@@ -29,7 +29,7 @@ import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, X, Check } from "lucide-react";
+import { FileSpreadsheet, X, Check, BarChart3 } from "lucide-react";
 import ProfileSetupDialog from "./auth/ProfileSetupDialog";
 import { supabase } from "@/lib/supabase";
 import {
@@ -477,6 +477,13 @@ const Home = () => {
                   >
                     <FileSpreadsheet className="h-4 w-4" />
                     Projects Overview
+                  </Button>
+                  <Button
+                    onClick={() => navigate("/kpis")}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold flex items-center gap-2 shadow-lg"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    KPIs Dashboard
                   </Button>
                 </div>
               </div>

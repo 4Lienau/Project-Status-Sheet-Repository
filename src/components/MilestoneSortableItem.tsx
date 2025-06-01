@@ -31,6 +31,8 @@ import { Input } from "./ui/input";
 import { useState } from "react";
 import { TaskList } from "./TaskList";
 import UserSelectionInput from "./ui/user-selection-input";
+import { projectService } from "@/lib/services/project";
+import { projectDurationService } from "@/lib/services/projectDurationService";
 
 interface Task {
   id?: string;
@@ -53,6 +55,7 @@ interface MilestoneSortableItemProps {
   };
   onUpdate: (values: any) => void;
   onDelete: () => void;
+  projectId?: string;
 }
 
 export function MilestoneSortableItem({
@@ -60,6 +63,7 @@ export function MilestoneSortableItem({
   milestone,
   onUpdate,
   onDelete,
+  projectId,
 }: MilestoneSortableItemProps) {
   const [showTasks, setShowTasks] = useState(false);
   const {
@@ -122,7 +126,43 @@ export function MilestoneSortableItem({
             placeholder="Date"
             type="date"
             value={milestone.date}
-            onChange={(e) => onUpdate({ date: e.target.value })}
+            onChange={(e) => {
+              onUpdate({ date: e.target.value });
+
+              // Update project duration if projectId is provided
+              if (projectId) {
+                console.log(
+                  "[MILESTONE_SORTABLE] Date changed, updating project duration for:",
+                  projectId,
+                );
+                // Use a longer timeout to ensure the milestone is saved first
+                setTimeout(async () => {
+                  try {
+                    console.log(
+                      "[MILESTONE_SORTABLE] Starting duration update after milestone date change",
+                    );
+                    const success =
+                      await projectDurationService.updateProjectDuration(
+                        projectId,
+                      );
+                    if (success) {
+                      console.log(
+                        "[MILESTONE_SORTABLE] ✓ Successfully updated project duration after date change",
+                      );
+                    } else {
+                      console.error(
+                        "[MILESTONE_SORTABLE] ✗ Failed to update project duration after date change",
+                      );
+                    }
+                  } catch (error) {
+                    console.error(
+                      "[MILESTONE_SORTABLE] ✗ Error updating project duration after date change:",
+                      error,
+                    );
+                  }
+                }, 500); // Increased timeout to ensure milestone is saved
+              }
+            }}
           />
           <div className="flex items-center gap-2">
             <Button
