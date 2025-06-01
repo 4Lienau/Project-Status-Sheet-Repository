@@ -93,7 +93,7 @@ export function MilestoneItem({
   };
 
   return (
-    <div className="border-b border-gray-200 py-1 bg-white">
+    <div className="border-b border-gray-200 py-1 bg-white rounded-md mb-2">
       <div className="grid grid-cols-[1fr] gap-2">
         <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
           <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>

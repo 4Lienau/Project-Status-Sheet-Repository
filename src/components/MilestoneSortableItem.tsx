@@ -107,7 +107,7 @@ export function MilestoneSortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`${isDragging ? "opacity-50" : ""}`}
+      className={`bg-white rounded-md mb-2 p-2 ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="grid grid-cols-[30px_1fr] gap-2">
         <button
