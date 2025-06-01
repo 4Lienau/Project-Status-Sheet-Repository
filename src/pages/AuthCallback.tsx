@@ -25,8 +25,13 @@ import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import queryString from "query-string";
 
-// Immediately check if we're in a popup window to prevent any rendering
-if (window.opener || window.location.search.includes("popup=true")) {
+// Only handle popup detection if we're actually in a popup window
+const isActualPopup =
+  window.opener &&
+  window !== window.opener &&
+  window.location.search.includes("popup=true");
+
+if (isActualPopup) {
   console.log("POPUP DETECTED: Immediate action to prevent rendering");
   // Try to notify parent window immediately
   try {
@@ -38,23 +43,19 @@ if (window.opener || window.location.search.includes("popup=true")) {
     console.error("Error sending initial message to opener:", e);
   }
 
-  // Block navigation only if this is actually a popup (not the main window)
-  const isPopup = window.opener && window !== window.opener;
-  if (isPopup) {
-    // Block navigation
-    window.onbeforeunload = (e) => {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    };
+  // Block navigation
+  window.onbeforeunload = (e) => {
+    e.preventDefault();
+    e.returnValue = "";
+    return "";
+  };
 
-    // Disable history navigation
-    try {
-      history.pushState = function () {};
-      history.replaceState = function () {};
-      history.go = function () {};
-    } catch (e) {}
-  }
+  // Disable history navigation
+  try {
+    history.pushState = function () {};
+    history.replaceState = function () {};
+    history.go = function () {};
+  } catch (e) {}
 }
 
 const AuthCallback = () => {
@@ -65,28 +66,27 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // CRITICAL: Immediately prevent any navigation or page rendering
-        // This is the most important step to prevent the app from loading in the popup
-        if (window.opener) {
+        // Only handle popup logic if we're actually in a popup
+        const isPopup =
+          window.opener &&
+          window !== window.opener &&
+          window.location.search.includes("popup=true");
+        if (isPopup) {
           console.log("POPUP DETECTED: Immediately blocking navigation");
-          // Block all navigation attempts - but only in the popup window
-          const isPopup = window.opener && window !== window.opener;
-          if (isPopup) {
-            // Block all navigation attempts
-            window.onbeforeunload = (e) => {
-              e.preventDefault();
-              e.returnValue = "";
-              return "";
-            };
-            window.onpopstate = (e) => {
-              e.preventDefault();
-              return false;
-            };
-            // Disable history navigation
-            history.pushState = function () {};
-            history.replaceState = function () {};
-            history.go = function () {};
-          }
+          // Block all navigation attempts
+          window.onbeforeunload = (e) => {
+            e.preventDefault();
+            e.returnValue = "";
+            return "";
+          };
+          window.onpopstate = (e) => {
+            e.preventDefault();
+            return false;
+          };
+          // Disable history navigation
+          history.pushState = function () {};
+          history.replaceState = function () {};
+          history.go = function () {};
         }
 
         // Check if there's an error in the URL (both in search params and hash fragment)
@@ -131,7 +131,7 @@ const AuthCallback = () => {
           console.log("Authentication successful, checking if in popup");
 
           // If this is in a popup, close it and redirect the parent
-          if (window.opener && !window.opener.closed) {
+          if (isPopup && window.opener && !window.opener.closed) {
             try {
               console.log("In popup, attempting to notify opener and close");
 
@@ -218,7 +218,7 @@ const AuthCallback = () => {
           }
         } else {
           // No session and no error, redirect to login
-          if (window.opener && !window.opener.closed) {
+          if (isPopup && window.opener && !window.opener.closed) {
             try {
               console.log("No session found, sending AUTH_FAILED to opener");
               window.opener.postMessage(

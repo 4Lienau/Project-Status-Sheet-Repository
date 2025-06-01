@@ -18,6 +18,7 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import UserSelectionInput from "@/components/ui/user-selection-input";
 
 interface Task {
   id?: string;
@@ -98,12 +99,11 @@ export function TaskList({
             placeholder="Enter task description"
             className="bg-white/50 backdrop-blur-sm border-gray-200/50"
           />
-          <Input
+          <UserSelectionInput
             value={task.assignee}
-            onChange={(e) =>
-              handleUpdateTask(index, "assignee", e.target.value)
-            }
-            placeholder="Enter assignee"
+            onChange={(value) => handleUpdateTask(index, "assignee", value)}
+            placeholder="Click to select assignee..."
+            multiSelect={false}
             className="bg-white/50 backdrop-blur-sm border-gray-200/50"
           />
           <Input

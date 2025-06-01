@@ -195,18 +195,79 @@ export const adminService = {
   async getDirectoryUsers(): Promise<any[]> {
     try {
       console.log(
-        "[adminService.getDirectoryUsers] Fetching directory users with RLS policy...",
+        "[adminService.getDirectoryUsers] Starting to fetch directory users...",
       );
 
+      // First, let's test basic connectivity and check if the table exists
+      console.log("[adminService.getDirectoryUsers] Testing table access...");
+
+      const { count, error: countError } = await supabase
+        .from("directory_users")
+        .select("*", { count: "exact", head: true });
+
+      console.log("[adminService.getDirectoryUsers] Table count check:", {
+        count,
+        countError: countError
+          ? {
+              message: countError.message,
+              code: countError.code,
+              details: countError.details,
+              hint: countError.hint,
+            }
+          : null,
+      });
+
+      if (countError) {
+        console.error(
+          "[adminService.getDirectoryUsers] Cannot access directory_users table:",
+          countError,
+        );
+
+        if (countError.code === "42P01") {
+          console.error(
+            "[adminService.getDirectoryUsers] Table 'directory_users' does not exist!",
+          );
+        } else if (countError.code === "42501") {
+          console.error(
+            "[adminService.getDirectoryUsers] Permission denied - RLS policy issue",
+          );
+        }
+
+        return [];
+      }
+
+      console.log(
+        `[adminService.getDirectoryUsers] Table accessible with ${count} total records`,
+      );
+
+      if (count === 0) {
+        console.warn(
+          "[adminService.getDirectoryUsers] directory_users table is empty!",
+        );
+        console.warn(
+          "[adminService.getDirectoryUsers] You may need to run the Azure AD sync to populate users.",
+        );
+        return [];
+      }
+
+      // Now fetch the actual data
       const { data, error } = await supabase
         .from("directory_users")
         .select("*")
         .order("last_synced", { ascending: false, nullsFirst: false });
 
       console.log("[adminService.getDirectoryUsers] Query result:", {
-        data: data,
-        error: error,
+        dataExists: !!data,
         dataLength: data?.length || 0,
+        errorExists: !!error,
+        error: error
+          ? {
+              message: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint,
+            }
+          : null,
       });
 
       if (error) {
@@ -214,6 +275,17 @@ export const adminService = {
           "[adminService.getDirectoryUsers] Error fetching directory users:",
           error,
         );
+
+        // Provide specific guidance based on error type
+        if (error.code === "42501") {
+          console.error(
+            "[adminService.getDirectoryUsers] RLS Policy Issue: Row Level Security is blocking access to directory_users table",
+          );
+          console.error(
+            "[adminService.getDirectoryUsers] This might be resolved by running the migration: 20250603000001_allow_authenticated_users_read_directory_users.sql",
+          );
+        }
+
         return [];
       }
 
@@ -225,12 +297,55 @@ export const adminService = {
 
       if (data && data.length > 0) {
         console.log(
-          "[adminService.getDirectoryUsers] Sample data:",
+          "[adminService.getDirectoryUsers] Sample data (first 2 users):",
           data.slice(0, 2),
         );
-        console.log("[adminService.getDirectoryUsers] Sync statuses found:", [
-          ...new Set(data.map((u) => u.sync_status)),
-        ]);
+
+        const syncStatuses = [...new Set(data.map((u) => u.sync_status))];
+        const activeUsers = data.filter(
+          (u) => u.sync_status === "active",
+        ).length;
+        const usersWithDisplayNames = data.filter((u) => u.display_name).length;
+
+        console.log("[adminService.getDirectoryUsers] Data analysis:", {
+          totalUsers: data.length,
+          syncStatuses,
+          activeUsers,
+          usersWithDisplayNames,
+          sampleActiveUser: data.find(
+            (u) => u.sync_status === "active" && u.display_name,
+          ),
+        });
+
+        // Check if user "Lienau" exists in any form
+        const lienauUsers = data.filter(
+          (u) =>
+            (u.display_name &&
+              u.display_name.toLowerCase().includes("lienau")) ||
+            (u.email && u.email.toLowerCase().includes("lienau")),
+        );
+
+        if (lienauUsers.length > 0) {
+          console.log(
+            "[adminService.getDirectoryUsers] Found users matching 'Lienau':",
+            lienauUsers,
+          );
+        } else {
+          console.log(
+            "[adminService.getDirectoryUsers] No users found matching 'Lienau'",
+          );
+          console.log(
+            "[adminService.getDirectoryUsers] Sample display names:",
+            data
+              .slice(0, 5)
+              .map((u) => u.display_name)
+              .filter(Boolean),
+          );
+        }
+      } else {
+        console.warn(
+          "[adminService.getDirectoryUsers] Query returned empty result despite count > 0",
+        );
       }
 
       return data || [];
@@ -239,6 +354,11 @@ export const adminService = {
         "[adminService.getDirectoryUsers] Catch block error:",
         error,
       );
+      console.error("[adminService.getDirectoryUsers] Error details:", {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+      });
       return [];
     }
   },

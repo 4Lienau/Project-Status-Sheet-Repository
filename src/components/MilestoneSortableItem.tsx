@@ -30,6 +30,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useState } from "react";
 import { TaskList } from "./TaskList";
+import UserSelectionInput from "./ui/user-selection-input";
 
 interface Task {
   id?: string;
@@ -153,10 +154,12 @@ export function MilestoneSortableItem({
               )}
             </div>
           </div>
-          <Input
-            placeholder="Owner"
+          <UserSelectionInput
             value={milestone.owner}
-            onChange={(e) => onUpdate({ owner: e.target.value })}
+            onChange={(value) => onUpdate({ owner: value })}
+            placeholder="Click to select owner..."
+            multiSelect={false}
+            className="bg-white/50 backdrop-blur-sm border-gray-200/50"
           />
           <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
             <Input

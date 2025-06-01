@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import UserSelectionInput from "@/components/ui/user-selection-input";
 
 interface NextPeriodActivitiesSectionProps {
   formData: any;
@@ -346,20 +347,19 @@ const NextPeriodActivitiesSection: React.FC<
                   />
                 </div>
               </div>
-              <Input
+              <UserSelectionInput
                 value={item.assignee}
-                onChange={(e) =>
+                onChange={(value) =>
                   setFormData((prev) => ({
                     ...prev,
                     nextPeriodActivities: prev.nextPeriodActivities.map(
                       (a, i) =>
-                        i === originalIndex
-                          ? { ...a, assignee: e.target.value }
-                          : a,
+                        i === originalIndex ? { ...a, assignee: value } : a,
                     ),
                   }))
                 }
-                placeholder="Enter assignee"
+                placeholder="Click to select assignee..."
+                multiSelect={false}
                 className="bg-white/50 backdrop-blur-sm border-gray-200/50"
               />
               <Button

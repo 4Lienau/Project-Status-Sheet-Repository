@@ -115,6 +115,13 @@ export const useAuth = () => {
         event,
         session ? "session exists" : "no session",
       );
+
+      // Don't process auth changes if we're in a popup
+      const isPopup = window.opener && window !== window.opener;
+      if (isPopup) {
+        return;
+      }
+
       setUser(session?.user ?? null);
       setLoading(false);
 

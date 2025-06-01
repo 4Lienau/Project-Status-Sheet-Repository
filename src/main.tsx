@@ -6,12 +6,6 @@ import { BrowserRouter } from "react-router-dom";
 
 const basename = import.meta.env.BASE_URL;
 
-// Debug basename configuration
-console.log("[DEBUG main.tsx] BASE_URL:", import.meta.env.BASE_URL);
-console.log("[DEBUG main.tsx] basename:", basename);
-console.log("[DEBUG main.tsx] Current location:", window.location.href);
-console.log("[DEBUG main.tsx] Current pathname:", window.location.pathname);
-
 // Initialize Tempo Devtools
 if (import.meta.env.VITE_TEMPO === "true") {
   const initTempo = async () => {
@@ -24,7 +18,13 @@ if (import.meta.env.VITE_TEMPO === "true") {
 // Render the app
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter basename={basename}>
+    <BrowserRouter
+      basename={basename}
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <App />
     </BrowserRouter>
   </React.StrictMode>,

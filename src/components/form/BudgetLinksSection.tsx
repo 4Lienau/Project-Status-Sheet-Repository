@@ -6,7 +6,9 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from "@/components/ui/tooltip";
+import UserSelectionInput from "@/components/ui/user-selection-input";
 
 interface BudgetLinksSectionProps {
   formData: any;
@@ -18,7 +20,7 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
   setFormData,
 }) => {
   return (
-    <>
+    <TooltipProvider>
       <div className="flex items-center gap-1 mb-4">
         <h3 className="text-2xl font-bold text-white">Budget & Links</h3>
         <Tooltip>
@@ -162,22 +164,23 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="max-w-xs">
-                    Enter the names of the project sponsors or stakeholders who
-                    have authorized the project.
+                    Select the project sponsors or stakeholders who have
+                    authorized the project from the directory.
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <Input
+            <UserSelectionInput
               id="sponsors"
               value={formData.sponsors}
-              onChange={(e) =>
+              onChange={(value) =>
                 setFormData((prev) => ({
                   ...prev,
-                  sponsors: e.target.value,
+                  sponsors: value,
                 }))
               }
-              placeholder="Enter sponsors"
+              placeholder="Click to select sponsors..."
+              multiSelect={true}
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
             />
           </div>
@@ -191,22 +194,23 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="max-w-xs">
-                    Enter the names of the business leads or key stakeholders
-                    responsible for business decisions.
+                    Select the business leads or key stakeholders responsible
+                    for business decisions from the directory.
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <Input
+            <UserSelectionInput
               id="businessLeads"
               value={formData.businessLeads}
-              onChange={(e) =>
+              onChange={(value) =>
                 setFormData((prev) => ({
                   ...prev,
-                  businessLeads: e.target.value,
+                  businessLeads: value,
                 }))
               }
-              placeholder="Enter business leads"
+              placeholder="Click to select business leads..."
+              multiSelect={true}
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
             />
           </div>
@@ -220,28 +224,29 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="max-w-xs">
-                    Enter the name of the project manager responsible for
-                    day-to-day project execution.
+                    Select the project manager responsible for day-to-day
+                    project execution from the directory.
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <Input
+            <UserSelectionInput
               id="projectManager"
               value={formData.projectManager}
-              onChange={(e) =>
+              onChange={(value) =>
                 setFormData((prev) => ({
                   ...prev,
-                  projectManager: e.target.value,
+                  projectManager: value,
                 }))
               }
-              placeholder="Enter project manager"
+              placeholder="Click to select project manager..."
+              multiSelect={false}
               className="bg-white/50 backdrop-blur-sm border-gray-200/50"
             />
           </div>
         </div>
       </div>
-    </>
+    </TooltipProvider>
   );
 };
 

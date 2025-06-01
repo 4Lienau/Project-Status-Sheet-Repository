@@ -131,7 +131,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             setFormData((prev) => ({ ...prev, title: value }))
           }
           placeholder="Enter project title"
-          className="bg-white border-gray-200 rounded-none"
+          className="bg-white border-gray-200 rounded-md"
           minHeight="50px"
           // Enter key handling is now managed at the form level
         />
@@ -176,7 +176,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             }))
           }
           placeholder="Enter project description"
-          className="bg-white border-gray-200 rounded-none"
+          className="bg-white border-gray-200 rounded-md"
           minHeight="120px"
           // Enter key handling is now managed at the form level
         />
@@ -221,7 +221,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             }))
           }
           placeholder="Enter value statement"
-          className="bg-white border-gray-200 rounded-none"
+          className="bg-white border-gray-200 rounded-md"
           minHeight="120px"
           // Enter key handling is now managed at the form level
         />
