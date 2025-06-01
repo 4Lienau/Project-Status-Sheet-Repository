@@ -25,6 +25,65 @@ export interface PendingUser {
 }
 
 export const adminService = {
+  // Debug function to check database connectivity and table structure
+  async debugDatabaseAccess(): Promise<any> {
+    try {
+      console.log(
+        "[adminService.debugDatabaseAccess] Starting database debug...",
+      );
+
+      // Test basic connectivity with a simple query
+      const { data: testData, error: testError } = await supabase
+        .from("profiles")
+        .select("id")
+        .limit(1);
+
+      console.log(
+        "[adminService.debugDatabaseAccess] Basic connectivity test:",
+        {
+          testData,
+          testError,
+        },
+      );
+
+      // Check if directory_users table exists by trying to get its structure
+      const { data: tableInfo, error: tableError } = await supabase.rpc(
+        "execute_sql",
+        {
+          sql_query:
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'directory_users' ORDER BY ordinal_position;",
+        },
+      );
+
+      console.log("[adminService.debugDatabaseAccess] Table structure query:", {
+        tableInfo,
+        tableError,
+      });
+
+      // Try to get row count from directory_users
+      const { data: countData, error: countError } = await supabase.rpc(
+        "execute_sql",
+        {
+          sql_query: "SELECT COUNT(*) as total_rows FROM directory_users;",
+        },
+      );
+
+      console.log("[adminService.debugDatabaseAccess] Row count query:", {
+        countData,
+        countError,
+      });
+
+      return {
+        connectivity: { testData, testError },
+        tableStructure: { tableInfo, tableError },
+        rowCount: { countData, countError },
+      };
+    } catch (error) {
+      console.error("[adminService.debugDatabaseAccess] Debug failed:", error);
+      return { error: error.message };
+    }
+  },
+
   async getPendingUsers(): Promise<PendingUser[]> {
     const { data, error } = await supabase
       .from("pending_users")
@@ -45,7 +104,9 @@ export const adminService = {
     summary?: any;
   }> {
     try {
-      console.log("Invoking Azure AD sync edge function...");
+      console.log(
+        "[adminService.triggerAzureAdSync] Invoking Azure AD sync edge function...",
+      );
 
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-azure-ad-sync",
@@ -54,11 +115,17 @@ export const adminService = {
         },
       );
 
-      console.log("Edge function response:", { data, error });
+      console.log("[adminService.triggerAzureAdSync] Edge function response:", {
+        data,
+        error,
+      });
 
       if (error) {
-        console.error("Error triggering Azure AD sync:", error);
-        console.error("Error details:", {
+        console.error(
+          "[adminService.triggerAzureAdSync] Error triggering Azure AD sync:",
+          error,
+        );
+        console.error("[adminService.triggerAzureAdSync] Error details:", {
           message: error.message,
           details: error.details,
           hint: error.hint,
@@ -72,12 +139,32 @@ export const adminService = {
 
       // Check if the response indicates an error
       if (data && data.success === false) {
-        console.error("Azure AD sync failed:", data.error);
+        console.error(
+          "[adminService.triggerAzureAdSync] Azure AD sync failed:",
+          data.error,
+        );
         return {
           success: false,
           message: data.error || "Azure AD sync failed",
         };
       }
+
+      console.log(
+        "[adminService.triggerAzureAdSync] Azure AD sync completed successfully:",
+        data,
+      );
+
+      // After sync completes, refresh the sync logs to see if new entries were created
+      setTimeout(async () => {
+        console.log(
+          "[adminService.triggerAzureAdSync] Refreshing sync logs after sync completion...",
+        );
+        const refreshedLogs = await this.getAzureSyncLogs();
+        console.log(
+          "[adminService.triggerAzureAdSync] Refreshed sync logs:",
+          refreshedLogs,
+        );
+      }, 2000);
 
       return (
         data || {
@@ -86,12 +173,18 @@ export const adminService = {
         }
       );
     } catch (error) {
-      console.error("Error triggering Azure AD sync:", error);
-      console.error("Catch block error details:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      });
+      console.error(
+        "[adminService.triggerAzureAdSync] Error triggering Azure AD sync:",
+        error,
+      );
+      console.error(
+        "[adminService.triggerAzureAdSync] Catch block error details:",
+        {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+      );
       return {
         success: false,
         message: `Unexpected error: ${error.message || "Failed to trigger Azure AD sync"}`,
@@ -101,39 +194,157 @@ export const adminService = {
 
   async getDirectoryUsers(): Promise<any[]> {
     try {
+      console.log(
+        "[adminService.getDirectoryUsers] Fetching directory users with RLS policy...",
+      );
+
       const { data, error } = await supabase
         .from("directory_users")
         .select("*")
-        .order("last_synced", { ascending: false });
+        .order("last_synced", { ascending: false, nullsFirst: false });
+
+      console.log("[adminService.getDirectoryUsers] Query result:", {
+        data: data,
+        error: error,
+        dataLength: data?.length || 0,
+      });
 
       if (error) {
-        console.error("Error fetching directory users:", error);
+        console.error(
+          "[adminService.getDirectoryUsers] Error fetching directory users:",
+          error,
+        );
         return [];
+      }
+
+      console.log(
+        "[adminService.getDirectoryUsers] Successfully fetched",
+        data?.length || 0,
+        "directory users",
+      );
+
+      if (data && data.length > 0) {
+        console.log(
+          "[adminService.getDirectoryUsers] Sample data:",
+          data.slice(0, 2),
+        );
+        console.log("[adminService.getDirectoryUsers] Sync statuses found:", [
+          ...new Set(data.map((u) => u.sync_status)),
+        ]);
       }
 
       return data || [];
     } catch (error) {
-      console.error("Error fetching directory users:", error);
+      console.error(
+        "[adminService.getDirectoryUsers] Catch block error:",
+        error,
+      );
       return [];
     }
   },
 
   async getAzureSyncLogs(): Promise<any[]> {
     try {
+      console.log(
+        "[adminService.getAzureSyncLogs] Fetching Azure sync logs...",
+      );
+
+      // First, let's check if the table exists and we can access it
+      console.log("[adminService.getAzureSyncLogs] Testing table access...");
+
+      // Try a simple count query first
+      const { count, error: countError } = await supabase
+        .from("azure_sync_logs")
+        .select("*", { count: "exact", head: true });
+
+      console.log("[adminService.getAzureSyncLogs] Count query result:", {
+        count,
+        countError,
+      });
+
+      if (countError) {
+        console.error(
+          "[adminService.getAzureSyncLogs] Count query failed:",
+          countError,
+        );
+        console.error("[adminService.getAzureSyncLogs] Count error details:", {
+          message: countError.message,
+          details: countError.details,
+          hint: countError.hint,
+          code: countError.code,
+        });
+        return [];
+      }
+
+      console.log(
+        `[adminService.getAzureSyncLogs] Table accessible, found ${count} total records`,
+      );
+
+      // Now try the actual query
       const { data, error } = await supabase
         .from("azure_sync_logs")
         .select("*")
         .order("sync_started_at", { ascending: false })
         .limit(10);
 
+      console.log("[adminService.getAzureSyncLogs] Query result:", {
+        data: data,
+        error: error,
+        dataLength: data?.length || 0,
+      });
+
       if (error) {
-        console.error("Error fetching Azure sync logs:", error);
+        console.error(
+          "[adminService.getAzureSyncLogs] Error fetching Azure sync logs:",
+          error,
+        );
+        console.error("[adminService.getAzureSyncLogs] Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+
+        // Check if it's an RLS policy issue
+        if (error.code === "42501" || error.message?.includes("policy")) {
+          console.error(
+            "[adminService.getAzureSyncLogs] RLS Policy Issue: The azure_sync_logs table may have Row Level Security enabled but no policy allows SELECT operations for the current user.",
+          );
+        }
+
         return [];
+      }
+
+      console.log(
+        "[adminService.getAzureSyncLogs] Successfully fetched",
+        data?.length || 0,
+        "sync logs",
+      );
+
+      if (data && data.length > 0) {
+        console.log(
+          "[adminService.getAzureSyncLogs] Sample log data:",
+          data.slice(0, 2),
+        );
+        console.log("[adminService.getAzureSyncLogs] Sync statuses found:", [
+          ...new Set(data.map((log) => log.sync_status)),
+        ]);
+      } else {
+        console.log(
+          "[adminService.getAzureSyncLogs] No sync logs found in database - this could mean:",
+        );
+        console.log("  1. No syncs have been run yet");
+        console.log("  2. Logs were cleared");
+        console.log("  3. RLS policy is filtering results");
+        console.log("  4. The sync function isn't writing to the logs table");
       }
 
       return data || [];
     } catch (error) {
-      console.error("Error fetching Azure sync logs:", error);
+      console.error(
+        "[adminService.getAzureSyncLogs] Catch block error:",
+        error,
+      );
       return [];
     }
   },

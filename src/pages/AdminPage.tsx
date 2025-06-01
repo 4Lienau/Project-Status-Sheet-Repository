@@ -79,8 +79,6 @@ const AdminPage = () => {
   const [isUpdatingFrequency, setIsUpdatingFrequency] = useState(false);
   const [isCheckingDueSyncs, setIsCheckingDueSyncs] = useState(false);
   const [isTogglingSync, setIsTogglingSync] = useState(false);
-  const [isTriggeringSyncScheduler, setIsTriggeringSyncScheduler] =
-    useState(false);
 
   // Pagination state for directory users
   const [currentPage, setCurrentPage] = useState(1);
@@ -162,11 +160,42 @@ const AdminPage = () => {
         });
 
         // Load directory users and sync logs
-        const directoryUsersData = await adminService.getDirectoryUsers();
-        setDirectoryUsers(directoryUsersData);
+        console.log("[AdminPage] Loading directory users...");
 
+        // First run database debug to understand the issue
+        console.log("[AdminPage] Running database debug...");
+        const debugResult = await adminService.debugDatabaseAccess();
+        console.log("[AdminPage] Database debug result:", debugResult);
+
+        const directoryUsersData = await adminService.getDirectoryUsers();
+        console.log("[AdminPage] Directory users loaded:", directoryUsersData);
+        console.log(
+          "[AdminPage] Directory users count:",
+          directoryUsersData.length,
+        );
+        console.log(
+          "[AdminPage] Directory users raw data:",
+          directoryUsersData.slice(0, 2), // Show first 2 records
+        );
+        console.log(
+          "[AdminPage] Active users count:",
+          directoryUsersData.filter((u) => u.sync_status === "active").length,
+        );
+        console.log("[AdminPage] All sync statuses found:", [
+          ...new Set(directoryUsersData.map((u) => u.sync_status)),
+        ]);
+        setDirectoryUsers(directoryUsersData);
+        console.log("[AdminPage] State updated with directory users");
+
+        console.log("[AdminPage] Loading Azure sync logs...");
         const syncLogsData = await adminService.getAzureSyncLogs();
+        console.log("[AdminPage] Sync logs loaded:", syncLogsData);
+        console.log("[AdminPage] Sync logs count:", syncLogsData.length);
+        if (syncLogsData.length > 0) {
+          console.log("[AdminPage] Sample sync log:", syncLogsData[0]);
+        }
         setSyncLogs(syncLogsData);
+        console.log("[AdminPage] State updated with sync logs");
 
         // Ensure sync configuration exists and load it
         await adminService.ensureSyncConfiguration();
@@ -386,54 +415,6 @@ const AdminPage = () => {
       });
     } finally {
       setIsCheckingDueSyncs(false);
-    }
-  };
-
-  const handleTriggerSyncScheduler = async () => {
-    setIsTriggeringSyncScheduler(true);
-    try {
-      const result = await adminService.triggerSyncScheduler();
-
-      if (result.success) {
-        toast({
-          title: "Sync Scheduler Triggered",
-          description: result.message,
-          className: "bg-green-50 border-green-200",
-        });
-
-        // Show results if available
-        if (result.results && result.results.length > 0) {
-          console.log("Sync scheduler results:", result.results);
-        }
-
-        // Refresh data after scheduler runs
-        setTimeout(async () => {
-          const directoryUsersData = await adminService.getDirectoryUsers();
-          setDirectoryUsers(directoryUsersData);
-          setCurrentPage(1);
-
-          const syncLogsData = await adminService.getAzureSyncLogs();
-          setSyncLogs(syncLogsData);
-
-          const syncConfigData = await adminService.getSyncConfiguration();
-          setSyncConfig(syncConfigData);
-        }, 2000);
-      } else {
-        toast({
-          title: "Sync Scheduler Failed",
-          description: result.message,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error triggering sync scheduler:", error);
-      toast({
-        title: "Error",
-        description: "Failed to trigger sync scheduler",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTriggeringSyncScheduler(false);
     }
   };
 
@@ -894,30 +875,6 @@ const AdminPage = () => {
                       </Button>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
-                      <div>
-                        <h3 className="font-medium text-purple-900">
-                          Trigger Sync Scheduler
-                        </h3>
-                        <p className="text-sm text-purple-700">
-                          Run the sync scheduler edge function to check and
-                          trigger all due syncs
-                        </p>
-                      </div>
-                      <Button
-                        onClick={handleTriggerSyncScheduler}
-                        disabled={isTriggeringSyncScheduler}
-                        className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
-                      >
-                        <Activity
-                          className={`h-4 w-4 ${isTriggeringSyncScheduler ? "animate-spin" : ""}`}
-                        />
-                        {isTriggeringSyncScheduler
-                          ? "Running..."
-                          : "Run Scheduler"}
-                      </Button>
-                    </div>
-
                     <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
                       <div className="flex items-center justify-between">
                         <div>
@@ -959,7 +916,7 @@ const AdminPage = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-4">
+                  <div className="pt-4">
                     <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
                       <div className="text-2xl font-bold text-green-800">
                         {directoryUsers.length}
@@ -967,16 +924,6 @@ const AdminPage = () => {
                       <div className="text-sm text-green-600">
                         Directory Users
                       </div>
-                    </div>
-                    <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="text-2xl font-bold text-blue-800">
-                        {
-                          directoryUsers.filter(
-                            (u) => u.sync_status === "active",
-                          ).length
-                        }
-                      </div>
-                      <div className="text-sm text-blue-600">Active Users</div>
                     </div>
                   </div>
                 </CardContent>
@@ -992,48 +939,67 @@ const AdminPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {syncLogs.length === 0 ? (
+                    {loading ? (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        No sync logs available
+                        Loading sync logs...
                       </p>
+                    ) : syncLogs.length === 0 ? (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          No sync logs available
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Sync logs will appear here after running Azure AD
+                          sync. Try triggering a manual sync to create the first
+                          log entry.
+                        </p>
+                      </div>
                     ) : (
-                      syncLogs.slice(0, 5).map((log) => (
-                        <div
-                          key={log.id}
-                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
-                        >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                  log.sync_status === "completed"
-                                    ? "bg-green-100 text-green-800"
-                                    : log.sync_status === "failed"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-yellow-100 text-yellow-800"
-                                }`}
-                              >
-                                {log.sync_status}
-                              </span>
-                              <span className="text-sm text-gray-600">
-                                {new Date(log.sync_started_at).toLocaleString()}
-                              </span>
-                            </div>
-                            {log.sync_status === "completed" && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {log.users_processed} processed,{" "}
-                                {log.users_created} created, {log.users_updated}{" "}
-                                updated
-                              </div>
-                            )}
-                            {log.error_message && (
-                              <div className="text-xs text-red-600 mt-1">
-                                {log.error_message}
-                              </div>
-                            )}
-                          </div>
+                      <>
+                        <div className="text-xs text-gray-500 mb-2">
+                          Showing {Math.min(5, syncLogs.length)} of{" "}
+                          {syncLogs.length} recent logs
                         </div>
-                      ))
+                        {syncLogs.slice(0, 5).map((log) => (
+                          <div
+                            key={log.id}
+                            className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                    log.sync_status === "completed"
+                                      ? "bg-green-100 text-green-800"
+                                      : log.sync_status === "failed"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                  }`}
+                                >
+                                  {log.sync_status}
+                                </span>
+                                <span className="text-sm text-gray-600">
+                                  {new Date(
+                                    log.sync_started_at,
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                              {log.sync_status === "completed" && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {log.users_processed} processed,{" "}
+                                  {log.users_created} created,{" "}
+                                  {log.users_updated} updated
+                                </div>
+                              )}
+                              {log.error_message && (
+                                <div className="text-xs text-red-600 mt-1">
+                                  {log.error_message}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </>
                     )}
                   </div>
                 </CardContent>

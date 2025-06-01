@@ -122,10 +122,10 @@ serve(async (req) => {
       const accessToken = tokenData.access_token;
       console.log("Azure AD access token obtained successfully");
 
-      // Fetch ACTIVE users from Azure AD (only accountEnabled=true AND department is not null)
+      // Fetch ACTIVE users from Azure AD (only accountEnabled=true AND department is not null/empty)
       console.log("Fetching active users with departments from Azure AD...");
       let allUsers: AzureUser[] = [];
-      let nextLink = `https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,jobTitle,department,accountEnabled,createdDateTime&$filter=accountEnabled eq true and department ne null&$top=999`;
+      let nextLink = `https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,jobTitle,department,accountEnabled,createdDateTime&$filter=accountEnabled eq true and department ne null and department ne ''&$top=999`;
 
       while (nextLink) {
         const usersResponse = await fetch(nextLink, {
@@ -170,6 +170,14 @@ serve(async (req) => {
 
         for (const azureUser of batch) {
           try {
+            // Additional validation: Skip users without valid departments
+            if (!azureUser.department || azureUser.department.trim() === "") {
+              console.log(
+                `Skipping user ${azureUser.id} (${azureUser.displayName}) - no valid department`,
+              );
+              continue;
+            }
+
             // Prepare user data for Supabase
             const directoryUser: Partial<DirectoryUser> = {
               azure_user_id: azureUser.id,
@@ -177,7 +185,7 @@ serve(async (req) => {
               email: azureUser.mail || azureUser.userPrincipalName || "",
               user_principal_name: azureUser.userPrincipalName || "",
               job_title: azureUser.jobTitle || null,
-              department: azureUser.department || null,
+              department: azureUser.department.trim(), // Ensure no whitespace-only departments
               account_enabled: azureUser.accountEnabled,
               created_date_time: azureUser.createdDateTime,
               last_synced: new Date().toISOString(),
