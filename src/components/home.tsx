@@ -283,8 +283,8 @@ const Home = () => {
         <div className="max-w-7xl mx-auto space-y-6">
           {mode === "list" && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start gap-4">
                   <Select
                     value={selectedDepartment}
                     onValueChange={(value) => {
@@ -310,7 +310,7 @@ const Home = () => {
                     </SelectContent>
                   </Select>
 
-                  <div className="w-[280px]">
+                  <div className="w-[280px] flex flex-col">
                     <Popover
                       open={managerPopoverOpen}
                       onOpenChange={setManagerPopoverOpen}
@@ -320,7 +320,7 @@ const Home = () => {
                           variant="outline"
                           role="combobox"
                           aria-expanded={managerPopoverOpen}
-                          className="w-full justify-between text-white border-white/30 bg-white/10 hover:bg-white/20 hover:text-white"
+                          className="w-full justify-between text-white border-white/30 bg-white/10 hover:bg-white/20 hover:text-white h-10"
                         >
                           {selectedManagers.length > 0
                             ? `${selectedManagers.length} manager${selectedManagers.length > 1 ? "s" : ""} selected`
