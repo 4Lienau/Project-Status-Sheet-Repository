@@ -348,6 +348,21 @@ const ProjectList = ({
                   {project.description.replace(/<[^>]*>/g, "")}
                 </p>
               )}
+
+              {/* Total Budget */}
+              {project.budget_total !== null &&
+                project.budget_total !== undefined && (
+                  <p className="text-sm text-blue-800 mb-3 font-medium">
+                    Total Budget:{" "}
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(project.budget_total)}
+                  </p>
+                )}
+
               <p className="text-sm text-blue-800 mb-4">
                 Project Manager: {project.project_manager}
               </p>
