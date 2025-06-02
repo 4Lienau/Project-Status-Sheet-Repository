@@ -1082,31 +1082,88 @@ const ProjectKPIsPage = () => {
               )}
 
               {/* Duration Statistics Summary */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="bg-white/90 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle>Average Duration (Planning Metrics)</CardTitle>
+                    <CardDescription>
+                      Mean values - useful for resource planning and budgeting
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-blue-600">
+                          {durationKPIs.averageTotalDays}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Avg Total Days
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Calendar days from start to end
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-green-600">
+                          {durationKPIs.averageWorkingDays}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Avg Working Days
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Business days (excludes weekends)
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white/90 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle>Median Duration (Typical Projects)</CardTitle>
+                    <CardDescription>
+                      Middle values - not skewed by extremely long projects
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-blue-600">
+                          {durationKPIs.medianTotalDays}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Median Total Days
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          50% of projects are shorter
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-green-600">
+                          {durationKPIs.medianWorkingDays}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Median Working Days
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Typical project effort
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Remaining Days and Project Categories */}
               <Card className="bg-white/90 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>Duration Statistics Summary</CardTitle>
+                  <CardTitle>Current Status & Project Categories</CardTitle>
                   <CardDescription>
-                    Key duration metrics and insights
+                    Remaining time and project distribution by duration
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {durationKPIs.medianTotalDays}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Median Total Days
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        {durationKPIs.medianWorkingDays}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Median Working Days
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div className="text-center">
                       <div
                         className={`text-2xl font-bold ${
@@ -1119,6 +1176,11 @@ const ProjectKPIsPage = () => {
                       </div>
                       <div className="text-sm text-gray-600">
                         Median Days Remaining
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {durationKPIs.medianTotalDaysRemaining < 0
+                          ? "Overdue"
+                          : "Until completion"}
                       </div>
                     </div>
                     <div className="text-center">
@@ -1134,6 +1196,9 @@ const ProjectKPIsPage = () => {
                       <div className="text-sm text-gray-600">
                         Median Working Days Remaining
                       </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Business days left
+                      </div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-orange-600">
@@ -1142,12 +1207,18 @@ const ProjectKPIsPage = () => {
                       <div className="text-sm text-gray-600">
                         Short Projects
                       </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        &lt; 30 days
+                      </div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-red-600">
                         {durationKPIs.longProjects}
                       </div>
                       <div className="text-sm text-gray-600">Long Projects</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        &gt; 90 days
+                      </div>
                     </div>
                   </div>
                 </CardContent>

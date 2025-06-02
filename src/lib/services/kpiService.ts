@@ -627,6 +627,12 @@ export const kpiService = {
   },
 
   calculateDurationKPIs(projects: ProjectWithRelations[]): DurationKPIs {
+    console.log(
+      "[DURATION_KPI] Starting duration KPI calculation for",
+      projects.length,
+      "projects",
+    );
+
     // Filter projects with duration data
     const projectsWithDuration = projects.filter(
       (p) =>
@@ -638,6 +644,21 @@ export const kpiService = {
         p.working_days > 0,
     );
 
+    console.log(
+      "[DURATION_KPI] Projects with duration data:",
+      projectsWithDuration.length,
+    );
+    console.log(
+      "[DURATION_KPI] Sample duration data:",
+      projectsWithDuration.slice(0, 3).map((p) => ({
+        title: p.title,
+        totalDays: p.total_days,
+        workingDays: p.working_days,
+        totalDaysRemaining: p.total_days_remaining,
+        workingDaysRemaining: p.working_days_remaining,
+      })),
+    );
+
     const projectsWithoutDuration =
       projects.length - projectsWithDuration.length;
     const durationCoverage =
@@ -646,6 +667,7 @@ export const kpiService = {
         : 0;
 
     if (projectsWithDuration.length === 0) {
+      console.log("[DURATION_KPI] No projects with duration data found");
       return {
         averageTotalDays: 0,
         averageWorkingDays: 0,
@@ -692,6 +714,9 @@ export const kpiService = {
       .map((p) => p.working_days || 0)
       .sort((a, b) => a - b);
 
+    console.log("[DURATION_KPI] Sorted total days:", sortedTotalDays);
+    console.log("[DURATION_KPI] Sorted working days:", sortedWorkingDays);
+
     const medianTotalDays =
       sortedTotalDays.length % 2 === 0
         ? Math.round(
@@ -710,14 +735,34 @@ export const kpiService = {
           )
         : sortedWorkingDays[Math.floor(sortedWorkingDays.length / 2)];
 
+    console.log(
+      "[DURATION_KPI] Calculated medians - Total:",
+      medianTotalDays,
+      "Working:",
+      medianWorkingDays,
+    );
+
     // Calculate median remaining days
-    // Filter projects with remaining days data (including negative values for overdue projects)
-    const projectsWithRemainingDays = projects.filter(
+    // Use the same filtered dataset for consistency
+    const projectsWithRemainingDays = projectsWithDuration.filter(
       (p) =>
         p.total_days_remaining !== null &&
         p.total_days_remaining !== undefined &&
         p.working_days_remaining !== null &&
         p.working_days_remaining !== undefined,
+    );
+
+    console.log(
+      "[DURATION_KPI] Projects with remaining days data:",
+      projectsWithRemainingDays.length,
+    );
+    console.log(
+      "[DURATION_KPI] Sample remaining days data:",
+      projectsWithRemainingDays.slice(0, 3).map((p) => ({
+        title: p.title,
+        totalDaysRemaining: p.total_days_remaining,
+        workingDaysRemaining: p.working_days_remaining,
+      })),
     );
 
     let medianTotalDaysRemaining = 0;
@@ -728,6 +773,11 @@ export const kpiService = {
       const sortedTotalDaysRemaining = projectsWithRemainingDays
         .map((p) => p.total_days_remaining || 0)
         .sort((a, b) => a - b);
+
+      console.log(
+        "[DURATION_KPI] Sorted total days remaining:",
+        sortedTotalDaysRemaining,
+      );
 
       medianTotalDaysRemaining =
         sortedTotalDaysRemaining.length % 2 === 0
@@ -747,6 +797,11 @@ export const kpiService = {
         .map((p) => p.working_days_remaining || 0)
         .sort((a, b) => a - b);
 
+      console.log(
+        "[DURATION_KPI] Sorted working days remaining:",
+        sortedWorkingDaysRemaining,
+      );
+
       medianWorkingDaysRemaining =
         sortedWorkingDaysRemaining.length % 2 === 0
           ? Math.round(
@@ -761,6 +816,15 @@ export const kpiService = {
           : sortedWorkingDaysRemaining[
               Math.floor(sortedWorkingDaysRemaining.length / 2)
             ];
+
+      console.log(
+        "[DURATION_KPI] Calculated remaining medians - Total:",
+        medianTotalDaysRemaining,
+        "Working:",
+        medianWorkingDaysRemaining,
+      );
+    } else {
+      console.log("[DURATION_KPI] No projects with remaining days data found");
     }
 
     // Duration categories
@@ -850,7 +914,7 @@ export const kpiService = {
         : shortest;
     });
 
-    return {
+    const result = {
       averageTotalDays,
       averageWorkingDays,
       medianTotalDays,
@@ -877,5 +941,18 @@ export const kpiService = {
         workingDays: shortestProject.working_days || 0,
       },
     };
+
+    console.log("[DURATION_KPI] Final duration KPIs:", {
+      averageTotalDays: result.averageTotalDays,
+      averageWorkingDays: result.averageWorkingDays,
+      medianTotalDays: result.medianTotalDays,
+      medianWorkingDays: result.medianWorkingDays,
+      medianTotalDaysRemaining: result.medianTotalDaysRemaining,
+      medianWorkingDaysRemaining: result.medianWorkingDaysRemaining,
+      projectsWithDuration: result.projectsWithDuration,
+      durationCoverage: result.durationCoverage,
+    });
+
+    return result;
   },
 };
