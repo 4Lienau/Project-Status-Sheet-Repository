@@ -34,6 +34,7 @@ import ProjectDashboard from "./pages/ProjectDashboard";
 import ProjectKPIsPage from "./pages/ProjectKPIsPage";
 import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
+import { useSessionTracking } from "./lib/hooks/useSessionTracking";
 
 // Helper function to check authentication status
 const checkAuthStatus = (user, loading, initialCheckComplete) => {
@@ -49,6 +50,37 @@ const checkAuthStatus = (user, loading, initialCheckComplete) => {
 
   // Authenticated
   return "authenticated";
+};
+
+// Component to handle session tracking
+const SessionTracker = () => {
+  const location = useLocation();
+  const { trackPageView, trackFeatureUse } = useSessionTracking();
+
+  // Track page views
+  useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname, trackPageView]);
+
+  // Track feature usage based on route
+  useEffect(() => {
+    const routeFeatures = {
+      "/admin": "admin_dashboard",
+      "/project": "project_management",
+      "/profile": "profile_management",
+      "/kpis": "kpi_dashboard",
+    };
+
+    const feature = Object.keys(routeFeatures).find((route) =>
+      location.pathname.startsWith(route),
+    );
+
+    if (feature) {
+      trackFeatureUse(routeFeatures[feature], { route: location.pathname });
+    }
+  }, [location.pathname, trackFeatureUse]);
+
+  return null;
 };
 
 // Protected route component that redirects to login if not authenticated
@@ -112,6 +144,7 @@ function App() {
 
   return (
     <Suspense fallback={<p>Loading...</p>}>
+      <SessionTracker />
       <Routes>
         {/* Admin route - HIGHEST PRIORITY */}
         <Route

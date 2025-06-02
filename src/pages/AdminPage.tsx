@@ -5,6 +5,7 @@ import DepartmentManager from "@/components/admin/DepartmentManager";
 import SupabaseMetrics from "@/components/admin/SupabaseMetrics";
 import PendingUsersManager from "@/components/admin/PendingUsersManager";
 import ProjectDurationManager from "@/components/admin/ProjectDurationManager";
+import UsageAnalytics from "@/components/admin/UsageAnalytics";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -611,10 +612,14 @@ const AdminPage = () => {
         </div>
 
         <Tabs
-          defaultValue="departments"
+          defaultValue="usage"
           className="space-y-4 bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100/50 shadow-sm p-4"
         >
           <TabsList className="bg-blue-50 border border-blue-100">
+            <TabsTrigger value="usage" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Usage Analytics
+            </TabsTrigger>
             <TabsTrigger
               value="departments"
               className="flex items-center gap-2"
@@ -640,6 +645,10 @@ const AdminPage = () => {
               Azure AD Sync
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="usage" className="space-y-4">
+            <UsageAnalytics />
+          </TabsContent>
 
           <TabsContent value="departments" className="space-y-4">
             <DepartmentManager />

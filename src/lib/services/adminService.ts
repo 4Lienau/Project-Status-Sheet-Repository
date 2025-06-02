@@ -828,4 +828,476 @@ export const adminService = {
       return false;
     }
   },
+
+  // Usage Analytics Methods
+  async getActiveUsers(): Promise<any[]> {
+    try {
+      console.log(
+        "[adminService.getActiveUsers] Fetching currently active users...",
+      );
+
+      const { data, error } = await supabase.rpc("get_active_users");
+
+      if (error) {
+        console.error("[adminService.getActiveUsers] Error:", error);
+        console.error(
+          "[adminService.getActiveUsers] This might be because the function doesn't exist yet. Check if the migration ran successfully.",
+        );
+        return [];
+      }
+
+      console.log(
+        "[adminService.getActiveUsers] Found",
+        data?.length || 0,
+        "active users",
+      );
+      return data || [];
+    } catch (error) {
+      console.error("[adminService.getActiveUsers] Catch error:", error);
+      return [];
+    }
+  },
+
+  async getUserLoginStats(): Promise<any[]> {
+    try {
+      console.log(
+        "[adminService.getUserLoginStats] Fetching user login statistics...",
+      );
+
+      // Try the new comprehensive function first
+      console.log(
+        "[adminService.getUserLoginStats] Trying get_comprehensive_user_stats function...",
+      );
+      const { data: comprehensiveData, error: comprehensiveError } =
+        await supabase.rpc("get_comprehensive_user_stats");
+
+      if (
+        !comprehensiveError &&
+        comprehensiveData &&
+        comprehensiveData.length > 0
+      ) {
+        console.log(
+          "[adminService.getUserLoginStats] Comprehensive function returned",
+          comprehensiveData.length,
+          "records (users with actual login activity)",
+        );
+        console.log(
+          "[adminService.getUserLoginStats] Sample comprehensive data:",
+          comprehensiveData[0],
+        );
+        return comprehensiveData;
+      }
+
+      // Try the fixed get_user_login_statistics function
+      console.log(
+        "[adminService.getUserLoginStats] Trying get_user_login_statistics function...",
+      );
+      const { data: functionData, error: functionError } = await supabase.rpc(
+        "get_user_login_statistics",
+      );
+
+      if (!functionError && functionData && functionData.length > 0) {
+        console.log(
+          "[adminService.getUserLoginStats] Function returned",
+          functionData.length,
+          "records (users with actual login activity)",
+        );
+        console.log(
+          "[adminService.getUserLoginStats] Sample data:",
+          functionData[0],
+        );
+        return functionData;
+      }
+
+      // Final fallback - only get users who have actually logged in
+      console.log(
+        "[adminService.getUserLoginStats] Functions failed, using filtered fallback approach...",
+      );
+      console.log("Comprehensive error:", comprehensiveError);
+      console.log("Function error:", functionError);
+
+      // Get only users with actual usage metrics (login activity)
+      const { data: usageData, error: usageError } = await supabase
+        .from("usage_metrics")
+        .select("user_id, login_count, last_login, total_session_time_minutes")
+        .gt("login_count", 0); // Only users who have actually logged in
+
+      if (usageError) {
+        console.error(
+          "[adminService.getUserLoginStats] Cannot access usage_metrics table:",
+          usageError,
+        );
+        return [];
+      }
+
+      if (!usageData || usageData.length === 0) {
+        console.log(
+          "[adminService.getUserLoginStats] No users with login activity found",
+        );
+        return [];
+      }
+
+      // Get profile data for users with login activity
+      const userIds = usageData.map((u) => u.user_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, updated_at")
+        .in("id", userIds);
+
+      if (profilesError) {
+        console.error(
+          "[adminService.getUserLoginStats] Error fetching profiles:",
+          profilesError,
+        );
+        return [];
+      }
+
+      // Combine the data - only users with actual login activity
+      const combinedData = usageData
+        .map((usage) => {
+          const profile = profilesData?.find((p) => p.id === usage.user_id);
+          if (!profile) return null;
+
+          return {
+            user_id: profile.id,
+            email: profile.email,
+            full_name: profile.full_name,
+            total_logins: usage.login_count || 0,
+            last_login: usage.last_login,
+            total_session_time_minutes: usage.total_session_time_minutes || 0,
+            account_created: profile.updated_at,
+          };
+        })
+        .filter(Boolean) // Remove null entries
+        .sort((a, b) => {
+          // Sort by last login date, most recent first
+          if (!a.last_login && !b.last_login) return 0;
+          if (!a.last_login) return 1;
+          if (!b.last_login) return -1;
+          return (
+            new Date(b.last_login).getTime() - new Date(a.last_login).getTime()
+          );
+        });
+
+      console.log(
+        "[adminService.getUserLoginStats] Fallback processed",
+        combinedData.length,
+        "user records (only users with login activity)",
+      );
+
+      if (combinedData.length > 0) {
+        console.log(
+          "[adminService.getUserLoginStats] Sample fallback data:",
+          combinedData[0],
+        );
+      }
+
+      return combinedData;
+    } catch (error) {
+      console.error("[adminService.getUserLoginStats] Catch error:", error);
+      return [];
+    }
+  },
+
+  async getUsageMetrics(): Promise<{
+    totalUsers: number;
+    activeUsers: number;
+    avgSessionTime: number;
+    totalPageViews: number;
+    totalProjects: number;
+    dailyActiveUsers: any[];
+    topUsers: any[];
+  }> {
+    try {
+      console.log(
+        "[adminService.getUsageMetrics] Calculating usage metrics...",
+      );
+
+      // Get total users
+      const { count: totalUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+
+      // Get currently active users
+      const activeUsersData = await this.getActiveUsers();
+      const activeUsers = activeUsersData.length;
+
+      // Get user activity summary using the new function
+      const { data: userActivityData, error: activityError } =
+        await supabase.rpc("get_user_activity_summary");
+
+      if (activityError) {
+        console.warn(
+          "[adminService.getUsageMetrics] Activity summary error:",
+          activityError,
+        );
+      }
+
+      console.log(
+        "[adminService.getUsageMetrics] User activity data:",
+        userActivityData,
+      );
+
+      // Calculate aggregated stats from the activity summary
+      const totalSessionTime =
+        userActivityData?.reduce(
+          (sum, user) => sum + (user.total_session_time || 0),
+          0,
+        ) || 0;
+      const totalPageViews =
+        userActivityData?.reduce(
+          (sum, user) => sum + (user.total_page_views || 0),
+          0,
+        ) || 0;
+      const totalProjectsFromMetrics =
+        userActivityData?.reduce(
+          (sum, user) => sum + (user.total_projects || 0),
+          0,
+        ) || 0;
+
+      // Calculate average session time based on users with activity
+      const usersWithActivity =
+        userActivityData?.filter((user) => user.total_session_time > 0) || [];
+
+      // Calculate weighted average session time (total time / total sessions)
+      let avgSessionTime = 0;
+      if (usersWithActivity.length > 0) {
+        const totalSessions = usersWithActivity.reduce(
+          (sum, user) => sum + (user.login_count || 1),
+          0,
+        );
+        avgSessionTime =
+          totalSessions > 0
+            ? Math.round(totalSessionTime / totalSessions)
+            : Math.round(totalSessionTime / usersWithActivity.length);
+      }
+
+      // Get daily active users for the last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data: dailyData, error: dailyError } = await supabase
+        .from("usage_metrics")
+        .select("date, user_id")
+        .gte("date", sevenDaysAgo.toISOString().split("T")[0])
+        .order("date", { ascending: true });
+
+      if (dailyError) {
+        console.warn(
+          "[adminService.getUsageMetrics] Daily data error:",
+          dailyError,
+        );
+      }
+
+      // Group by date for daily active users
+      const dailyActiveUsers = [];
+      const dailyGroups =
+        dailyData?.reduce(
+          (groups, item) => {
+            const date = item.date;
+            if (!groups[date]) {
+              groups[date] = new Set();
+            }
+            groups[date].add(item.user_id);
+            return groups;
+          },
+          {} as Record<string, Set<string>>,
+        ) || {};
+
+      for (const [date, userSet] of Object.entries(dailyGroups)) {
+        dailyActiveUsers.push({
+          date,
+          activeUsers: userSet.size,
+        });
+      }
+
+      // Convert user activity data to the expected format for top users
+      const topUsers = (userActivityData || [])
+        .map((user) => ({
+          user_id: user.user_id,
+          totalTime: user.total_session_time || 0,
+          totalPageViews: user.total_page_views || 0,
+          totalProjects: user.total_projects || 0,
+        }))
+        .sort((a, b) => b.totalTime - a.totalTime)
+        .slice(0, 5);
+
+      const result = {
+        totalUsers: totalUsers || 0,
+        activeUsers,
+        avgSessionTime,
+        totalPageViews,
+        totalProjects: totalProjectsFromMetrics,
+        dailyActiveUsers,
+        topUsers,
+      };
+
+      console.log("[adminService.getUsageMetrics] Calculated metrics:", result);
+      return result;
+    } catch (error) {
+      console.error("[adminService.getUsageMetrics] Catch error:", error);
+      return {
+        totalUsers: 0,
+        activeUsers: 0,
+        avgSessionTime: 0,
+        totalPageViews: 0,
+        totalProjects: 0,
+        dailyActiveUsers: [],
+        topUsers: [],
+      };
+    }
+  },
+
+  async startUserSession(
+    userId: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<string | null> {
+    try {
+      console.log(
+        "[adminService.startUserSession] Starting session for user:",
+        userId,
+      );
+
+      // End any existing active sessions for this user that are older than 30 minutes
+      // This allows for multiple browser tabs/windows but prevents stale sessions
+      const thirtyMinutesAgo = new Date();
+      thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30);
+
+      await supabase
+        .from("user_sessions")
+        .update({
+          is_active: false,
+          session_end: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .lt("session_start", thirtyMinutesAgo.toISOString());
+
+      // Create new session
+      const { data, error } = await supabase
+        .from("user_sessions")
+        .insert({
+          user_id: userId,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          is_active: true,
+          session_start: new Date().toISOString(),
+          last_activity: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        console.error("[adminService.startUserSession] Error:", error);
+        return null;
+      }
+
+      // Update daily login count
+      await supabase.rpc("update_daily_usage_metrics", {
+        p_user_id: userId,
+        p_activity_type: "login",
+      });
+
+      console.log("[adminService.startUserSession] Session started:", data.id);
+      return data.id;
+    } catch (error) {
+      console.error("[adminService.startUserSession] Catch error:", error);
+      return null;
+    }
+  },
+
+  async updateSessionActivity(sessionId: string): Promise<boolean> {
+    try {
+      console.log(
+        "[adminService.updateSessionActivity] Updating activity for session:",
+        sessionId,
+      );
+
+      const { data, error } = await supabase
+        .from("user_sessions")
+        .update({
+          last_activity: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sessionId)
+        .eq("is_active", true)
+        .select("user_id, last_activity");
+
+      if (error) {
+        console.error("[adminService.updateSessionActivity] Error:", error);
+        return false;
+      }
+
+      if (data && data.length > 0) {
+        console.log(
+          "[adminService.updateSessionActivity] Activity updated for user:",
+          data[0].user_id,
+        );
+      }
+
+      return true;
+    } catch (error) {
+      console.error("[adminService.updateSessionActivity] Catch error:", error);
+      return false;
+    }
+  },
+
+  async endUserSession(sessionId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from("user_sessions")
+        .update({
+          is_active: false,
+          session_end: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sessionId);
+
+      if (error) {
+        console.error("[adminService.endUserSession] Error:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("[adminService.endUserSession] Catch error:", error);
+      return false;
+    }
+  },
+
+  async logUserActivity(
+    userId: string,
+    sessionId: string,
+    activityType: string,
+    activityData?: any,
+    pageUrl?: string,
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase.from("user_activity_logs").insert({
+        user_id: userId,
+        session_id: sessionId,
+        activity_type: activityType,
+        activity_data: activityData,
+        page_url: pageUrl,
+      });
+
+      if (error) {
+        console.error("[adminService.logUserActivity] Error:", error);
+        return false;
+      }
+
+      // Update daily metrics
+      await supabase.rpc("update_daily_usage_metrics", {
+        p_user_id: userId,
+        p_activity_type: activityType,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("[adminService.logUserActivity] Catch error:", error);
+      return false;
+    }
+  },
 };

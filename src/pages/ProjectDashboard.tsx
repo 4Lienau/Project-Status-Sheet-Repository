@@ -383,7 +383,7 @@ const ProjectDashboard = ({
                 // Refetch the project data to get the updated duration
                 const updatedProjectData = await projectService.getProject(id);
                 if (updatedProjectData) {
-                  projectData = updatedProjectData;
+                  Object.assign(projectData, updatedProjectData);
                 }
               }
             } catch (error) {

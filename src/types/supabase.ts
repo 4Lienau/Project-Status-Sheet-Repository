@@ -713,6 +713,131 @@ export type Database = {
           },
         ]
       }
+      usage_metrics: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          id: string
+          last_login: string | null
+          login_count: number | null
+          milestones_created: number | null
+          page_views: number | null
+          projects_created: number | null
+          projects_updated: number | null
+          total_session_time_minutes: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          last_login?: string | null
+          login_count?: number | null
+          milestones_created?: number | null
+          page_views?: number | null
+          projects_created?: number | null
+          projects_updated?: number | null
+          total_session_time_minutes?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          last_login?: string | null
+          login_count?: number | null
+          milestones_created?: number | null
+          page_views?: number | null
+          projects_created?: number | null
+          projects_updated?: number | null
+          total_session_time_minutes?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_activity_logs: {
+        Row: {
+          activity_data: Json | null
+          activity_type: string
+          created_at: string | null
+          id: string
+          page_url: string | null
+          session_id: string | null
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_data?: Json | null
+          activity_type: string
+          created_at?: string | null
+          id?: string
+          page_url?: string | null
+          session_id?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_data?: Json | null
+          activity_type?: string
+          created_at?: string | null
+          id?: string
+          page_url?: string | null
+          session_id?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "user_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          is_active: boolean | null
+          last_activity: string | null
+          session_end: string | null
+          session_start: string | null
+          updated_at: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          session_end?: string | null
+          session_start?: string | null
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          session_end?: string | null
+          session_start?: string | null
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -734,9 +859,24 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      cleanup_inactive_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       execute_sql: {
         Args: { sql_query: string }
         Returns: Json
+      }
+      get_active_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          session_start: string
+          last_activity: string
+          session_duration_minutes: number
+        }[]
       }
       get_auth_users_data: {
         Args: Record<PropertyKey, never>
@@ -745,6 +885,57 @@ export type Database = {
           email: string
           created_at: string
           last_sign_in_at: string
+        }[]
+      }
+      get_auth_users_login_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          total_logins: number
+          last_login: string
+          total_session_time_minutes: number
+          account_created: string
+        }[]
+      }
+      get_comprehensive_user_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          total_logins: number
+          last_login: string
+          total_session_time_minutes: number
+          total_page_views: number
+          account_created: string
+          last_activity: string
+        }[]
+      }
+      get_user_activity_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          total_session_time: number
+          total_page_views: number
+          total_projects: number
+          login_count: number
+          last_login: string
+        }[]
+      }
+      get_user_login_statistics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          total_logins: number
+          last_login: string
+          total_session_time_minutes: number
+          account_created: string
         }[]
       }
       halfvec_avg: {
@@ -891,6 +1082,10 @@ export type Database = {
       trigger_sync_if_due: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      update_daily_usage_metrics: {
+        Args: { p_user_id: string; p_activity_type: string }
+        Returns: undefined
       }
       urlencode: {
         Args: { data: Json } | { string: string } | { string: string }
