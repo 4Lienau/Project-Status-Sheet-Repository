@@ -351,10 +351,27 @@ export const kpiService = {
       string,
       { count: number; totalCompletion: number; totalBudget: number }
     >();
-    projects.forEach((p) => {
+
+    console.log(
+      "[KPI_SERVICE] Processing projects for PM workload:",
+      projects.length,
+    );
+
+    projects.forEach((p, index) => {
       // Handle null, undefined, empty string, and whitespace-only project managers
-      const manager =
-        (p.project_manager && p.project_manager.trim()) || "Unknown";
+      let manager = "Unknown";
+
+      if (p.project_manager) {
+        const trimmedManager = p.project_manager.trim();
+        if (trimmedManager.length > 0) {
+          manager = trimmedManager;
+        }
+      }
+
+      console.log(
+        `[KPI_SERVICE] Project ${index + 1}: "${p.title}" -> PM: "${manager}" (original: "${p.project_manager}")`,
+      );
+
       const completion =
         p.health_calculation_type === "manual"
           ? p.manual_health_percentage || 0
@@ -365,12 +382,18 @@ export const kpiService = {
         totalCompletion: 0,
         totalBudget: 0,
       };
+
       managerCounts.set(manager, {
         count: existing.count + 1,
         totalCompletion: existing.totalCompletion + completion,
         totalBudget: existing.totalBudget + (p.budget_total || 0),
       });
     });
+
+    console.log(
+      "[KPI_SERVICE] Final manager counts:",
+      Array.from(managerCounts.entries()),
+    );
 
     const projectManagerWorkload = Array.from(managerCounts.entries())
       .map(([manager, data]) => ({
@@ -380,6 +403,11 @@ export const kpiService = {
         totalBudget: data.totalBudget,
       }))
       .sort((a, b) => b.projectCount - a.projectCount);
+
+    console.log(
+      "[KPI_SERVICE] Final PM workload data:",
+      projectManagerWorkload,
+    );
 
     // Resource utilization (based on active projects vs total capacity)
     const activeProjects = projects.filter((p) => p.status === "active").length;

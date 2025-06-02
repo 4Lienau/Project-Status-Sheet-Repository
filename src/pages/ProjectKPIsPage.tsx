@@ -109,9 +109,25 @@ const ProjectKPIsPage = () => {
         setProjects(allProjects);
 
         if (allProjects.length > 0) {
+          console.log("[KPI_PAGE] All projects loaded:", allProjects.length);
+          console.log(
+            "[KPI_PAGE] Sample project managers:",
+            allProjects
+              .slice(0, 5)
+              .map((p) => ({ title: p.title, pm: p.project_manager })),
+          );
+
           setFinancialKPIs(kpiService.calculateFinancialKPIs(allProjects));
           setPerformanceKPIs(kpiService.calculatePerformanceKPIs(allProjects));
-          setResourceKPIs(kpiService.calculateResourceKPIs(allProjects));
+
+          const resourceKPIsData =
+            kpiService.calculateResourceKPIs(allProjects);
+          console.log(
+            "[KPI_PAGE] Resource KPIs calculated:",
+            resourceKPIsData.projectManagerWorkload,
+          );
+          setResourceKPIs(resourceKPIsData);
+
           setOperationalKPIs(kpiService.calculateOperationalKPIs(allProjects));
           setQualityKPIs(kpiService.calculateQualityKPIs(allProjects));
           setTimelineKPIs(kpiService.calculateTimelineKPIs(allProjects));
@@ -586,29 +602,40 @@ const ProjectKPIsPage = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {resourceKPIs.projectManagerWorkload
-                        .slice(0, 6)
-                        .map((pm) => (
-                          <div
-                            key={pm.manager}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                          >
-                            <div>
-                              <div className="font-medium">{pm.manager}</div>
-                              <div className="text-sm text-gray-600">
-                                {formatCurrency(pm.totalBudget)} budget
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-semibold">
-                                {pm.projectCount} projects
-                              </div>
-                              <div className="text-sm text-gray-600">
-                                {pm.avgCompletion}% avg completion
-                              </div>
-                            </div>
+                      {resourceKPIs.projectManagerWorkload.length === 0 ? (
+                        <div className="text-center py-4 text-gray-500">
+                          No project managers found
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-xs text-gray-500 mb-2">
+                            Showing all{" "}
+                            {resourceKPIs.projectManagerWorkload.length} project
+                            managers
                           </div>
-                        ))}
+                          {resourceKPIs.projectManagerWorkload.map((pm) => (
+                            <div
+                              key={pm.manager}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                            >
+                              <div>
+                                <div className="font-medium">{pm.manager}</div>
+                                <div className="text-sm text-gray-600">
+                                  {formatCurrency(pm.totalBudget)} budget
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold">
+                                  {pm.projectCount} projects
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {pm.avgCompletion}% avg completion
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

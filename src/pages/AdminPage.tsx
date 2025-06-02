@@ -555,11 +555,11 @@ const AdminPage = () => {
               onClick={() => {
                 window.location.href = "/";
               }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Dashboard
             </Button>
-            <h1 className="text-3xl font-bold text-blue-800">
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">
               Admin Dashboard
             </h1>
           </div>
@@ -622,14 +622,7 @@ const AdminPage = () => {
               <Building className="h-4 w-4" />
               Departments
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="statistics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Statistics
-            </TabsTrigger>
+
             <TabsTrigger value="supabase" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               Supabase Metrics
@@ -648,83 +641,8 @@ const AdminPage = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="statistics" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-800">
-                    <PieChartIcon className="h-5 w-5" />
-                    Project Status Distribution
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={projectStatusData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) =>
-                            `${name}: ${(percent * 100).toFixed(0)}%`
-                          }
-                        >
-                          {projectStatusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-800">
-                    <BarChart3 className="h-5 w-5" />
-                    Project Activity (Last 6 Months)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={projectActivityData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip
-                          formatter={(value, name, props) => [
-                            `${value} projects created`,
-                            props.payload.fullMonth,
-                          ]}
-                        />
-                        <Legend />
-                        <Bar
-                          dataKey="projects"
-                          fill="#3b82f6"
-                          name="Projects Created"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
           <TabsContent value="departments" className="space-y-4">
             <DepartmentManager />
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
-            <PendingUsersManager />
           </TabsContent>
 
           <TabsContent value="knowledge" className="space-y-4">
