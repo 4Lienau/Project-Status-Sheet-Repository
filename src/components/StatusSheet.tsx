@@ -565,7 +565,12 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                               {truncatedDescription}
                             </td>
                             <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                              {date ? format(new Date(date), "MM/dd/yy") : ""}
+                              {date
+                                ? format(
+                                    new Date(date + "T00:00:00"),
+                                    "MM/dd/yy",
+                                  )
+                                : ""}
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
                               <div className="w-16 h-5 bg-gray-200 rounded-full overflow-hidden relative">
@@ -709,7 +714,10 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                             </td>
                             <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
                               {milestone.date
-                                ? format(new Date(milestone.date), "MM/dd/yy")
+                                ? format(
+                                    new Date(milestone.date + "T00:00:00"),
+                                    "MM/dd/yy",
+                                  )
                                 : ""}
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
