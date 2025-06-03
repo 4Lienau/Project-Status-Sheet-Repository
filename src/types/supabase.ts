@@ -921,6 +921,19 @@ export type Database = {
           last_activity: string
         }[]
       }
+      get_database_size: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_table_sizes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          table_name: string
+          size_bytes: number
+          size_mb: number
+          row_count: number
+        }[]
+      }
       get_user_activity_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
