@@ -27,6 +27,57 @@ export const useSessionTracking = () => {
     };
   }, [user]);
 
+  // Handle page unload to end session
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (sessionIdRef.current) {
+        console.log(
+          "[useSessionTracking] Page unloading, ending session:",
+          sessionIdRef.current,
+        );
+        // Use synchronous call for immediate session end
+        adminService.endUserSession(sessionIdRef.current);
+      }
+    };
+
+    const handleUnload = () => {
+      if (sessionIdRef.current) {
+        console.log(
+          "[useSessionTracking] Page unloaded, ending session:",
+          sessionIdRef.current,
+        );
+        // Synchronous session end for page unload
+        adminService.endUserSession(sessionIdRef.current);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && sessionIdRef.current) {
+        console.log(
+          "[useSessionTracking] Page hidden, ending session:",
+          sessionIdRef.current,
+        );
+        // End session when page becomes hidden (user switched tabs/minimized)
+        setTimeout(() => {
+          if (sessionIdRef.current && document.hidden) {
+            adminService.endUserSession(sessionIdRef.current);
+            sessionIdRef.current = null;
+          }
+        }, 30000); // Wait 30 seconds before ending session
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("unload", handleUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("unload", handleUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   // Track page visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -62,15 +113,18 @@ export const useSessionTracking = () => {
         // Update session activity
         adminService.updateSessionActivity(sessionIdRef.current);
 
-        // Set timeout to detect inactivity (30 minutes)
+        // Set timeout to detect inactivity (5 minutes for more accurate tracking)
         activityTimeoutRef.current = setTimeout(
           () => {
             if (sessionIdRef.current) {
+              console.log(
+                "[useSessionTracking] User inactive for 5 minutes, ending session",
+              );
               endSession();
             }
           },
-          30 * 60 * 1000,
-        ); // 30 minutes
+          5 * 60 * 1000,
+        ); // 5 minutes
       }
     };
 
@@ -86,8 +140,8 @@ export const useSessionTracking = () => {
     let lastActivity = 0;
     const throttledTrackActivity = () => {
       const now = Date.now();
-      if (now - lastActivity > 60000) {
-        // Only track once per minute
+      if (now - lastActivity > 30000) {
+        // Track every 30 seconds for more responsive session tracking
         lastActivity = now;
         trackActivity();
       }
@@ -111,7 +165,12 @@ export const useSessionTracking = () => {
     if (!user) return;
 
     try {
-      console.log("[useSessionTracking] Starting session for user:", user.id);
+      console.log("[useSessionTracking] Starting session for user:", {
+        userId: user.id,
+        email: user.email,
+        timestamp: new Date().toISOString(),
+        currentSessionId: sessionIdRef.current,
+      });
 
       // Get user's IP and user agent (basic info)
       const userAgent = navigator.userAgent;
@@ -122,8 +181,16 @@ export const useSessionTracking = () => {
         userAgent,
       );
 
+      console.log("[useSessionTracking] Session creation result:", {
+        sessionId,
+        success: !!sessionId,
+        userId: user.id,
+      });
+
       if (sessionId) {
         sessionIdRef.current = sessionId;
+        console.log("[useSessionTracking] Session ID stored:", sessionId);
+
         startHeartbeat();
 
         // Log initial page view
@@ -155,12 +222,59 @@ export const useSessionTracking = () => {
           );
         }
 
-        // Force an immediate activity update to ensure session is marked as active
+        // Force multiple immediate activity updates to ensure session is marked as active
         setTimeout(() => {
           if (sessionIdRef.current) {
+            console.log(
+              "[useSessionTracking] First activity update for session:",
+              sessionIdRef.current,
+            );
             adminService.updateSessionActivity(sessionIdRef.current);
           }
-        }, 1000);
+        }, 500);
+
+        setTimeout(() => {
+          if (sessionIdRef.current) {
+            console.log(
+              "[useSessionTracking] Second activity update for session:",
+              sessionIdRef.current,
+            );
+            adminService.updateSessionActivity(sessionIdRef.current);
+          }
+        }, 2000);
+
+        // Verify session was created by checking database
+        setTimeout(async () => {
+          if (sessionIdRef.current) {
+            console.log(
+              "[useSessionTracking] Verifying session exists in database:",
+              sessionIdRef.current,
+            );
+            try {
+              const { data: sessionCheck, error: checkError } = await supabase
+                .from("user_sessions")
+                .select("id, user_id, is_active, session_start, last_activity")
+                .eq("id", sessionIdRef.current)
+                .single();
+
+              console.log("[useSessionTracking] Session verification result:", {
+                sessionCheck,
+                checkError,
+                sessionId: sessionIdRef.current,
+              });
+            } catch (verifyError) {
+              console.error(
+                "[useSessionTracking] Session verification failed:",
+                verifyError,
+              );
+            }
+          }
+        }, 3000);
+      } else {
+        console.error(
+          "[useSessionTracking] Failed to create session for user:",
+          user.id,
+        );
       }
     } catch (error) {
       console.error("[useSessionTracking] Error starting session:", error);
@@ -190,10 +304,14 @@ export const useSessionTracking = () => {
         await logActivity("session_end", {
           url: window.location.href,
         });
+
+        // End all sessions for this user to ensure cleanup
+        await adminService.endAllUserSessions(user.id);
+      } else {
+        // If no user context, just end the specific session
+        await adminService.endUserSession(sessionIdRef.current);
       }
 
-      // End session in database
-      await adminService.endUserSession(sessionIdRef.current);
       sessionIdRef.current = null;
     } catch (error) {
       console.error("[useSessionTracking] Error ending session:", error);
@@ -205,19 +323,30 @@ export const useSessionTracking = () => {
       clearInterval(heartbeatIntervalRef.current);
     }
 
-    // Send heartbeat every 2 minutes for more accurate active user tracking
-    heartbeatIntervalRef.current = setInterval(
-      () => {
-        if (sessionIdRef.current && user) {
-          console.log(
-            "[useSessionTracking] Sending heartbeat for session:",
-            sessionIdRef.current,
-          );
-          adminService.updateSessionActivity(sessionIdRef.current);
-        }
-      },
-      2 * 60 * 1000,
-    ); // 2 minutes
+    console.log(
+      "[useSessionTracking] Starting heartbeat for session:",
+      sessionIdRef.current,
+    );
+
+    // Send heartbeat every 30 seconds for more accurate active user tracking
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (sessionIdRef.current && user) {
+        console.log("[useSessionTracking] Sending heartbeat for session:", {
+          sessionId: sessionIdRef.current,
+          userId: user.id,
+          timestamp: new Date().toISOString(),
+        });
+        adminService.updateSessionActivity(sessionIdRef.current);
+      } else {
+        console.warn(
+          "[useSessionTracking] Heartbeat skipped - no session or user:",
+          {
+            hasSession: !!sessionIdRef.current,
+            hasUser: !!user,
+          },
+        );
+      }
+    }, 30 * 1000); // 30 seconds for more frequent updates
   };
 
   const logActivity = async (activityType: string, activityData?: any) => {

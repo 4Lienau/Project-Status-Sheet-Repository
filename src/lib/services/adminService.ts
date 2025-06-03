@@ -98,6 +98,59 @@ export const adminService = {
     return data || [];
   },
 
+  async testAzureAdSync(): Promise<{
+    success: boolean;
+    message: string;
+    results?: any;
+  }> {
+    try {
+      console.log(
+        "[adminService.testAzureAdSync] Running Azure AD sync diagnostics...",
+      );
+
+      const { data, error } = await supabase.functions.invoke(
+        "supabase-functions-test-azure-sync",
+        {
+          body: { test: true },
+        },
+      );
+
+      console.log("[adminService.testAzureAdSync] Test response:", {
+        data,
+        error,
+      });
+
+      if (error) {
+        console.error(
+          "[adminService.testAzureAdSync] Error running diagnostics:",
+          error,
+        );
+        return {
+          success: false,
+          message: `Diagnostics error: ${error.message || "Unknown error"} ${error.details ? `(${error.details})` : ""}`,
+        };
+      }
+
+      return {
+        success: data?.summary?.failed === 0,
+        message:
+          data?.summary?.failed === 0
+            ? `All ${data.summary.total} diagnostic tests passed`
+            : `${data.summary.failed}/${data.summary.total} diagnostic tests failed`,
+        results: data,
+      };
+    } catch (error) {
+      console.error(
+        "[adminService.testAzureAdSync] Error running diagnostics:",
+        error,
+      );
+      return {
+        success: false,
+        message: `Unexpected error: ${error.message || "Failed to run diagnostics"}`,
+      };
+    }
+  },
+
   async triggerAzureAdSync(): Promise<{
     success: boolean;
     message: string;
@@ -836,22 +889,139 @@ export const adminService = {
         "[adminService.getActiveUsers] Fetching currently active users...",
       );
 
-      const { data, error } = await supabase.rpc("get_active_users");
+      // First, cleanup stale sessions
+      try {
+        await supabase.rpc("cleanup_stale_sessions");
+        console.log("[adminService.getActiveUsers] Cleaned up stale sessions");
+      } catch (cleanupError) {
+        console.warn(
+          "[adminService.getActiveUsers] Cleanup warning:",
+          cleanupError,
+        );
+      }
 
-      if (error) {
-        console.error("[adminService.getActiveUsers] Error:", error);
+      // Use a 3-minute window for active users (more lenient)
+      const threeMinutesAgo = new Date();
+      threeMinutesAgo.setMinutes(threeMinutesAgo.getMinutes() - 3);
+
+      console.log(
+        "[adminService.getActiveUsers] Using 3-minute activity window:",
+        threeMinutesAgo.toISOString(),
+      );
+
+      // Step 1: Query user_sessions without join to avoid foreign key relationship issues
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from("user_sessions")
+        .select(
+          "id, user_id, session_start, last_activity, is_active, created_at",
+        )
+        .eq("is_active", true)
+        .gte("last_activity", threeMinutesAgo.toISOString())
+        .order("last_activity", { ascending: false });
+
+      console.log("[adminService.getActiveUsers] Sessions query result:", {
+        sessionsData: sessionsData?.map((s) => ({
+          id: s.id,
+          user_id: s.user_id,
+          last_activity: s.last_activity,
+          is_active: s.is_active,
+        })),
+        sessionsError,
+        totalSessions: sessionsData?.length || 0,
+      });
+
+      if (sessionsError) {
         console.error(
-          "[adminService.getActiveUsers] This might be because the function doesn't exist yet. Check if the migration ran successfully.",
+          "[adminService.getActiveUsers] Sessions query error:",
+          sessionsError,
         );
         return [];
       }
 
+      if (!sessionsData || sessionsData.length === 0) {
+        console.log("[adminService.getActiveUsers] No active sessions found");
+        return [];
+      }
+
+      // Step 2: Get unique user IDs from active sessions
+      const uniqueUserIds = [...new Set(sessionsData.map((s) => s.user_id))];
       console.log(
-        "[adminService.getActiveUsers] Found",
-        data?.length || 0,
-        "active users",
+        "[adminService.getActiveUsers] Unique user IDs:",
+        uniqueUserIds,
       );
-      return data || [];
+
+      // Step 3: Query profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", uniqueUserIds);
+
+      console.log("[adminService.getActiveUsers] Profiles query result:", {
+        profilesData: profilesData?.map((p) => ({
+          id: p.id,
+          email: p.email,
+          full_name: p.full_name,
+        })),
+        profilesError,
+        totalProfiles: profilesData?.length || 0,
+      });
+
+      if (profilesError) {
+        console.error(
+          "[adminService.getActiveUsers] Profiles query error:",
+          profilesError,
+        );
+        return [];
+      }
+
+      // Step 4: Join the data in JavaScript and deduplicate by user_id
+      const uniqueUsers = [];
+      const seenUsers = new Set();
+
+      for (const session of sessionsData) {
+        if (!seenUsers.has(session.user_id)) {
+          seenUsers.add(session.user_id);
+
+          // Find the corresponding profile
+          const profile = profilesData?.find((p) => p.id === session.user_id);
+
+          const sessionStart = new Date(session.session_start);
+          const lastActivity = new Date(session.last_activity);
+          const sessionDurationMinutes = Math.round(
+            (lastActivity.getTime() - sessionStart.getTime()) / (1000 * 60),
+          );
+
+          const userRecord = {
+            user_id: session.user_id,
+            email: profile?.email || "Unknown",
+            full_name: profile?.full_name || "Unknown User",
+            session_start: session.session_start,
+            last_activity: session.last_activity,
+            session_duration_minutes: Math.max(sessionDurationMinutes, 0),
+            session_id: session.id,
+          };
+
+          uniqueUsers.push(userRecord);
+
+          console.log("[adminService.getActiveUsers] Added active user:", {
+            user_id: userRecord.user_id,
+            email: userRecord.email,
+            last_activity: userRecord.last_activity,
+            session_id: userRecord.session_id,
+          });
+        }
+      }
+
+      console.log("[adminService.getActiveUsers] Final result:", {
+        totalUniqueUsers: uniqueUsers.length,
+        users: uniqueUsers.map((u) => ({
+          user_id: u.user_id,
+          email: u.email,
+          last_activity: u.last_activity,
+        })),
+      });
+
+      return uniqueUsers;
     } catch (error) {
       console.error("[adminService.getActiveUsers] Catch error:", error);
       return [];
@@ -1156,15 +1326,36 @@ export const adminService = {
     try {
       console.log(
         "[adminService.startUserSession] Starting session for user:",
+        {
+          userId,
+          timestamp: new Date().toISOString(),
+          userAgent: userAgent?.substring(0, 50) + "...",
+        },
+      );
+
+      // First, end ALL existing active sessions for this user to prevent duplicates
+      console.log(
+        "[adminService.startUserSession] Ending all existing active sessions for user:",
         userId,
       );
 
-      // End any existing active sessions for this user that are older than 30 minutes
-      // This allows for multiple browser tabs/windows but prevents stale sessions
-      const thirtyMinutesAgo = new Date();
-      thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30);
+      const { data: existingSessions, error: queryError } = await supabase
+        .from("user_sessions")
+        .select("id, session_start, last_activity")
+        .eq("user_id", userId)
+        .eq("is_active", true);
 
-      await supabase
+      console.log("[adminService.startUserSession] Found existing sessions:", {
+        count: existingSessions?.length || 0,
+        sessions: existingSessions?.map((s) => ({
+          id: s.id,
+          session_start: s.session_start,
+          last_activity: s.last_activity,
+        })),
+        queryError,
+      });
+
+      const { error: endSessionsError } = await supabase
         .from("user_sessions")
         .update({
           is_active: false,
@@ -1172,38 +1363,97 @@ export const adminService = {
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId)
-        .eq("is_active", true)
-        .lt("session_start", thirtyMinutesAgo.toISOString());
+        .eq("is_active", true);
+
+      if (endSessionsError) {
+        console.error(
+          "[adminService.startUserSession] Error ending existing sessions:",
+          endSessionsError,
+        );
+      } else {
+        console.log(
+          "[adminService.startUserSession] Successfully ended",
+          existingSessions?.length || 0,
+          "existing sessions",
+        );
+      }
 
       // Create new session
+      const sessionData = {
+        user_id: userId,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        is_active: true,
+        session_start: new Date().toISOString(),
+        last_activity: new Date().toISOString(),
+      };
+
+      console.log(
+        "[adminService.startUserSession] Creating new session with data:",
+        {
+          user_id: sessionData.user_id,
+          is_active: sessionData.is_active,
+          session_start: sessionData.session_start,
+          last_activity: sessionData.last_activity,
+        },
+      );
+
       const { data, error } = await supabase
         .from("user_sessions")
-        .insert({
-          user_id: userId,
-          ip_address: ipAddress,
-          user_agent: userAgent,
-          is_active: true,
-          session_start: new Date().toISOString(),
-          last_activity: new Date().toISOString(),
-        })
-        .select("id")
+        .insert(sessionData)
+        .select("id, user_id, session_start, last_activity, is_active")
         .single();
 
+      console.log("[adminService.startUserSession] Session creation result:", {
+        data,
+        error,
+        success: !!data && !error,
+      });
+
       if (error) {
-        console.error("[adminService.startUserSession] Error:", error);
+        console.error(
+          "[adminService.startUserSession] Error creating session:",
+          {
+            error,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+          },
+        );
         return null;
       }
 
       // Update daily login count
-      await supabase.rpc("update_daily_usage_metrics", {
-        p_user_id: userId,
-        p_activity_type: "login",
-      });
+      try {
+        await supabase.rpc("update_daily_usage_metrics", {
+          p_user_id: userId,
+          p_activity_type: "login",
+        });
+        console.log("[adminService.startUserSession] Updated daily metrics");
+      } catch (metricsError) {
+        console.warn(
+          "[adminService.startUserSession] Metrics update failed:",
+          metricsError,
+        );
+      }
 
-      console.log("[adminService.startUserSession] Session started:", data.id);
+      console.log(
+        "[adminService.startUserSession] Session started successfully:",
+        {
+          sessionId: data.id,
+          userId: data.user_id,
+          isActive: data.is_active,
+        },
+      );
+
       return data.id;
     } catch (error) {
-      console.error("[adminService.startUserSession] Catch error:", error);
+      console.error("[adminService.startUserSession] Catch error:", {
+        error,
+        message: error.message,
+        stack: error.stack,
+      });
       return null;
     }
   },
@@ -1246,6 +1496,8 @@ export const adminService = {
 
   async endUserSession(sessionId: string): Promise<boolean> {
     try {
+      console.log("[adminService.endUserSession] Ending session:", sessionId);
+
       const { error } = await supabase
         .from("user_sessions")
         .update({
@@ -1260,9 +1512,40 @@ export const adminService = {
         return false;
       }
 
+      console.log(
+        "[adminService.endUserSession] Session ended successfully:",
+        sessionId,
+      );
       return true;
     } catch (error) {
       console.error("[adminService.endUserSession] Catch error:", error);
+      return false;
+    }
+  },
+
+  async endAllUserSessions(userId: string): Promise<boolean> {
+    try {
+      console.log(
+        "[adminService.endAllUserSessions] Ending all sessions for user:",
+        userId,
+      );
+
+      const { error } = await supabase.rpc("end_user_sessions", {
+        p_user_id: userId,
+      });
+
+      if (error) {
+        console.error("[adminService.endAllUserSessions] Error:", error);
+        return false;
+      }
+
+      console.log(
+        "[adminService.endAllUserSessions] All sessions ended for user:",
+        userId,
+      );
+      return true;
+    } catch (error) {
+      console.error("[adminService.endAllUserSessions] Catch error:", error);
       return false;
     }
   },

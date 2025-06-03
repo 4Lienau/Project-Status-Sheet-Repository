@@ -153,23 +153,36 @@ const UsageAnalytics = () => {
   useEffect(() => {
     loadUsageData();
 
-    // Set up auto-refresh every 15 seconds for active users to catch changes faster
+    // Set up auto-refresh every 5 seconds for active users to catch changes faster
     const interval = setInterval(async () => {
       try {
+        console.log(
+          "[UsageAnalytics] Auto-refreshing active users at:",
+          new Date().toISOString(),
+        );
         const activeUsersData = await adminService.getActiveUsers();
-        console.log("[UsageAnalytics] Auto-refresh active users:", {
+        console.log("[UsageAnalytics] Auto-refresh active users result:", {
           count: activeUsersData.length,
+          timestamp: new Date().toISOString(),
           users: activeUsersData.map((u) => ({
             id: u.user_id,
             email: u.email,
             lastActivity: u.last_activity,
+            sessionDuration: u.session_duration_minutes,
+            sessionId: u.session_id,
           })),
         });
         setActiveUsers(activeUsersData);
+
+        // Also update the metrics to reflect current active user count
+        setUsageMetrics((prev) => ({
+          ...prev,
+          activeUsers: activeUsersData.length,
+        }));
       } catch (error) {
         console.error("[UsageAnalytics] Auto-refresh error:", error);
       }
-    }, 15000);
+    }, 5000); // Reduced to 5 seconds for faster updates
 
     return () => clearInterval(interval);
   }, []);
@@ -232,17 +245,40 @@ const UsageAnalytics = () => {
         <h2 className="text-2xl font-semibold text-blue-800 flex items-center gap-2">
           <Activity className="h-6 w-6" />
           Usage Analytics
+          <span className="text-sm font-normal text-gray-500 ml-2">
+            (Auto-refresh: 5s)
+          </span>
         </h2>
-        <Button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-          />
-          {refreshing ? "Refreshing..." : "Refresh"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={async () => {
+              console.log("[UsageAnalytics] Manual debug refresh triggered");
+              const debugData = await adminService.getActiveUsers();
+              console.log("[UsageAnalytics] Debug refresh result:", debugData);
+              setActiveUsers(debugData);
+              toast({
+                title: "Debug Refresh",
+                description: `Found ${debugData.length} active users. Check console for details.`,
+                className: "bg-blue-50 border-blue-200",
+              });
+            }}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Monitor className="h-4 w-4" />
+            Debug Active Users
+          </Button>
+          <Button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
       </div>
 
       {/* Key Metrics Cards */}
@@ -260,6 +296,9 @@ const UsageAnalytics = () => {
             </div>
             <div className="text-sm text-blue-600">
               of {usageMetrics.totalUsers} total users
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Last updated: {new Date().toLocaleTimeString()}
             </div>
           </CardContent>
         </Card>

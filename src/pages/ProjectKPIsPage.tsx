@@ -84,6 +84,23 @@ const COLORS = [
   "#F97316",
 ];
 
+// Department-specific colors for consistent theming
+const DEPARTMENT_COLORS = {
+  Technology: "#3B82F6", // Blue
+  Engineering: "#10B981", // Green
+  "Asset Management": "#F59E0B", // Orange
+  Finance: "#EF4444", // Red
+  Operations: "#8B5CF6", // Purple
+  Marketing: "#06B6D4", // Cyan
+  HR: "#84CC16", // Lime
+  Sales: "#F97316", // Orange-red
+};
+
+// Function to get color for department
+const getDepartmentColor = (department: string, index: number): string => {
+  return DEPARTMENT_COLORS[department] || COLORS[index % COLORS.length];
+};
+
 const ProjectKPIsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -568,27 +585,57 @@ const ProjectKPIsPage = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {resourceKPIs.departmentDistribution.map((dept) => (
-                        <div key={dept.department} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">
-                              {dept.department}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">
-                                {dept.count} projects
-                              </Badge>
-                              <span className="text-sm text-gray-600">
-                                {dept.avgCompletion}% avg
-                              </span>
+                      {resourceKPIs.departmentDistribution.map(
+                        (dept, index) => {
+                          const departmentColor = getDepartmentColor(
+                            dept.department,
+                            index,
+                          );
+                          return (
+                            <div key={dept.department} className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: departmentColor }}
+                                  />
+                                  <span className="font-medium">
+                                    {dept.department}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant="outline"
+                                    style={{
+                                      borderColor: departmentColor,
+                                      color: departmentColor,
+                                    }}
+                                  >
+                                    {dept.count} projects
+                                  </Badge>
+                                  <span className="text-sm text-gray-600">
+                                    {dept.avgCompletion}% avg
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="relative">
+                                <Progress
+                                  value={dept.avgCompletion}
+                                  className="h-3"
+                                />
+                                <div
+                                  className="absolute top-0 left-0 h-3 rounded-full transition-all duration-300"
+                                  style={{
+                                    width: `${dept.avgCompletion}%`,
+                                    backgroundColor: departmentColor,
+                                    opacity: 0.8,
+                                  }}
+                                />
+                              </div>
                             </div>
-                          </div>
-                          <Progress
-                            value={dept.avgCompletion}
-                            className="h-2"
-                          />
-                        </div>
-                      ))}
+                          );
+                        },
+                      )}
                     </div>
                   </CardContent>
                 </Card>

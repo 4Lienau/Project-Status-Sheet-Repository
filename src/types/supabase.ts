@@ -863,6 +863,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_stale_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      end_user_sessions: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       execute_sql: {
         Args: { sql_query: string }
         Returns: Json
