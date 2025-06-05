@@ -92,6 +92,9 @@ export function RichTextEditor({
       StarterKit.configure({
         bulletList: false,
         orderedList: false,
+        bold: false,
+        italic: false,
+        heading: false,
       }),
       Bold,
       Italic,

@@ -6,6 +6,7 @@ import { projectService } from "@/lib/services/project";
 import { ensureConsiderationsAreStrings } from "./FormUtils";
 
 const defaultFormData = {
+  projectId: "",
   title: "",
   description: "",
   valueStatement: "",
@@ -56,15 +57,15 @@ export const useProjectForm = (
       // Ensure summary metadata is included
       summaryCreatedAt: initialData?.summaryCreatedAt || null,
       summaryIsStale: initialData?.summaryIsStale || false,
+      // Normalize projectId to prevent false change detection - handle null/undefined/empty string
+      projectId: (initialData?.projectId ?? "").toString(),
     };
-    console.log(
-      "Initial formData with manual_status_color:",
-      mergedData.manual_status_color,
-    );
-    console.log("Initial formData with summary metadata:", {
-      summaryCreatedAt: mergedData.summaryCreatedAt,
-      summaryIsStale: mergedData.summaryIsStale,
-      projectAnalysis: mergedData.projectAnalysis?.substring(0, 50) + "...",
+
+    // PROJECT ID DEBUG: Log initial Project ID setup
+    console.log("[PROJECT_ID] Initial setup:", {
+      initialDataProjectId: initialData?.projectId,
+      mergedDataProjectId: mergedData.projectId,
+      type: typeof mergedData.projectId,
     });
 
     // Normalize considerations to ensure they are always strings
@@ -72,9 +73,7 @@ export const useProjectForm = (
       mergedData.considerations = ensureConsiderationsAreStrings(
         mergedData.considerations,
       );
-      console.log("Normalized considerations:", mergedData.considerations);
     } else {
-      console.log("No considerations array found, initializing empty array");
       mergedData.considerations = [];
     }
 
@@ -99,24 +98,11 @@ export const useProjectForm = (
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
 
-  // Debug log for tracking analysis expanded state
-  useEffect(() => {
-    console.log("Analysis expanded state changed to:", isAnalysisExpanded);
-  }, [isAnalysisExpanded]);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Debug log for tracking milestones
-  useEffect(() => {
-    console.log(
-      "Current milestones in formData:",
-      formData.milestones.length,
-      formData.milestones,
-    );
-  }, [formData.milestones]);
 
   // Track changes by comparing current form data with initial data
   useEffect(() => {
@@ -140,6 +126,14 @@ export const useProjectForm = (
 
       for (const key of keys1) {
         if (!keys2.includes(key)) return false;
+
+        // Special handling for projectId field to normalize null/undefined/empty string
+        if (key === "projectId") {
+          const val1 = (obj1[key] ?? "").toString();
+          const val2 = (obj2[key] ?? "").toString();
+          if (val1 !== val2) return false;
+          continue;
+        }
 
         // Handle arrays specially
         if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
@@ -174,7 +168,22 @@ export const useProjectForm = (
 
     // Compare current form data with initial data
     const formHasChanges = !isEqual(formData, initialData);
-    console.log("Form has changes:", formHasChanges);
+
+    // PROJECT ID DEBUG: Log Project ID comparison when changes detected
+    if (formHasChanges) {
+      const projectIdChanged =
+        (formData.projectId ?? "").toString() !==
+        (initialData.projectId ?? "").toString();
+      if (projectIdChanged) {
+        console.log("[PROJECT_ID] Change detected:", {
+          formDataProjectId: formData.projectId,
+          initialDataProjectId: initialData.projectId,
+          formDataType: typeof formData.projectId,
+          initialDataType: typeof initialData.projectId,
+        });
+      }
+    }
+
     setHasChanges(formHasChanges);
 
     // Set the data-has-changes attribute on the form element
@@ -185,31 +194,14 @@ export const useProjectForm = (
         "data-user-interaction",
         hasUserInteracted.toString(),
       );
-      // Log the current state for debugging
-      console.log("Form attributes updated:", {
-        "data-has-changes": formElement.getAttribute("data-has-changes"),
-        "data-user-interaction": formElement.getAttribute(
-          "data-user-interaction",
-        ),
-        "data-just-saved": formElement.getAttribute("data-just-saved"),
-      });
     }
   }, [formData, initialData, hasUserInteracted]);
 
   // Reset hasChanges and hasUserInteracted when initialData changes (after a successful save)
   useEffect(() => {
-    console.log("Checking if form data should be reset with initialData", {
-      hasInitialData: !!initialData,
-      isAddingMilestones,
-      isAutoSaving,
-      initialDataMilestones: initialData?.milestones?.length || 0,
-      formDataMilestones: formData.milestones.length,
-    });
-
     // Only reset form data if we're not in the middle of adding milestones or auto-saving
     // This prevents the form from resetting while we're trying to add AI-generated milestones
     if (initialData && !isAddingMilestones && !isAutoSaving) {
-      console.log("Resetting form data with new initialData");
       setHasChanges(false);
       setHasUserInteracted(false);
 
@@ -222,41 +214,23 @@ export const useProjectForm = (
         summaryCreatedAt: initialData?.summaryCreatedAt || null,
         summaryIsStale: initialData?.summaryIsStale || false,
         projectAnalysis: initialData?.projectAnalysis || "",
+        // Normalize projectId to prevent false change detection - handle null/undefined/empty string
+        projectId: (initialData?.projectId ?? "").toString(),
       };
-      console.log(
-        "Updating formData with new initialData, manual_status_color:",
-        updatedFormData.manual_status_color,
-      );
-      console.log("Updating formData with summary metadata:", {
-        summaryCreatedAt: updatedFormData.summaryCreatedAt,
-        summaryIsStale: updatedFormData.summaryIsStale,
-        projectAnalysis:
-          updatedFormData.projectAnalysis?.substring(0, 50) + "...",
-      });
-      console.log(
-        "Project analysis content length:",
-        updatedFormData.projectAnalysis?.length || 0,
-      );
 
-      // Log considerations before normalization
-      console.log(
-        "Raw considerations from initialData:",
-        initialData.considerations,
-      );
+      // PROJECT ID DEBUG: Log Project ID during form reset
+      console.log("[PROJECT_ID] Form reset:", {
+        initialDataProjectId: initialData?.projectId,
+        updatedFormDataProjectId: updatedFormData.projectId,
+        type: typeof updatedFormData.projectId,
+      });
 
       // Normalize considerations to ensure they are always strings
       if (Array.isArray(updatedFormData.considerations)) {
         updatedFormData.considerations = ensureConsiderationsAreStrings(
           updatedFormData.considerations,
         );
-        console.log(
-          "Normalized considerations after update:",
-          updatedFormData.considerations,
-        );
       } else {
-        console.log(
-          "No considerations array found in update, initializing empty array",
-        );
         updatedFormData.considerations = [];
       }
 
@@ -268,13 +242,7 @@ export const useProjectForm = (
         formElement.setAttribute("data-has-changes", "false");
         formElement.setAttribute("data-user-interaction", "false");
         formElement.setAttribute("data-just-saved", "false");
-        console.log("Form attributes reset after initialData change");
       }
-    } else {
-      console.log("Skipping form data reset due to flags:", {
-        isAddingMilestones,
-        isAutoSaving,
-      });
     }
   }, [initialData, isAddingMilestones, isAutoSaving]);
 
@@ -283,52 +251,27 @@ export const useProjectForm = (
     // to avoid page refresh, but still process the submission
     if (e) {
       e.preventDefault();
-      console.log("Default form submission prevented");
-
-      // Extra safety to ensure the event is fully prevented
       if (e.stopPropagation) {
         e.stopPropagation();
       }
-
-      // Additional safety to prevent any form of navigation
       if (window.event) {
         window.event.returnValue = false;
       }
     }
 
     // Ensure the form has the data-adding-milestones attribute set if we're adding milestones
-    // This is critical to prevent data reloading during the save operation
     const formElement = document.querySelector("form");
     if (formElement && isAddingMilestones) {
       formElement.setAttribute("data-adding-milestones", "true");
-      console.log(
-        "Ensuring form attribute data-adding-milestones is set to true during submit",
-      );
     }
 
-    // Log the current milestone count to help with debugging
-    console.log(
-      `Current milestone count in form data: ${formData.milestones.length}`,
-    );
-
-    console.log("Form submission triggered", e ? "manually" : "automatically");
-    console.log("Current state flags:", { isAddingMilestones, isAutoSaving });
-    console.log(
-      "[DEBUG] Submitting form data with manual_status_color:",
-      formData.manual_status_color,
-    );
-    console.log("Submitting form data:", formData);
-
-    // Log the milestones specifically to debug
-    console.log(
-      "Milestones being submitted:",
-      JSON.stringify(formData.milestones),
-    );
-
-    console.log(
-      "Raw considerations before normalization:",
-      formData.considerations,
-    );
+    // PROJECT ID DEBUG: Log Project ID before submission
+    console.log("[PROJECT_ID] Before submission:", {
+      projectId: formData.projectId,
+      type: typeof formData.projectId,
+      length: formData.projectId?.length || 0,
+      isEmpty: !formData.projectId || formData.projectId.trim() === "",
+    });
 
     // Ensure considerations are simple strings before submitting
     // Also ensure milestones have all required fields
@@ -355,20 +298,15 @@ export const useProjectForm = (
       })),
     };
 
-    // Log the total number of milestones being submitted
-    console.log(
-      `Submitting ${submissionData.milestones.length} milestones in total`,
-    );
-
-    console.log(
-      "Final submission data with formatted milestones:",
-      submissionData.milestones,
-    );
-
-    console.log(
-      "Submitting with normalized considerations:",
-      submissionData.considerations,
-    );
+    // PROJECT ID DEBUG: Log Project ID in submission data
+    console.log("[PROJECT_ID] In submission data:", {
+      projectId: submissionData.projectId,
+      type: typeof submissionData.projectId,
+      willBeTrimmed:
+        submissionData.projectId && submissionData.projectId.trim() !== ""
+          ? submissionData.projectId.trim()
+          : null,
+    });
 
     // Set the form as just saved before submitting to prevent navigation warnings
     if (formElement) {
@@ -376,18 +314,14 @@ export const useProjectForm = (
     }
 
     try {
-      console.log("Calling onSubmit with submission data");
       // Set data-auto-saving attribute to prevent data reloading during save
       if (formElement) {
         formElement.setAttribute("data-auto-saving", "true");
       }
 
       const success = await onSubmit(submissionData);
-      if (success) {
-        console.log("Form saved successfully, resetting state flags");
-        // Don't try to modify the initialData prop directly as it's read-only
-        // Instead, we'll rely on the parent component to pass updated initialData
 
+      if (success) {
         // Update the form element attributes to reflect saved state
         const formEl = document.querySelector("form");
         if (formEl) {
@@ -408,11 +342,7 @@ export const useProjectForm = (
         // Reset state flags AFTER everything else is done
         setHasChanges(false);
         setHasUserInteracted(false);
-
-        // Reset the isAddingMilestones flag and clear the timestamp
         setIsAddingMilestones(false);
-
-        // Reset auto-saving flag
         setIsAutoSaving(false);
 
         // Reset all form attributes
@@ -423,34 +353,37 @@ export const useProjectForm = (
           formElement2.removeAttribute("data-milestones-added-at");
         }
       } else {
-        console.error("Form save returned false");
+        console.error("[PROJECT_ID] Form save returned false - save failure");
         const formEl = document.querySelector("form");
         if (formEl) {
           formEl.setAttribute("data-auto-saving", "false");
         }
         setIsAutoSaving(false);
         toast({
-          title: "Error Saving",
-          description: "Failed to save changes. Please try again.",
+          title: "Save Failed",
+          description:
+            "The project could not be saved. Please check the console for details and try again.",
           variant: "destructive",
+          duration: 10000,
         });
       }
     } catch (error) {
-      console.error("Error saving form:", error);
+      console.error("[PROJECT_ID] Exception during form save:", error);
+
       // Reset auto-saving attribute in case of error
       const formEl = document.querySelector("form");
       if (formEl) {
         formEl.setAttribute("data-auto-saving", "false");
       }
+
       toast({
-        title: "Error Saving",
-        description:
-          "There was a problem saving your changes. Please try again.",
+        title: "Save Error",
+        description: `Failed to save project: ${error.message || "Unknown error"}`,
         variant: "destructive",
+        duration: 15000,
       });
+
       setIsAutoSaving(false);
-      // Only reset isAddingMilestones if we're not in the handleApplyMilestones function
-      // which will handle its own cleanup
       if (!isAddingMilestones) {
         setIsAddingMilestones(false);
       }
@@ -466,15 +399,9 @@ export const useProjectForm = (
     // If generating milestones, set the flag to prevent initialData from resetting the form
     if (type === "milestones") {
       setIsAddingMilestones(true);
-      console.log(
-        "Setting isAddingMilestones to true for milestone generation",
-      );
-
-      // Also update the form attribute
       const formElement = document.querySelector("form");
       if (formElement) {
         formElement.setAttribute("data-adding-milestones", "true");
-        console.log("Updated form attribute data-adding-milestones to true");
       }
     }
 
@@ -492,18 +419,13 @@ export const useProjectForm = (
 
     // For analysis, set loading state immediately
     if (type === "analysis") {
-      console.log("Setting analysis loading state and expanding section");
       setIsAnalysisLoading(true);
       setIsAnalysisExpanded(true);
-
-      // Set a flag to prevent form data reset during analysis generation
       setIsAddingMilestones(true); // Reuse this flag to prevent data reset
       const formElement = document.querySelector("form");
       if (formElement) {
         formElement.setAttribute("data-adding-milestones", "true");
       }
-
-      // Clear any existing analysis to ensure we don't show stale content
       setFormData((prev) => ({
         ...prev,
         projectAnalysis: "",
@@ -554,7 +476,6 @@ export const useProjectForm = (
       while (retryCount <= maxRetries && !content) {
         try {
           if (retryCount > 0) {
-            console.log(`Retry attempt ${retryCount} for ${type} generation`);
             toast({
               title: "Retrying",
               description: `Retrying ${type} generation (attempt ${retryCount} of ${maxRetries})`,
@@ -590,9 +511,7 @@ export const useProjectForm = (
           // The content should already be a JSON string from aiService.processMilestones
           const parsedMilestones = JSON.parse(content);
           if (Array.isArray(parsedMilestones) && parsedMilestones.length > 0) {
-            console.log("Setting suggested milestones:", parsedMilestones);
             setSuggestedMilestones(parsedMilestones);
-            // Ensure state is updated before showing dialog
             setTimeout(() => {
               setShowSuggestedMilestones(true);
             }, 100);
@@ -608,28 +527,18 @@ export const useProjectForm = (
           });
         }
       } else if (type === "analysis") {
-        console.log("AI generated analysis content:", content);
-
-        // Store the analysis content in a variable
         const analysisContent = content;
 
         try {
           // Save the analysis to the database immediately
           if (safeProjectId) {
-            console.log(
-              "Saving analysis to database for project:",
-              safeProjectId,
-            );
             await projectService.updateProjectAnalysis(
               safeProjectId,
               analysisContent,
             );
           }
 
-          // Get the current timestamp for the newly generated analysis
           const currentTimestamp = new Date().toISOString();
-
-          // Update the form data with the analysis content and metadata
           setFormData((prev) => ({
             ...prev,
             projectAnalysis: analysisContent,
@@ -637,16 +546,9 @@ export const useProjectForm = (
             summaryIsStale: false,
           }));
 
-          console.log(
-            "Form data updated with analysis content and timestamp:",
-            currentTimestamp,
-          );
-
-          // Update UI states after a short delay to ensure state is updated
           setTimeout(() => {
             setIsGeneratingAnalysis(false);
             setIsAnalysisLoading(false);
-            // Reset the flag that prevents form data reset
             setIsAddingMilestones(false);
             const formElement = document.querySelector("form");
             if (formElement) {
@@ -661,8 +563,6 @@ export const useProjectForm = (
           }, 100);
         } catch (error) {
           console.error("Error saving analysis to database:", error);
-
-          // Still update the form data even if database save fails
           setFormData((prev) => ({
             ...prev,
             projectAnalysis: analysisContent,
@@ -670,7 +570,6 @@ export const useProjectForm = (
 
           setIsGeneratingAnalysis(false);
           setIsAnalysisLoading(false);
-          // Reset the flag that prevents form data reset
           setIsAddingMilestones(false);
           const formElement = document.querySelector("form");
           if (formElement) {
@@ -723,7 +622,6 @@ export const useProjectForm = (
 
   const handleDeleteProject = async () => {
     try {
-      console.log("Attempting to delete project with ID:", safeProjectId);
       if (!safeProjectId || safeProjectId.trim() === "") {
         toast({
           title: "Error",
@@ -758,10 +656,8 @@ export const useProjectForm = (
   };
 
   const handleApplyMilestones = async (selectedMilestones: any[]) => {
-    console.log("Applying selected milestones to project:", selectedMilestones);
     // Set flags BEFORE modifying form data to prevent premature resets
     setIsAddingMilestones(true);
-    console.log("Setting isAddingMilestones to true");
 
     // Also update the form attribute to prevent data reloading
     const formElement = document.querySelector("form");
@@ -769,12 +665,10 @@ export const useProjectForm = (
       formElement.setAttribute("data-adding-milestones", "true");
       formElement.setAttribute("data-has-changes", "true");
       formElement.setAttribute("data-user-interaction", "true");
-      // Add a timestamp to track when milestones were added
       formElement.setAttribute(
         "data-milestones-added-at",
         Date.now().toString(),
       );
-      console.log("Updated form attributes to prevent data reloading");
     }
 
     // Format the milestones properly to ensure they have all required fields
@@ -795,11 +689,6 @@ export const useProjectForm = (
         tasks: milestone.tasks || [],
       };
     });
-
-    console.log(
-      "Formatted milestones with weekly spacing for database:",
-      formattedMilestones,
-    );
 
     // Add the selected milestones to the form data
     setFormData((prev) => ({
@@ -834,20 +723,14 @@ export const useProjectForm = (
   };
 
   const handleConfirmOverwrite = async () => {
-    console.log("Confirm overwrite handler called");
-    // Close the dialog
     setShowOverwriteDialog(false);
-    // Generate the content with the pending type
     if (pendingGenerationType) {
       await generateContent(pendingGenerationType);
-      // Reset the pending type
       setPendingGenerationType(null);
     }
   };
 
   const handleCancelOverwrite = () => {
-    console.log("Cancel overwrite handler called");
-    // Close the dialog and reset the pending type
     setShowOverwriteDialog(false);
     setPendingGenerationType(null);
   };
@@ -862,14 +745,10 @@ export const useProjectForm = (
 
   const handleUserInteraction = useCallback(() => {
     if (!hasUserInteracted) {
-      console.log("User interaction detected, updating state");
       setHasUserInteracted(true);
-
-      // Update the form element attribute
       const formElement = document.querySelector("form");
       if (formElement) {
         formElement.setAttribute("data-user-interaction", "true");
-        console.log("Updated form attribute data-user-interaction to true");
       }
     }
   }, [hasUserInteracted]);

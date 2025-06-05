@@ -47,6 +47,7 @@ export type Task = {
 export interface ProjectWithRelations
   extends Omit<Project, "manual_status_color"> {
   manual_status_color: "red" | "yellow" | "green";
+  projectId: string; // Form field mapping for project_id
   milestones: (Milestone & { tasks?: Task[] })[];
   accomplishments: Accomplishment[];
   next_period_activities: NextPeriodActivity[];
@@ -336,9 +337,13 @@ export const projectService = {
           project.id,
           "manual_status_color:",
           project.manual_status_color,
+          "project_id:",
+          project.project_id,
         );
         return {
           ...project,
+          // Map database field project_id to form field projectId - handle null/undefined properly
+          projectId: (project.project_id ?? "").toString(),
           manual_status_color: project.manual_status_color,
           milestones: milestonesWithTasks.filter(
             (m) => m.project_id === project.id,
@@ -554,6 +559,7 @@ export const projectService = {
   async updateProject(
     id: string,
     data: {
+      projectId?: string;
       title: string;
       description?: string;
       valueStatement?: string;
@@ -600,25 +606,23 @@ export const projectService = {
       projectAnalysis?: string;
     },
   ): Promise<ProjectWithRelations | null> {
-    console.log(
-      "[DEBUG] updateProject called with manual_status_color:",
-      data.manual_status_color,
-    );
-    console.log(
-      "[DEBUG] updateProject called with data:",
-      JSON.stringify(
-        data.milestones.map((m) => ({
-          milestone: m.milestone,
-          tasks: m.tasks?.length || 0,
-        })),
-        null,
-        2,
-      ),
-    );
+    // PROJECT ID DEBUG: Log Project ID being saved to database
+    console.log("[PROJECT_ID] updateProject called:", {
+      inputProjectId: data.projectId,
+      inputType: typeof data.projectId,
+      willSaveAs:
+        data.projectId && data.projectId.trim() !== ""
+          ? data.projectId.trim()
+          : null,
+    });
     try {
       const { data: project, error: projectError } = await supabase
         .from("projects")
         .update({
+          project_id:
+            data.projectId && data.projectId.trim() !== ""
+              ? data.projectId.trim()
+              : null,
           title: data.title,
           description: data.description,
           value_statement: data.valueStatement,
@@ -642,37 +646,69 @@ export const projectService = {
         .single();
 
       if (projectError || !project) {
-        console.error("[DEBUG] Error updating project:", projectError);
+        console.error("[PROJECT_ID] Error updating project:", projectError);
         return null;
       }
 
-      // Delete existing related records
-      console.log(
-        "[DEBUG] Deleting existing related records for project ID:",
-        id,
-      );
+      // PROJECT ID DEBUG: Log what was actually saved to database
+      console.log("[PROJECT_ID] Project updated in database:", {
+        savedProjectId: project.project_id,
+        savedType: typeof project.project_id,
+      });
 
-      // First delete tasks since they depend on milestones
+      // Delete existing related records
       const { error: tasksDeleteError } = await supabase
         .from("tasks")
         .delete()
         .eq("project_id", id);
 
       if (tasksDeleteError) {
-        console.error("[DEBUG] Error deleting tasks:", tasksDeleteError);
-      } else {
-        console.log("[DEBUG] Successfully deleted tasks for project ID:", id);
+        console.error("Error deleting tasks:", tasksDeleteError);
       }
 
-      // Then delete other related records
-      await Promise.all([
-        supabase.from("milestones").delete().eq("project_id", id),
-        supabase.from("accomplishments").delete().eq("project_id", id),
-        supabase.from("next_period_activities").delete().eq("project_id", id),
-        supabase.from("risks").delete().eq("project_id", id),
-        supabase.from("considerations").delete().eq("project_id", id),
-        supabase.from("changes").delete().eq("project_id", id),
-      ]);
+      const deleteOperations = [
+        {
+          table: "milestones",
+          operation: supabase.from("milestones").delete().eq("project_id", id),
+        },
+        {
+          table: "accomplishments",
+          operation: supabase
+            .from("accomplishments")
+            .delete()
+            .eq("project_id", id),
+        },
+        {
+          table: "next_period_activities",
+          operation: supabase
+            .from("next_period_activities")
+            .delete()
+            .eq("project_id", id),
+        },
+        {
+          table: "risks",
+          operation: supabase.from("risks").delete().eq("project_id", id),
+        },
+        {
+          table: "considerations",
+          operation: supabase
+            .from("considerations")
+            .delete()
+            .eq("project_id", id),
+        },
+        {
+          table: "changes",
+          operation: supabase.from("changes").delete().eq("project_id", id),
+        },
+      ];
+
+      for (const { table, operation } of deleteOperations) {
+        const { error } = await operation;
+        if (error) {
+          console.error(`Error deleting ${table}:`, error);
+          throw new Error(`Failed to delete ${table}: ${error.message}`);
+        }
+      }
 
       // Insert new records
       // First insert milestones to get their IDs for tasks
@@ -693,21 +729,15 @@ export const projectService = {
           .select();
 
       if (milestonesInsertError) {
-        console.error(
-          "[DEBUG] Error inserting milestones:",
-          milestonesInsertError,
+        console.error("Error inserting milestones:", milestonesInsertError);
+        throw new Error(
+          `Failed to insert milestones: ${milestonesInsertError.message}`,
         );
-        throw milestonesInsertError;
       }
 
       // Insert tasks for each milestone
       const tasksToInsert = [];
       data.milestones.forEach((milestone, index) => {
-        console.log(
-          `[DEBUG] Processing milestone ${index} (${milestone.milestone}) for tasks:`,
-          milestone.tasks ? `${milestone.tasks.length} tasks` : "no tasks",
-        );
-
         if (
           milestone.tasks &&
           milestone.tasks.length > 0 &&
@@ -715,134 +745,156 @@ export const projectService = {
           insertedMilestones[index]
         ) {
           const milestoneId = insertedMilestones[index].id;
-          console.log(`[DEBUG] Milestone ID for tasks: ${milestoneId}`);
-
-          milestone.tasks.forEach((task, taskIndex) => {
+          milestone.tasks.forEach((task) => {
             const taskData = {
               project_id: id,
               milestone_id: milestoneId,
               description: task.description,
-              assignee: task.assignee || milestone.owner, // Default to milestone owner if not specified
-              date: task.date || milestone.date, // Default to milestone date if not specified
+              assignee: task.assignee || milestone.owner,
+              date: task.date || milestone.date,
               completion: task.completion || 0,
             };
-            console.log(
-              `[DEBUG] Adding task ${taskIndex} to insert list:`,
-              taskData,
-            );
             tasksToInsert.push(taskData);
           });
         }
       });
 
-      console.log(
-        "[DEBUG] Tasks to insert:",
-        tasksToInsert.length,
-        tasksToInsert,
-      );
-
       if (tasksToInsert.length > 0) {
-        console.log(
-          `[DEBUG] Inserting ${tasksToInsert.length} tasks into database:`,
-          JSON.stringify(tasksToInsert, null, 2),
-        );
-
-        const { data: insertedTasks, error: tasksInsertError } = await supabase
+        const { error: tasksInsertError } = await supabase
           .from("tasks")
           .insert(tasksToInsert)
           .select();
 
         if (tasksInsertError) {
-          console.error("[DEBUG] Error inserting tasks:", tasksInsertError);
-          throw tasksInsertError;
-        } else {
-          console.log(
-            `[DEBUG] Successfully inserted ${insertedTasks?.length || 0} tasks:`,
-            JSON.stringify(insertedTasks, null, 2),
+          console.error("Error inserting tasks:", tasksInsertError);
+          throw new Error(
+            `Failed to insert tasks: ${tasksInsertError.message}`,
           );
         }
-      } else {
-        console.log("[DEBUG] No tasks to insert");
       }
 
-      const insertPromises = [
-        supabase.from("accomplishments").insert(
-          data.accomplishments.map((a) => ({
-            project_id: id,
-            description: a,
-          })),
-        ),
-        supabase.from("next_period_activities").insert(
-          data.next_period_activities.map((a) => ({
-            project_id: id,
-            description: a.description,
-            date: a.date,
-            completion: a.completion,
-            assignee: a.assignee,
-          })),
-        ),
-        supabase.from("risks").insert(
+      // Insert related data
+      if (data.accomplishments && data.accomplishments.length > 0) {
+        const { error: accomplishmentsError } = await supabase
+          .from("accomplishments")
+          .insert(
+            data.accomplishments.map((a) => ({
+              project_id: id,
+              description: a,
+            })),
+          );
+        if (accomplishmentsError) {
+          console.error(
+            "Error inserting accomplishments:",
+            accomplishmentsError,
+          );
+          throw new Error(
+            `Failed to insert accomplishments: ${accomplishmentsError.message}`,
+          );
+        }
+      }
+
+      if (
+        data.next_period_activities &&
+        data.next_period_activities.length > 0
+      ) {
+        const { error: activitiesError } = await supabase
+          .from("next_period_activities")
+          .insert(
+            data.next_period_activities.map((a) => ({
+              project_id: id,
+              description: a.description,
+              date: a.date || new Date().toISOString().split("T")[0],
+              completion: a.completion || 0,
+              assignee: a.assignee || "",
+            })),
+          );
+        if (activitiesError) {
+          console.error("Error inserting activities:", activitiesError);
+          throw new Error(
+            `Failed to insert activities: ${activitiesError.message}`,
+          );
+        }
+      }
+
+      if (data.risks && data.risks.length > 0) {
+        const { error: risksError } = await supabase.from("risks").insert(
           data.risks.map((r) => ({
             project_id: id,
-            description: typeof r === "string" ? r : r.description,
-            impact: typeof r === "string" ? null : r.impact,
+            description: r.description,
+            impact: r.impact || null,
           })),
-        ),
-        supabase.from("considerations").insert(
-          data.considerations.map((c) => ({
-            project_id: id,
-            description:
-              typeof c === "string"
-                ? c
-                : typeof c === "object" && c !== null && "description" in c
-                  ? typeof c.description === "string"
-                    ? c.description
-                    : JSON.stringify(c.description)
-                  : String(c || ""),
-          })),
-        ),
-        supabase.from("changes").insert(
+        );
+        if (risksError) {
+          console.error("Error inserting risks:", risksError);
+        }
+      }
+
+      if (data.considerations && data.considerations.length > 0) {
+        const { error: considerationsError } = await supabase
+          .from("considerations")
+          .insert(
+            data.considerations.map((c) => ({
+              project_id: id,
+              description:
+                typeof c === "string"
+                  ? c
+                  : typeof c === "object" && c !== null && "description" in c
+                    ? typeof c.description === "string"
+                      ? c.description
+                      : JSON.stringify(c.description)
+                    : String(c || ""),
+            })),
+          );
+        if (considerationsError) {
+          console.error("Error inserting considerations:", considerationsError);
+          throw new Error(
+            `Failed to insert considerations: ${considerationsError.message}`,
+          );
+        }
+      }
+
+      if (data.changes && data.changes.length > 0) {
+        const { error: changesError } = await supabase.from("changes").insert(
           data.changes.map((c) => ({
             project_id: id,
             change: c.change,
             impact: c.impact,
             disposition: c.disposition,
           })),
-        ),
-      ];
-
-      // Execute all insert operations
-      await Promise.all(insertPromises);
+        );
+        if (changesError) {
+          console.error("Error inserting changes:", changesError);
+          throw new Error(`Failed to insert changes: ${changesError.message}`);
+        }
+      }
 
       // Update project duration after saving milestones
-      console.log(
-        "[PROJECT_SERVICE] Updating project duration after milestone save for project:",
-        id,
-      );
       try {
         const { projectDurationService } = await import(
           "./projectDurationService"
         );
-        const success = await projectDurationService.updateProjectDuration(id);
-        if (success) {
-          console.log(
-            "[PROJECT_SERVICE] Successfully updated project duration after milestone save",
-          );
-        } else {
-          console.error(
-            "[PROJECT_SERVICE] Failed to update project duration after milestone save",
-          );
-        }
+        await projectDurationService.updateProjectDuration(id);
       } catch (error) {
-        console.error(
-          "[PROJECT_SERVICE] Error updating project duration after milestone save:",
-          error,
-        );
+        console.error("Error updating project duration:", error);
       }
 
-      return this.getProject(id);
+      const updatedProject = await this.getProject(id);
+      if (!updatedProject) {
+        console.error("Failed to fetch updated project after save");
+        throw new Error("Failed to fetch updated project after save");
+      }
+
+      // PROJECT ID DEBUG: Log final Project ID from updated project
+      console.log("[PROJECT_ID] Final updated project:", {
+        projectId: updatedProject.projectId,
+        dbProjectId: updatedProject.project_id,
+        type: typeof updatedProject.projectId,
+      });
+
+      return updatedProject;
     } catch (error) {
-      console.error("[DEBUG] Unexpected error in updateProject:", error);
+      console.error("[PROJECT_ID] Error in updateProject:", error);
       return null;
     }
   },
@@ -854,6 +906,7 @@ export const projectService = {
   },
 
   async createProject(data: {
+    projectId?: string;
     title: string;
     description?: string;
     valueStatement?: string;
@@ -921,6 +974,10 @@ export const projectService = {
       const { data: project, error: projectError } = await supabase
         .from("projects")
         .insert({
+          project_id:
+            data.projectId && data.projectId.trim() !== ""
+              ? data.projectId.trim()
+              : null,
           title: data.title,
           description: data.description,
           value_statement: data.valueStatement,
@@ -1144,22 +1201,18 @@ export const projectService = {
   },
 
   async getProject(id: string): Promise<ProjectWithRelations | null> {
-    // Skip if id is empty
     if (!id) {
-      console.log("[DEBUG] Skipping data fetch for empty project ID");
       return null;
     }
 
-    // Validate that id is a valid UUID format
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
-      console.warn("[DEBUG] Invalid project ID format:", id);
+      console.warn("Invalid project ID format:", id);
       return null;
     }
 
     try {
-      console.log("[DEBUG] Fetching project from Supabase with ID:", id);
       const { data: project, error: projectError } = await supabase
         .from("projects")
         .select("*")
@@ -1167,77 +1220,49 @@ export const projectService = {
         .single();
 
       if (projectError) {
-        console.warn(
-          "[DEBUG] Supabase error fetching project:",
-          projectError.message,
-        );
+        console.warn("Supabase error fetching project:", projectError.message);
         return null;
       }
 
       if (!project) {
-        console.warn("[DEBUG] No project found with ID:", id);
+        console.warn("No project found with ID:", id);
         return null;
       }
 
-      console.log("[DEBUG] Successfully fetched project with ID:", id);
-      console.log("[DEBUG] Project data:", JSON.stringify(project, null, 2));
+      // PROJECT ID DEBUG: Log Project ID from database
+      console.log("[PROJECT_ID] getProject fetched:", {
+        dbProjectId: project.project_id,
+        dbType: typeof project.project_id,
+        willMapTo: (project.project_id ?? "").toString(),
+      });
 
-      // Fetch related data with more detailed logging
-      console.log("[DEBUG] Fetching milestones for project ID:", id);
       const { data: milestones, error: milestonesError } = await supabase
         .from("milestones")
         .select("*")
         .eq("project_id", id);
 
       if (milestonesError)
-        console.warn(
-          "[DEBUG] Error fetching milestones:",
-          milestonesError.message,
-        );
-      console.log("[DEBUG] Found", milestones?.length || 0, "milestones");
+        console.warn("Error fetching milestones:", milestonesError.message);
 
-      // First, fetch all tasks for this project in a single query
-      console.log("[DEBUG] Fetching all tasks for project ID:", id);
       const { data: allTasks, error: allTasksError } = await supabase
         .from("tasks")
         .select("*")
         .eq("project_id", id);
 
       if (allTasksError) {
-        console.warn(
-          "[DEBUG] Error fetching all tasks:",
-          allTasksError.message,
-        );
+        console.warn("Error fetching all tasks:", allTasksError.message);
       }
 
-      console.log(
-        "[DEBUG] Found",
-        allTasks?.length || 0,
-        "total tasks for project",
-      );
-      console.log("[DEBUG] All tasks:", JSON.stringify(allTasks, null, 2));
-
-      // Map tasks to their respective milestones
       const milestonesWithTasks = (milestones || []).map((milestone) => {
         const milestoneTasks = (allTasks || []).filter(
           (task) => task.milestone_id === milestone.id,
         );
-
-        console.log(
-          "[DEBUG] Milestone",
-          milestone.id,
-          "has",
-          milestoneTasks.length,
-          "tasks",
-        );
-
         return {
           ...milestone,
           tasks: milestoneTasks,
         };
       });
 
-      // Fetch remaining related data
       const [
         { data: accomplishments, error: accomplishmentsError },
         { data: activities, error: activitiesError },
@@ -1255,7 +1280,6 @@ export const projectService = {
         supabase.from("changes").select("*").eq("project_id", id),
       ]);
 
-      // Log any errors
       [
         accomplishmentsError,
         activitiesError,
@@ -1264,17 +1288,14 @@ export const projectService = {
         changesError,
       ].forEach((error) => {
         if (error) {
-          console.warn("[DEBUG] Error fetching related data:", error.message);
+          console.warn("Error fetching related data:", error.message);
         }
       });
 
-      // Build and return complete project with relations
-      console.log(
-        "[DEBUG] Project manual_status_color before returning:",
-        project.manual_status_color,
-      );
       return {
         ...project,
+        // Map database field project_id to form field projectId - handle null/undefined properly
+        projectId: (project.project_id ?? "").toString(),
         manual_status_color: project.manual_status_color,
         milestones: milestonesWithTasks,
         accomplishments: accomplishments || [],
@@ -1295,7 +1316,7 @@ export const projectService = {
         changes: changes || [],
       };
     } catch (error) {
-      console.error("[DEBUG] Unexpected error in getProject:", error);
+      console.error("Unexpected error in getProject:", error);
       return null;
     }
   },

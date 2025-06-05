@@ -1,6 +1,7 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Wand2,
@@ -82,6 +83,42 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
           </div>
         </div>
       </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <Label htmlFor="projectId">Project ID</Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs">
+                  Enter the external project identifier (e.g., from Workday or
+                  other project management systems).
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+        <Input
+          id="projectId"
+          type="text"
+          value={formData.projectId || ""}
+          onChange={(e) => {
+            const newValue = e.target.value;
+            console.log("[PROJECT_ID] Input changed:", {
+              oldValue: formData.projectId,
+              newValue: newValue,
+              type: typeof newValue,
+            });
+            setFormData((prev) => ({ ...prev, projectId: newValue }));
+          }}
+          placeholder="Enter project ID (e.g., PRJ-00023, PZ02)"
+          className="bg-white border-gray-200 rounded-md max-w-xs"
+          maxLength={9}
+        />
+      </div>
+
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">

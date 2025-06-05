@@ -10,6 +10,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 import {
   Table,
   TableBody,
@@ -18,7 +26,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Search,
+  Eye,
+  EyeOff,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import { projectService } from "@/lib/services/project";
 import { FileSpreadsheet, ArrowLeft, ExternalLink } from "lucide-react";
 import { exportProjectsToExcel } from "@/lib/services/excelExport";
@@ -27,6 +47,20 @@ import { Toaster } from "@/components/ui/toaster";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getColumnResizeMode,
+  flexRender,
+  createColumnHelper,
+  SortingState,
+  ColumnDef,
+  ColumnResizeMode,
+  PaginationState,
+} from "@tanstack/react-table";
 
 interface ProjectsOverviewProps {
   onBack: () => void;
@@ -35,18 +69,25 @@ interface ProjectsOverviewProps {
   filterDepartment?: string;
 }
 
-// Define column types for better type safety
-type SortDirection = "asc" | "desc";
-
-interface ColumnDefinition {
+// Define project type for better type safety
+type ProjectData = {
   id: string;
-  label: string;
-  accessor: (project: any) => any;
-  sortable: boolean;
-  className?: string;
-  cellClassName?: string;
-  renderCell?: (value: any, project: any) => React.ReactNode;
-}
+  project_id?: string;
+  title: string;
+  department?: string;
+  status: string;
+  project_manager?: string;
+  milestones?: any[];
+  budget_total?: number;
+  budget_actuals?: number;
+  budget_forecast?: number;
+  working_days_remaining?: number;
+  calculated_end_date?: string;
+  total_days?: number;
+  [key: string]: any;
+};
+
+const columnHelper = createColumnHelper<ProjectData>();
 
 const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   onBack,
@@ -54,24 +95,18 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   filterStatus = "all",
   filterDepartment = "all",
 }) => {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: SortDirection;
-  }>({ key: "title", direction: "asc" });
-  // Add a force update state to trigger re-renders when needed
-  const [forceUpdate, setForceUpdate] = useState(0);
-
-  // Debug counter to verify component updates
-  const [debugRenderCount, setDebugRenderCount] = useState(0);
-
-  // Increment render count on each render to verify updates
-  useEffect(() => {
-    setDebugRenderCount((prev) => prev + 1);
-    console.log(`ProjectsOverview render count: ${debugRenderCount + 1}`);
-  }, []);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnResizeMode, setColumnResizeMode] =
+    useState<ColumnResizeMode>("onChange");
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnVisibility, setColumnVisibility] = useState({});
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -112,159 +147,260 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     return "On Budget";
   };
 
-  // Define columns configuration
-  const columns: ColumnDefinition[] = [
-    {
-      id: "title",
-      label: "Project",
-      accessor: (project) =>
-        project.title?.replace(/<[^>]*>/g, "").toLowerCase() || "",
-      sortable: true,
-      cellClassName:
-        "font-medium text-blue-600 hover:text-blue-800 hover:underline",
-      renderCell: (value, project) => (
-        <div className="flex items-center">
-          {project.title.replace(/<[^>]*>/g, "")}
-          <ExternalLink className="h-3 w-3 text-muted-foreground ml-1" />
-        </div>
-      ),
-    },
-    {
-      id: "department",
-      label: "Department",
-      accessor: (project) => project.department?.toLowerCase() || "",
-      sortable: true,
-      renderCell: (value, project) => project.department || "—",
-    },
-    {
-      id: "status",
-      label: "Status",
-      accessor: (project) => project.status?.toLowerCase() || "",
-      sortable: true,
-      renderCell: (value, project) => {
-        const statusClasses = {
-          active: "bg-green-100 text-green-800 border border-green-200",
-          on_hold: "bg-yellow-100 text-yellow-800 border border-yellow-200",
-          completed: "bg-blue-100 text-blue-800 border border-blue-200",
-          cancelled: "bg-red-100 text-red-800 border border-red-200",
-          draft: "bg-gray-100 text-gray-800 border border-gray-200",
-        };
-
-        const status = project.status || "active";
-        const displayStatus =
-          status.replace("_", " ").charAt(0).toUpperCase() +
-          status.slice(1).replace("_", " ");
-
-        return (
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[status]}`}
-          >
-            {displayStatus}
+  // Define columns using TanStack Table
+  const columns = useMemo<ColumnDef<ProjectData>[]>(
+    () => [
+      columnHelper.accessor("project_id", {
+        id: "project_id",
+        header: "Project ID",
+        size: 140,
+        minSize: 100,
+        maxSize: 200,
+        enableResizing: true,
+        cell: (info) => (
+          <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 whitespace-nowrap">
+            {info.getValue() || "—"}
           </span>
-        );
-      },
-    },
-    {
-      id: "project_manager",
-      label: "Project Manager",
-      accessor: (project) => project.project_manager?.toLowerCase() || "",
-      sortable: true,
-      renderCell: (value, project) => project.project_manager || "—",
-    },
-    {
-      id: "completion",
-      label: "Completion",
-      accessor: (project) => calculateCompletion(project),
-      sortable: true,
-      renderCell: (value, project) => {
-        const completion = calculateCompletion(project);
-        return (
-          <div className="flex items-center gap-2">
-            <div className="w-12 text-center">{completion}%</div>
-            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full ${
-                  completion === 100
-                    ? "bg-blue-500"
-                    : completion >= 50
-                      ? "bg-green-500"
-                      : "bg-yellow-500"
-                }`}
-                style={{ width: `${completion}%` }}
-              ></div>
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      id: "budget_total",
-      label: "Budget",
-      accessor: (project) => Number(project.budget_total) || 0,
-      sortable: true,
-      renderCell: (value, project) => formatCurrency(project.budget_total),
-    },
-    {
-      id: "budget_actuals",
-      label: "Actuals",
-      accessor: (project) => Number(project.budget_actuals) || 0,
-      sortable: true,
-      renderCell: (value, project) => formatCurrency(project.budget_actuals),
-    },
-    {
-      id: "budget_forecast",
-      label: "Forecast",
-      accessor: (project) => Number(project.budget_forecast) || 0,
-      sortable: true,
-      renderCell: (value, project) => formatCurrency(project.budget_forecast),
-    },
-    {
-      id: "budget_status",
-      label: "Budget Status",
-      accessor: (project) =>
-        getBudgetStatus(
-          project.budget_total,
-          project.budget_actuals,
-          project.budget_forecast,
         ),
-      sortable: true,
-      renderCell: (value, project) => {
-        const budgetStatus = getBudgetStatus(
-          project.budget_total,
-          project.budget_actuals,
-          project.budget_forecast,
-        );
+        sortingFn: "alphanumeric",
+      }),
+      columnHelper.accessor("title", {
+        id: "title",
+        header: "Project",
+        size: 350,
+        minSize: 200,
+        maxSize: 500,
+        enableResizing: true,
+        cell: (info) => {
+          const project = info.row.original;
+          return (
+            <div className="flex items-center gap-2 font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
+              <span className="truncate">
+                {project.title.replace(/<[^>]*>/g, "")}
+              </span>
+              <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            </div>
+          );
+        },
+        sortingFn: (rowA, rowB) => {
+          const a =
+            rowA.original.title?.replace(/<[^>]*>/g, "").toLowerCase() || "";
+          const b =
+            rowB.original.title?.replace(/<[^>]*>/g, "").toLowerCase() || "";
+          return a.localeCompare(b);
+        },
+      }),
+      columnHelper.accessor("department", {
+        id: "department",
+        header: "Department",
+        size: 120,
+        cell: (info) => info.getValue() || "—",
+      }),
+      columnHelper.accessor("status", {
+        id: "status",
+        header: "Status",
+        size: 100,
+        cell: (info) => {
+          const statusClasses = {
+            active: "bg-green-100 text-green-800 border border-green-200",
+            on_hold: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+            completed: "bg-blue-100 text-blue-800 border border-blue-200",
+            cancelled: "bg-red-100 text-red-800 border border-red-200",
+            draft: "bg-gray-100 text-gray-800 border border-gray-200",
+          };
 
-        const statusClasses = {
-          "On Budget": "bg-green-100 text-green-800 border border-green-200",
-          "At Risk": "bg-yellow-100 text-yellow-800 border border-yellow-200",
-          "Over Budget": "bg-red-100 text-red-800 border border-red-200",
-        };
+          const status = info.getValue() || "active";
+          const displayStatus =
+            status.replace("_", " ").charAt(0).toUpperCase() +
+            status.slice(1).replace("_", " ");
 
-        return (
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[budgetStatus]}`}
-          >
-            {budgetStatus}
-          </span>
-        );
-      },
-    },
-    {
-      id: "milestones",
-      label: "Milestones",
-      accessor: (project) => Number(project.milestones?.length) || 0,
-      sortable: true,
-      renderCell: (value, project) => project.milestones?.length || 0,
-    },
-    {
-      id: "risks",
-      label: "Risks",
-      accessor: (project) => Number(project.risks?.length) || 0,
-      sortable: true,
-      renderCell: (value, project) => project.risks?.length || 0,
-    },
-  ];
+          return (
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[status]}`}
+            >
+              {displayStatus}
+            </span>
+          );
+        },
+      }),
+      columnHelper.accessor("project_manager", {
+        id: "project_manager",
+        header: "Project Manager",
+        size: 150,
+        cell: (info) => info.getValue() || "—",
+      }),
+      columnHelper.accessor((row) => calculateCompletion(row), {
+        id: "completion",
+        header: "Completion",
+        size: 140,
+        enableSorting: true,
+        sortingFn: (rowA, rowB) => {
+          const a = calculateCompletion(rowA.original);
+          const b = calculateCompletion(rowB.original);
+          return a - b;
+        },
+        cell: (info) => {
+          const completion = info.getValue();
+          return (
+            <div className="flex items-center gap-2">
+              <div className="w-12 text-center">{completion}%</div>
+              <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${
+                    completion === 100
+                      ? "bg-blue-500"
+                      : completion >= 50
+                        ? "bg-green-500"
+                        : "bg-yellow-500"
+                  }`}
+                  style={{ width: `${completion}%` }}
+                ></div>
+              </div>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("budget_total", {
+        id: "budget_total",
+        header: "Budget",
+        size: 100,
+        cell: (info) => formatCurrency(info.getValue()),
+      }),
+      columnHelper.accessor("budget_actuals", {
+        id: "budget_actuals",
+        header: "Actuals",
+        size: 100,
+        cell: (info) => formatCurrency(info.getValue()),
+      }),
+      columnHelper.accessor("budget_forecast", {
+        id: "budget_forecast",
+        header: "Forecast",
+        size: 100,
+        cell: (info) => formatCurrency(info.getValue()),
+      }),
+      columnHelper.accessor(
+        (row) =>
+          getBudgetStatus(
+            row.budget_total,
+            row.budget_actuals,
+            row.budget_forecast,
+          ),
+        {
+          id: "budget_status",
+          header: "Budget Status",
+          size: 120,
+          enableSorting: true,
+          sortingFn: (rowA, rowB) => {
+            const a = getBudgetStatus(
+              rowA.original.budget_total,
+              rowA.original.budget_actuals,
+              rowA.original.budget_forecast,
+            );
+            const b = getBudgetStatus(
+              rowB.original.budget_total,
+              rowB.original.budget_actuals,
+              rowB.original.budget_forecast,
+            );
+            // Sort order: On Budget < At Risk < Over Budget
+            const order = { "On Budget": 0, "At Risk": 1, "Over Budget": 2 };
+            return order[a] - order[b];
+          },
+          cell: (info) => {
+            const budgetStatus = info.getValue();
+
+            const statusClasses = {
+              "On Budget":
+                "bg-green-100 text-green-800 border border-green-200",
+              "At Risk":
+                "bg-yellow-100 text-yellow-800 border border-yellow-200",
+              "Over Budget": "bg-red-100 text-red-800 border border-red-200",
+            };
+
+            return (
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClasses[budgetStatus]}`}
+              >
+                {budgetStatus}
+              </span>
+            );
+          },
+        },
+      ),
+      columnHelper.accessor("milestones", {
+        id: "milestones",
+        header: "Milestones",
+        size: 100,
+        cell: (info) => (
+          <div className="text-center">{info.getValue()?.length || 0}</div>
+        ),
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original.milestones?.length || 0;
+          const b = rowB.original.milestones?.length || 0;
+          return a - b;
+        },
+      }),
+      columnHelper.accessor("working_days_remaining", {
+        id: "working_days_remaining",
+        header: "Days Left",
+        size: 100,
+        cell: (info) => {
+          const daysRemaining = info.getValue();
+          if (daysRemaining === null || daysRemaining === undefined) {
+            return <div className="text-center">—</div>;
+          }
+
+          // Color code based on days remaining
+          let colorClass = "text-green-600";
+          if (daysRemaining < 0) {
+            colorClass = "text-red-600 font-semibold";
+          } else if (daysRemaining <= 30) {
+            colorClass = "text-yellow-600 font-medium";
+          }
+
+          return (
+            <div className="text-center">
+              <span className={colorClass}>
+                {daysRemaining < 0
+                  ? `${Math.abs(daysRemaining)} overdue`
+                  : `${daysRemaining}d`}
+              </span>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("calculated_end_date", {
+        id: "calculated_end_date",
+        header: "End Date",
+        size: 110,
+        cell: (info) => {
+          const date = info.getValue();
+          if (!date) return <div className="text-center">—</div>;
+          return (
+            <div className="text-center">
+              {new Date(date).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "2-digit",
+              })}
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("total_days", {
+        id: "total_days",
+        header: "Duration",
+        size: 100,
+        cell: (info) => {
+          const totalDays = info.getValue();
+          if (totalDays === null || totalDays === undefined) {
+            return <div className="text-center">—</div>;
+          }
+          return <div className="text-center">{totalDays}d</div>;
+        },
+      }),
+    ],
+    [],
+  );
 
   // Load user profile
   useEffect(() => {
@@ -369,78 +505,36 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     loadProjects();
   }, [user, filterManager, filterStatus, filterDepartment, toast]);
 
-  // Handle column sorting - use useCallback to prevent unnecessary re-renders
-  const handleSort = useCallback((columnId: string) => {
-    console.log(`Sort clicked for column: ${columnId}`);
-    setSortConfig((prevConfig) => {
-      const newConfig =
-        prevConfig.key === columnId
-          ? {
-              key: columnId,
-              direction: prevConfig.direction === "asc" ? "desc" : "asc",
-            }
-          : { key: columnId, direction: "asc" };
-
-      console.log(`New sort config:`, newConfig);
-      // Force a re-render to ensure the UI updates
-      setForceUpdate((prev) => prev + 1);
-      return newConfig;
-    });
-  }, []);
-
-  // Get sorted projects using useMemo to prevent unnecessary re-calculations
-  const sortedProjects = useMemo(() => {
-    if (!projects.length) return [];
-
-    console.log(
-      `Sorting by ${sortConfig.key} in ${sortConfig.direction} order`,
-    );
-
-    // Find the column definition for the current sort key
-    const column = columns.find((col) => col.id === sortConfig.key);
-    if (!column) {
-      console.log(`Column not found for key: ${sortConfig.key}`);
-      return [...projects];
-    }
-
-    console.log(`Using column: ${column.id} (${column.label})`);
-
-    // Create a new array to avoid mutating the original
-    const sorted = [...projects].sort((a, b) => {
-      try {
-        const valueA = column.accessor(a);
-        const valueB = column.accessor(b);
-
-        console.log(`Comparing: ${valueA} vs ${valueB}`);
-
-        // Handle null/undefined values
-        if (valueA == null && valueB == null) return 0;
-        if (valueA == null) return 1;
-        if (valueB == null) return -1;
-
-        // Compare values based on sort direction
-        const comparison = valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
-        const result =
-          sortConfig.direction === "asc" ? comparison : -comparison;
-
-        console.log(`Comparison result: ${result}`);
-        return result;
-      } catch (error) {
-        console.error("Error during sort comparison:", error);
-        return 0; // Return equal if comparison fails
-      }
-    });
-
-    console.log("Sorted projects count:", sorted.length);
-    return sorted;
-  }, [projects, sortConfig, columns, forceUpdate]); // Include forceUpdate to ensure re-render
+  // Create the table instance
+  const table = useReactTable({
+    data: projects,
+    columns,
+    state: {
+      sorting,
+      globalFilter,
+      columnVisibility,
+      pagination,
+    },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    enableColumnResizing: true,
+    columnResizeMode: "onChange",
+    enableSorting: true,
+    debugTable: false,
+  });
 
   // Render sort indicator for column headers
-  const renderSortIndicator = (columnId: string) => {
-    if (sortConfig.key !== columnId) {
+  const renderSortIndicator = (isSorted: false | "asc" | "desc") => {
+    if (!isSorted) {
       return <ArrowUpDown className="ml-2 h-4 w-4 flex-shrink-0 opacity-70" />;
     }
-    return sortConfig.direction === "asc" ? (
+    return isSorted === "asc" ? (
       <ArrowUp className="ml-2 h-4 w-4 flex-shrink-0 text-blue-600" />
     ) : (
       <ArrowDown className="ml-2 h-4 w-4 flex-shrink-0 text-blue-600" />
@@ -448,13 +542,13 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center mb-4">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Projects
         </Button>
@@ -496,103 +590,242 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
         </Button>
       </div>
 
-      <Card className="bg-white shadow-md">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-blue-800 mb-6">
-            Projects Overview Table
-          </h2>
+      <div className="w-full bg-white shadow-md rounded-lg">
+        <div className="p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-blue-800">
+              Projects Overview Table
+            </h2>
+            <div className="flex items-center gap-4">
+              {/* Global Search */}
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search all columns..."
+                  value={globalFilter ?? ""}
+                  onChange={(event) =>
+                    setGlobalFilter(String(event.target.value))
+                  }
+                  className="pl-8 w-64"
+                />
+              </div>
+
+              {/* Column Visibility Toggle */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Columns
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {table
+                    .getAllColumns()
+                    .filter((column) => column.getCanHide())
+                    .map((column) => {
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={column.id}
+                          className="capitalize"
+                          checked={column.getIsVisible()}
+                          onCheckedChange={(value) =>
+                            column.toggleVisibility(!!value)
+                          }
+                        >
+                          {column.id.replace("_", " ")}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
 
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {columns.map((column) => (
-                      <TableHead
-                        key={column.id}
-                        className={`font-bold ${column.sortable ? "cursor-pointer hover:bg-gray-50 active:bg-gray-100" : ""} ${column.className || ""}`}
-                      >
-                        {column.sortable ? (
-                          <button
-                            type="button"
-                            className="flex items-center w-full text-left focus:outline-none"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log(
-                                "Sort button clicked for column:",
-                                column.id,
-                              );
-                              handleSort(column.id);
-                            }}
-                          >
-                            {column.label}
-                            {renderSortIndicator(column.id)}
-                          </button>
-                        ) : (
-                          column.label
-                        )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projects.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="text-center py-8 text-gray-500"
-                      >
-                        No projects found matching the current filters.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    sortedProjects.map((project) => (
-                      <TableRow
-                        key={project.id}
-                        className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => {
-                          navigate("/", {
-                            state: { projectId: project.id, mode: "preview" },
-                          });
-                        }}
-                      >
-                        {columns.map((column) => (
-                          <TableCell
-                            key={`${project.id}-${column.id}`}
-                            className={column.cellClassName || ""}
-                          >
-                            {(() => {
-                              try {
-                                return column.renderCell
-                                  ? column.renderCell(
-                                      column.accessor(project),
-                                      project,
-                                    )
-                                  : column.accessor(project);
-                              } catch (error) {
-                                console.error(
-                                  `Error rendering cell for column ${column.id}:`,
-                                  error,
-                                );
-                                return "—";
+            <>
+              <div className="w-full overflow-x-auto border border-gray-200 rounded-lg">
+                <Table className="w-full" style={{ tableLayout: "fixed" }}>
+                  <TableHeader>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => {
+                          const canSort = header.column.getCanSort();
+                          const sortDirection = header.column.getIsSorted();
+
+                          return (
+                            <TableHead
+                              key={header.id}
+                              className={`font-bold text-xs whitespace-nowrap px-3 py-3 relative ${
+                                canSort
+                                  ? "cursor-pointer hover:bg-gray-50 active:bg-gray-100"
+                                  : ""
+                              }`}
+                              style={{
+                                width: header.getSize(),
+                                minWidth: header.column.columnDef.minSize,
+                                maxWidth: header.column.columnDef.maxSize,
+                              }}
+                              onClick={
+                                canSort
+                                  ? header.column.getToggleSortingHandler()
+                                  : undefined
                               }
-                            })()}
-                          </TableCell>
-                        ))}
+                            >
+                              {header.isPlaceholder ? null : (
+                                <div className="flex items-center">
+                                  {flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext(),
+                                  )}
+                                  {canSort &&
+                                    renderSortIndicator(sortDirection)}
+                                </div>
+                              )}
+                              {/* Column Resize Handle */}
+                              {header.column.getCanResize() && (
+                                <div
+                                  onMouseDown={header.getResizeHandler()}
+                                  onTouchStart={header.getResizeHandler()}
+                                  className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none border-r border-gray-300 hover:border-blue-500 hover:border-r-2 ${
+                                    header.column.getIsResizing()
+                                      ? "border-blue-500 border-r-2"
+                                      : ""
+                                  }`}
+                                  style={{ zIndex: 10 }}
+                                />
+                              )}
+                            </TableHead>
+                          );
+                        })}
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                      table.getRowModel().rows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          className="cursor-pointer hover:bg-gray-50"
+                          onClick={() => {
+                            navigate("/", {
+                              state: {
+                                projectId: row.original.id,
+                                mode: "preview",
+                              },
+                            });
+                          }}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell
+                              key={cell.id}
+                              className="text-xs px-3 py-2"
+                              style={{
+                                width: cell.column.getSize(),
+                                minWidth: cell.column.columnDef.minSize,
+                                maxWidth: cell.column.columnDef.maxSize,
+                              }}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={columns.length}
+                          className="text-center py-8 text-gray-500"
+                        >
+                          No projects found matching the current filters.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between px-2 py-4">
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm font-medium">Rows per page:</p>
+                  <select
+                    value={table.getState().pagination.pageSize}
+                    onChange={(e) => {
+                      table.setPageSize(Number(e.target.value));
+                    }}
+                    className="h-8 w-16 rounded border border-input bg-background px-2 text-sm"
+                  >
+                    {[10, 25, 50, 100].map((pageSize) => (
+                      <option key={pageSize} value={pageSize}>
+                        {pageSize}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center space-x-6 lg:space-x-8">
+                  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                    Page {table.getState().pagination.pageIndex + 1} of{" "}
+                    {table.getPageCount()}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      className="hidden h-8 w-8 p-0 lg:flex"
+                      onClick={() => table.setPageIndex(0)}
+                      disabled={!table.getCanPreviousPage()}
+                    >
+                      <span className="sr-only">Go to first page</span>
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8 w-8 p-0"
+                      onClick={() => table.previousPage()}
+                      disabled={!table.getCanPreviousPage()}
+                    >
+                      <span className="sr-only">Go to previous page</span>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8 w-8 p-0"
+                      onClick={() => table.nextPage()}
+                      disabled={!table.getCanNextPage()}
+                    >
+                      <span className="sr-only">Go to next page</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="hidden h-8 w-8 p-0 lg:flex"
+                      onClick={() =>
+                        table.setPageIndex(table.getPageCount() - 1)
+                      }
+                      disabled={!table.getCanNextPage()}
+                    >
+                      <span className="sr-only">Go to last page</span>
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  Showing {table.getRowModel().rows.length} of{" "}
+                  {table.getFilteredRowModel().rows.length} row(s).
+                </div>
+              </div>
+            </>
           )}
         </div>
-      </Card>
+      </div>
       <Toaster />
     </div>
   );

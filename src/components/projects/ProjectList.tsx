@@ -366,11 +366,20 @@ const ProjectList = ({
               <p className="text-sm text-blue-800 mb-4">
                 Project Manager: {project.project_manager}
               </p>
-              {project.department && (
+              {(project.department || project.project_id) && (
                 <div className="space-y-2">
-                  <p className="text-xs text-blue-600">
-                    Department: {project.department}
-                  </p>
+                  {project.department && (
+                    <p className="text-xs text-blue-600">
+                      Department: {project.department}
+                    </p>
+                  )}
+                  {project.project_id && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                        ID: {project.project_id}
+                      </span>
+                    </div>
+                  )}
                   <div className="border-t border-gray-200 pt-2 w-3/4">
                     <p className="text-[11px] text-gray-500">
                       Updated{" "}

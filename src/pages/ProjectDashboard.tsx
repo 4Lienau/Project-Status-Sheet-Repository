@@ -480,6 +480,7 @@ const ProjectDashboard = ({
     if (!project) {
       console.log("No project data available for formatting");
       return {
+        projectId: "", // Add projectId field for empty state
         title: "",
         description: "",
         valueStatement: "",
@@ -552,7 +553,15 @@ const ProjectDashboard = ({
       milestones_count: project.milestones?.length || 0,
     });
 
+    // Debug Project ID mapping
+    console.log("[PROJECT_ID] getFormattedData mapping:", {
+      dbProjectId: project.project_id,
+      dbType: typeof project.project_id,
+      willMapTo: (project.project_id ?? "").toString(),
+    });
+
     return {
+      projectId: (project.project_id ?? "").toString(), // Add the missing projectId field
       title: project.title || "",
       description: project.description || "",
       valueStatement: project.value_statement || "",
@@ -901,6 +910,7 @@ const ProjectDashboard = ({
               const updatedProject = await projectService.updateProject(
                 projectId,
                 {
+                  projectId: data.projectId, // Add the missing projectId field
                   title: data.title,
                   description: data.description || null,
                   valueStatement: data.valueStatement || null,

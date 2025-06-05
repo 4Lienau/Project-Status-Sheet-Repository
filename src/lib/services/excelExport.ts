@@ -18,6 +18,7 @@ export const exportProjectsToExcel = async (
   // Projects Overview Sheet
   const overviewSheet = workbook.addWorksheet("Projects Overview");
   const overviewColumns = [
+    { header: "Project ID", key: "project_id", width: 15 },
     { header: "Project Title", key: "title", width: 30 },
     { header: "Description", key: "description", width: 80 },
     { header: "Value Statement", key: "value_statement", width: 80 },
@@ -31,6 +32,20 @@ export const exportProjectsToExcel = async (
     { header: "Sponsors", key: "sponsors", width: 20 },
     { header: "Business Leads", key: "business_leads", width: 20 },
     { header: "Project Manager", key: "project_manager", width: 20 },
+    {
+      header: "Working Days Remaining",
+      key: "working_days_remaining",
+      width: 20,
+    },
+    { header: "Total Days Remaining", key: "total_days_remaining", width: 20 },
+    { header: "Total Duration (Days)", key: "total_days", width: 20 },
+    { header: "Working Days Duration", key: "working_days", width: 20 },
+    {
+      header: "Calculated Start Date",
+      key: "calculated_start_date",
+      width: 18,
+    },
+    { header: "Calculated End Date", key: "calculated_end_date", width: 18 },
     { header: "Created At", key: "created_at", width: 15 },
     { header: "Updated At", key: "updated_at", width: 15 },
     { header: "Milestone Count", key: "milestone_count", width: 15 },
@@ -49,6 +64,7 @@ export const exportProjectsToExcel = async (
       : 0;
 
     const row = overviewSheet.addRow({
+      project_id: project.project_id || "",
       title: stripHtmlTags(project.title),
       description: stripHtmlTags(project.description || ""),
       value_statement: stripHtmlTags(project.value_statement || ""),
@@ -62,6 +78,16 @@ export const exportProjectsToExcel = async (
       sponsors: stripHtmlTags(project.sponsors || ""),
       business_leads: stripHtmlTags(project.business_leads || ""),
       project_manager: stripHtmlTags(project.project_manager || ""),
+      working_days_remaining: project.working_days_remaining || null,
+      total_days_remaining: project.total_days_remaining || null,
+      total_days: project.total_days || null,
+      working_days: project.working_days || null,
+      calculated_start_date: project.calculated_start_date
+        ? new Date(project.calculated_start_date).toLocaleDateString()
+        : null,
+      calculated_end_date: project.calculated_end_date
+        ? new Date(project.calculated_end_date).toLocaleDateString()
+        : null,
       created_at: new Date(project.created_at || "").toLocaleDateString(),
       updated_at: new Date(project.updated_at || "").toLocaleDateString(),
       milestone_count: project.milestones?.length || 0,
@@ -74,35 +100,51 @@ export const exportProjectsToExcel = async (
       cell.alignment = { vertical: "middle" };
 
       // Format percentage column (Overall Complete)
-      if (colNumber === 5) {
+      if (colNumber === 6) {
         cell.numFmt = '0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      // Format budget columns (6, 7, 8, 9)
-      if (colNumber >= 6 && colNumber <= 9) {
+      // Format budget columns (7, 8, 9, 10)
+      if (colNumber >= 7 && colNumber <= 10) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
 
       // Bold and left-align project title
-      if (colNumber === 1) {
+      if (colNumber === 2) {
         cell.font = { bold: true };
         cell.alignment = { vertical: "middle", horizontal: "left" };
       }
 
       // Text wrap for description and value statement
-      if (colNumber === 2 || colNumber === 3) {
+      if (colNumber === 3 || colNumber === 4) {
         cell.alignment = { vertical: "middle", wrapText: true };
       }
 
+      // Center project ID
+      if (colNumber === 1) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.font = { bold: true };
+      }
+
+      // Format duration columns (15, 16, 17, 18) - center align numbers
+      if (colNumber >= 15 && colNumber <= 18) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      }
+
+      // Format date columns (19, 20, 21, 22)
+      if (colNumber >= 19 && colNumber <= 22) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      }
+
       // Center milestone and risk counts
-      if (colNumber === 16 || colNumber === 17) {
+      if (colNumber === 23 || colNumber === 24) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Make charter link clickable
-      if (colNumber === 10 && cell.value) {
+      if (colNumber === 11 && cell.value) {
         const url = cell.value.toString();
         cell.value = { text: url, hyperlink: url };
         cell.font = { color: { argb: "FF0000FF" }, underline: true };
@@ -112,7 +154,7 @@ export const exportProjectsToExcel = async (
 
   // Add conditional formatting for status column
   overviewSheet.addConditionalFormatting({
-    ref: `D2:D${projects.length + 1}`,
+    ref: `E2:E${projects.length + 1}`,
     rules: [
       {
         type: "containsText",
@@ -189,6 +231,7 @@ export const exportProjectsToExcel = async (
     },
     columns: overviewColumns.map((col) => ({ name: col.header })),
     rows: projects.map((project) => [
+      project.project_id || "",
       stripHtmlTags(project.title),
       stripHtmlTags(project.description || ""),
       stripHtmlTags(project.value_statement || ""),
@@ -207,6 +250,16 @@ export const exportProjectsToExcel = async (
       stripHtmlTags(project.sponsors || ""),
       stripHtmlTags(project.business_leads || ""),
       stripHtmlTags(project.project_manager || ""),
+      project.working_days_remaining || null,
+      project.total_days_remaining || null,
+      project.total_days || null,
+      project.working_days || null,
+      project.calculated_start_date
+        ? new Date(project.calculated_start_date).toLocaleDateString()
+        : null,
+      project.calculated_end_date
+        ? new Date(project.calculated_end_date).toLocaleDateString()
+        : null,
       new Date(project.created_at || "").toLocaleDateString(),
       new Date(project.updated_at || "").toLocaleDateString(),
       project.milestones?.length || 0,
@@ -217,6 +270,7 @@ export const exportProjectsToExcel = async (
   // Milestones Sheet
   const milestonesSheet = workbook.addWorksheet("Milestones");
   const milestonesColumns = [
+    { header: "Project ID", key: "project_id", width: 15 },
     { header: "Project", key: "project", width: 30 },
     { header: "Date", key: "date", width: 15 },
     { header: "Milestone", key: "milestone", width: 40 },
@@ -232,6 +286,7 @@ export const exportProjectsToExcel = async (
   projects.forEach((project) => {
     project.milestones?.forEach((milestone) => {
       allMilestones.push({
+        project_id: project.project_id || "",
         project: stripHtmlTags(project.title),
         date: milestone.date,
         milestone: stripHtmlTags(milestone.milestone || ""),
@@ -248,21 +303,27 @@ export const exportProjectsToExcel = async (
       cell.alignment = { vertical: "middle" };
 
       // Format completion percentage
-      if (colNumber === 5) {
+      if (colNumber === 6) {
         cell.numFmt = '0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Format status column
-      if (colNumber === 6) {
+      if (colNumber === 7) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
+      }
+
+      // Center project ID
+      if (colNumber === 1) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.font = { bold: true };
       }
     });
   });
 
   // Add conditional formatting for status column
   milestonesSheet.addConditionalFormatting({
-    ref: `F2:F${allMilestones.length + 1}`,
+    ref: `G2:G${allMilestones.length + 1}`,
     rules: [
       {
         type: "containsText",
@@ -315,6 +376,7 @@ export const exportProjectsToExcel = async (
     },
     columns: milestonesColumns.map((col) => ({ name: col.header })),
     rows: allMilestones.map((m) => [
+      m.project_id,
       m.project,
       m.date,
       m.milestone,
@@ -327,6 +389,7 @@ export const exportProjectsToExcel = async (
   // Budget Details Sheet
   const budgetSheet = workbook.addWorksheet("Budget Details");
   const budgetColumns = [
+    { header: "Project ID", key: "project_id", width: 15 },
     { header: "Project", key: "project", width: 30 },
     { header: "Status", key: "status", width: 15 },
     { header: "Total Budget", key: "budget_total", width: 20 },
@@ -350,6 +413,7 @@ export const exportProjectsToExcel = async (
     const variance = project.budget_total - project.budget_forecast;
 
     const row = budgetSheet.addRow({
+      project_id: project.project_id || "",
       project: stripHtmlTags(project.title),
       status: (project.status || "active").toUpperCase(),
       budget_total: project.budget_total,
@@ -363,20 +427,26 @@ export const exportProjectsToExcel = async (
     row.eachCell((cell, colNumber) => {
       cell.alignment = { vertical: "middle" };
 
+      // Center project ID
+      if (colNumber === 1) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.font = { bold: true };
+      }
+
       // Format currency columns
-      if (colNumber >= 3 && colNumber <= 6) {
+      if (colNumber >= 4 && colNumber <= 7) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
 
       // Format percentage columns
-      if (colNumber === 7 || colNumber === 8) {
+      if (colNumber === 8 || colNumber === 9) {
         cell.numFmt = '0.0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Add conditional formatting for variance
-      if (colNumber === 6) {
+      if (colNumber === 7) {
         if (cell.value < 0) {
           cell.font = { color: { argb: "FFFF0000" } }; // Red for negative variance
         } else if (cell.value > 0) {
@@ -388,7 +458,7 @@ export const exportProjectsToExcel = async (
 
   // Add conditional formatting for status column
   budgetSheet.addConditionalFormatting({
-    ref: `B2:B${projects.length + 1}`,
+    ref: `C2:C${projects.length + 1}`,
     rules: [
       {
         type: "containsText",
@@ -473,6 +543,7 @@ export const exportProjectsToExcel = async (
         : 0;
       const variance = project.budget_total - project.budget_forecast;
       return [
+        project.project_id || "",
         stripHtmlTags(project.title),
         (project.status || "active").toUpperCase(),
         project.budget_total,
