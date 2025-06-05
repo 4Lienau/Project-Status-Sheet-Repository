@@ -91,6 +91,7 @@ export const useProjectForm = (
     [],
   );
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showGanttChart, setShowGanttChart] = useState(false);
   const [pendingGenerationType, setPendingGenerationType] = useState<
     "description" | "value" | null
@@ -620,7 +621,11 @@ export const useProjectForm = (
     }
   };
 
-  const handleDeleteProject = async () => {
+  const handleShowDeleteDialog = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
     try {
       if (!safeProjectId || safeProjectId.trim() === "") {
         toast({
@@ -652,7 +657,13 @@ export const useProjectForm = (
         description: "An unexpected error occurred while deleting the project.",
         variant: "destructive",
       });
+    } finally {
+      setShowDeleteDialog(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
   };
 
   const handleApplyMilestones = async (selectedMilestones: any[]) => {
@@ -766,6 +777,8 @@ export const useProjectForm = (
     suggestedMilestones,
     showOverwriteDialog,
     setShowOverwriteDialog,
+    showDeleteDialog,
+    setShowDeleteDialog,
     showGanttChart,
     setShowGanttChart,
     pendingGenerationType,
@@ -776,7 +789,9 @@ export const useProjectForm = (
     hasUserInteracted,
     handleSubmit,
     handleGenerateContent,
-    handleDeleteProject,
+    handleShowDeleteDialog,
+    handleConfirmDelete,
+    handleCancelDelete,
     handleApplyMilestones,
     handleCancelMilestones,
     handleConfirmOverwrite,

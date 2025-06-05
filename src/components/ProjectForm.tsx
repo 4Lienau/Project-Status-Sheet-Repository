@@ -30,6 +30,7 @@ import HealthCalculationSection from "@/components/form/HealthCalculationSection
 import {
   UnsavedChangesDialog,
   OverwriteDialog,
+  DeleteConfirmationDialog,
 } from "@/components/form/DialogComponents";
 import { SuggestedMilestones } from "@/components/SuggestedMilestones";
 import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
@@ -69,6 +70,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     suggestedMilestones,
     showOverwriteDialog,
     setShowOverwriteDialog,
+    showDeleteDialog,
+    setShowDeleteDialog,
     showGanttChart,
     setShowGanttChart,
     pendingGenerationType,
@@ -78,7 +81,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     isAnalysisLoading,
     handleSubmit,
     handleGenerateContent,
-    handleDeleteProject,
+    handleShowDeleteDialog,
+    handleConfirmDelete,
+    handleCancelDelete,
     handleApplyMilestones,
     handleConfirmOverwrite,
     handleCancelOverwrite,
@@ -135,9 +140,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             isAnalysisLoading={isAnalysisLoading}
             showGanttChart={showGanttChart}
             setShowGanttChart={setShowGanttChart}
-            handleDeleteProject={handleDeleteProject}
-            setPendingNavigationAction={setPendingNavigationAction}
-            setShowUnsavedChangesDialog={setShowUnsavedChangesDialog}
+            handleShowDeleteDialog={handleShowDeleteDialog}
           />
 
           {/* Project Status Section */}
@@ -238,6 +241,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             generateContent={generateContent}
             onConfirm={handleConfirmOverwrite}
             onCancel={handleCancelOverwrite}
+          />
+
+          <DeleteConfirmationDialog
+            open={showDeleteDialog}
+            onOpenChange={setShowDeleteDialog}
+            onConfirm={handleConfirmDelete}
+            onCancel={handleCancelDelete}
           />
 
           <GanttChartDialog

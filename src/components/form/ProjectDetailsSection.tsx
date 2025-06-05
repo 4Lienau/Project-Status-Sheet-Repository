@@ -32,9 +32,7 @@ interface ProjectDetailsSectionProps {
   isAnalysisLoading: boolean;
   showGanttChart: boolean;
   setShowGanttChart: (show: boolean) => void;
-  handleDeleteProject: () => void;
-  setPendingNavigationAction: (action: () => void) => void;
-  setShowUnsavedChangesDialog: (show: boolean) => void;
+  handleShowDeleteDialog: () => void;
 }
 
 const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
@@ -47,9 +45,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
   isAnalysisLoading,
   showGanttChart,
   setShowGanttChart,
-  handleDeleteProject,
-  setPendingNavigationAction,
-  setShowUnsavedChangesDialog,
+  handleShowDeleteDialog,
 }) => {
   // Function to safely toggle the analysis section
   const toggleAnalysisSection = (e: React.MouseEvent) => {
@@ -140,10 +136,7 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
             {/* Delete Project Button */}
             <Button
               type="button"
-              onClick={() => {
-                setPendingNavigationAction(() => handleDeleteProject);
-                setShowUnsavedChangesDialog(true);
-              }}
+              onClick={handleShowDeleteDialog}
               variant="outline"
               className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
             >
