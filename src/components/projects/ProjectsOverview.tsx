@@ -102,7 +102,14 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   const [columnResizeMode, setColumnResizeMode] =
     useState<ColumnResizeMode>("onChange");
   const [globalFilter, setGlobalFilter] = useState("");
-  const [columnVisibility, setColumnVisibility] = useState({});
+  const [columnVisibility, setColumnVisibility] = useState({
+    budget_forecast: false,
+    budget_status: false,
+    milestones: false,
+    working_days_remaining: false,
+    calculated_end_date: false,
+    total_days: false,
+  });
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
