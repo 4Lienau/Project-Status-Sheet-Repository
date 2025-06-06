@@ -885,6 +885,35 @@ export const projectService = {
         throw new Error("Failed to fetch updated project after save");
       }
 
+      // Create a version after successful project update
+      try {
+        console.log(
+          "[VERSION] Creating version after project update for project:",
+          id,
+        );
+        const { projectVersionsService } = await import("./projectVersions");
+        const version = await projectVersionsService.createVersion(
+          id,
+          updatedProject,
+        );
+        if (version) {
+          console.log(
+            "[VERSION] Successfully created version:",
+            version.version_number,
+          );
+        } else {
+          console.error(
+            "[VERSION] Failed to create version after project update",
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[VERSION] Error creating version after project update:",
+          error,
+        );
+        // Don't fail the entire update if version creation fails
+      }
+
       // PROJECT ID DEBUG: Log final Project ID from updated project
       console.log("[PROJECT_ID] Final updated project:", {
         projectId: updatedProject.projectId,
@@ -1193,6 +1222,38 @@ export const projectService = {
         "Complete project fetched:",
         completeProject ? "success" : "failed",
       );
+
+      // Create initial version after project creation
+      if (completeProject) {
+        try {
+          console.log(
+            "[VERSION] Creating initial version after project creation for project:",
+            project.id,
+          );
+          const { projectVersionsService } = await import("./projectVersions");
+          const version = await projectVersionsService.createVersion(
+            project.id,
+            completeProject,
+          );
+          if (version) {
+            console.log(
+              "[VERSION] Successfully created initial version:",
+              version.version_number,
+            );
+          } else {
+            console.error(
+              "[VERSION] Failed to create initial version after project creation",
+            );
+          }
+        } catch (error) {
+          console.error(
+            "[VERSION] Error creating initial version after project creation:",
+            error,
+          );
+          // Don't fail the entire creation if version creation fails
+        }
+      }
+
       return completeProject;
     } catch (error) {
       console.error("Unexpected error in createProject:", error);

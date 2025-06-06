@@ -38,10 +38,14 @@ export const projectVersionsService = {
       versions && versions.length > 0 ? versions[0].version_number + 1 : 1;
 
     console.log(
-      "Creating version",
+      "[VERSION_DEBUG] Creating version",
       nextVersionNumber,
       "for project",
       projectId,
+    );
+    console.log(
+      "[VERSION_DEBUG] Current total versions for this project:",
+      versions?.length || 0,
     );
 
     // Insert new version
@@ -63,29 +67,18 @@ export const projectVersionsService = {
       .single();
 
     if (error) {
-      console.error("Error creating new version:", error);
+      console.error("[VERSION_DEBUG] Error creating new version:", error);
       return null;
     }
 
-    if (error) return null;
-
-    // Delete older versions (keep only last 20)
-    const { data: oldVersions } = await supabase
-      .from("project_versions")
-      .select("id")
-      .eq("project_id", projectId)
-      .order("version_number", { ascending: false })
-      .range(20, 999999);
-
-    if (oldVersions && oldVersions.length > 0) {
-      await supabase
-        .from("project_versions")
-        .delete()
-        .in(
-          "id",
-          oldVersions.map((v) => v.id),
-        );
-    }
+    // Keep all versions - no deletion of older versions
+    // This allows users to access complete version history
+    console.log(
+      "[VERSION_DEBUG] Successfully created version",
+      newVersion?.version_number,
+      "with ID:",
+      newVersion?.id,
+    );
 
     return newVersion;
   },
@@ -111,12 +104,14 @@ export const projectVersionsService = {
         return [];
       }
 
-      // Fetch versions
+      // Fetch ALL versions - no limit applied
       const { data, error } = await supabase
         .from("project_versions")
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
+
+      console.log(`[DEBUG] Raw query returned ${data?.length || 0} versions`);
 
       if (error) {
         console.error("[DEBUG] Error fetching versions:", error);

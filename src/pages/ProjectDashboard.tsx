@@ -134,12 +134,18 @@ const ProjectDashboard = ({
         console.log("[DEBUG] Loaded versions:", versionsData.length);
         console.log(
           "[DEBUG] Version data:",
-          versionsData.map((v) => ({
+          versionsData.map((v, index) => ({
+            index: index,
             id: v.id,
             number: v.version_number,
             created: v.created_at,
           })),
         );
+        console.log("[DEBUG] Total versions available:", versionsData.length);
+        console.log("[DEBUG] Version numbers range:", {
+          highest: versionsData[0]?.version_number,
+          lowest: versionsData[versionsData.length - 1]?.version_number,
+        });
 
         if (mounted) {
           setVersions(versionsData);
@@ -744,18 +750,50 @@ const ProjectDashboard = ({
                   currentVersionIndex >= versions.length - 1 ||
                   isLoadingVersion
                 }
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 text-white hover:text-white border-white/30 hover:bg-white/20 bg-white/10"
               >
-                <ChevronLeft className="h-4 w-4" /> Older ({versions.length}{" "}
-                versions)
+                <ChevronLeft className="h-4 w-4" />
+                <span className="text-white font-medium">
+                  Older ({versions.length} versions)
+                </span>
               </Button>
 
-              <div className="text-sm px-2">
-                {isLoadingVersion
-                  ? "Loading..."
-                  : currentVersionIndex === -1
-                    ? "Current"
-                    : `Version ${versions[currentVersionIndex]?.version_number || ""} of ${versions.length}`}
+              <div className="text-sm px-3 py-2 text-white font-medium bg-white/10 rounded border border-white/30">
+                {isLoadingVersion ? (
+                  <span className="text-white">Loading...</span>
+                ) : currentVersionIndex === -1 ? (
+                  <div className="text-center">
+                    <div className="text-white font-bold">Current Version</div>
+                    <div className="text-xs text-white/90 mt-1">
+                      Latest saved version
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="text-white font-bold">
+                      Version {versions.length - currentVersionIndex} of{" "}
+                      {versions.length}
+                    </div>
+                    <div className="text-xs text-white/90">
+                      (Database Version #
+                      {versions[currentVersionIndex]?.version_number || "N/A"})
+                    </div>
+                    {versions[currentVersionIndex]?.created_at && (
+                      <div className="text-xs text-white/90 mt-1">
+                        Saved:{" "}
+                        {new Date(
+                          versions[currentVersionIndex].created_at,
+                        ).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <Button
@@ -763,9 +801,10 @@ const ProjectDashboard = ({
                 size="sm"
                 onClick={handleNextVersion}
                 disabled={currentVersionIndex === -1 || isLoadingVersion}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 text-white hover:text-white border-white/30 hover:bg-white/20 bg-white/10"
               >
-                Newer <ChevronRight className="h-4 w-4" />
+                <span className="text-white font-medium">Newer</span>
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           )}
