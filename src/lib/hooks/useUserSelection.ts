@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { searchHistoryService } from "@/lib/services/searchHistoryService";
 
 interface UseUserSelectionProps {
   initialValue?: string;
@@ -12,7 +13,7 @@ interface UseUserSelectionReturn {
   isPopupOpen: boolean;
   openPopup: () => void;
   closePopup: () => void;
-  handleUserSelection: (users: string[]) => void;
+  handleUserSelection: (users: string[], searchTerm?: string) => void;
   setValue: (value: string) => void;
   clearSelection: () => void;
 }
@@ -42,13 +43,31 @@ export const useUserSelection = ({
   }, []);
 
   const handleUserSelection = useCallback(
-    (users: string[]) => {
+    (users: string[], searchTerm?: string) => {
+      console.log("[useUserSelection] Handling user selection:", {
+        users,
+        searchTerm,
+        multiSelect,
+      });
+
       const newValue = users.join(", ");
       setValue(newValue);
       onSelectionChange?.(newValue);
       setIsPopupOpen(false);
+
+      // Add to search history if we have both a search term and selected users
+      if (searchTerm && searchTerm.trim() && users.length > 0) {
+        // For single selection, use the selected user
+        // For multi-selection, use the first user as the primary selection
+        const primaryUser = users[0];
+        console.log("[useUserSelection] Adding to search history:", {
+          searchTerm: searchTerm.trim(),
+          primaryUser,
+        });
+        searchHistoryService.addToHistory(searchTerm.trim(), primaryUser);
+      }
     },
-    [onSelectionChange],
+    [onSelectionChange, multiSelect],
   );
 
   const handleSetValue = useCallback(

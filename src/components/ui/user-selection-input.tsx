@@ -34,7 +34,11 @@ const UserSelectionInput: React.FC<UserSelectionInputProps> = ({
         .filter(Boolean)
     : [];
 
-  const handleUserSelection = (users: string[]) => {
+  const handleUserSelection = (users: string[], searchTerm?: string) => {
+    console.log("[UserSelectionInput] User selection received:", {
+      users,
+      searchTerm,
+    });
     const newValue = users.join(", ");
     onChange(newValue);
   };

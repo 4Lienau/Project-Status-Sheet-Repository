@@ -9,8 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, User, X, Plus, Building2 } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  User,
+  X,
+  Plus,
+  Building2,
+  Clock,
+  Trash2,
+} from "lucide-react";
 import { adminService } from "@/lib/services/adminService";
+import {
+  searchHistoryService,
+  SearchHistoryItem,
+} from "@/lib/services/searchHistoryService";
 
 interface DirectoryUser {
   id: string;
@@ -30,7 +43,7 @@ interface CustomOther {
 interface UserSelectionPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (selectedUsers: string[]) => void;
+  onSelect: (selectedUsers: string[], searchTerm?: string) => void;
   multiSelect?: boolean;
   title?: string;
   placeholder?: string;
@@ -54,16 +67,39 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
   const [tempSelectedUsers, setTempSelectedUsers] =
     useState<string[]>(selectedUsers);
   const [showAddOtherOption, setShowAddOtherOption] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
+  const [currentSearchTerm, setCurrentSearchTerm] = useState("");
 
   // Load users when dialog opens
   useEffect(() => {
     if (open) {
       loadUsers();
-      setTempSelectedUsers(selectedUsers);
-      setSearchTerm("");
+      // Properly reset temp selected users to match the actual selected users
+      setTempSelectedUsers([...selectedUsers]);
+
+      // Load search history and set initial search term
+      const history = searchHistoryService.getSearchHistory();
+      setSearchHistory(history);
+
+      // Only prepopulate with last search term if no users are currently selected
+      // This prevents confusion when editing existing selections
+      if (selectedUsers.length === 0) {
+        const lastSearchTerm = searchHistoryService.getLastSearchTerm();
+        setSearchTerm(lastSearchTerm);
+        setCurrentSearchTerm(lastSearchTerm);
+      } else {
+        setSearchTerm("");
+        setCurrentSearchTerm("");
+      }
+
       setShowAddOtherOption(false);
       // Load custom others from localStorage
       loadCustomOthers();
+    } else {
+      // Reset state when dialog closes
+      setSearchTerm("");
+      setCurrentSearchTerm("");
+      setShowAddOtherOption(false);
     }
   }, [open, selectedUsers]);
 
@@ -285,6 +321,9 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
   };
 
   const handleUserToggle = (displayName: string) => {
+    // Update the current search term when a user is selected
+    setCurrentSearchTerm(searchTerm);
+
     if (multiSelect) {
       setTempSelectedUsers((prev) => {
         if (prev.includes(displayName)) {
@@ -333,6 +372,36 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
     }
   };
 
+  const handleHistoryItemClick = (historyItem: SearchHistoryItem) => {
+    console.log("[UserSelectionPopup] History item clicked:", historyItem);
+    setSearchTerm(historyItem.searchTerm);
+    setCurrentSearchTerm(historyItem.searchTerm);
+
+    // Auto-select the user if they're not already selected
+    if (!tempSelectedUsers.includes(historyItem.selectedUser)) {
+      console.log(
+        "[UserSelectionPopup] Auto-selecting user from history:",
+        historyItem.selectedUser,
+      );
+      if (multiSelect) {
+        setTempSelectedUsers((prev) => [...prev, historyItem.selectedUser]);
+      } else {
+        setTempSelectedUsers([historyItem.selectedUser]);
+      }
+    } else {
+      console.log(
+        "[UserSelectionPopup] User already selected:",
+        historyItem.selectedUser,
+      );
+    }
+  };
+
+  const handleRemoveFromHistory = (searchTerm: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    searchHistoryService.removeFromHistory(searchTerm);
+    setSearchHistory(searchHistoryService.getSearchHistory());
+  };
+
   const isOther = (name: string) => {
     return (
       customOthers.some((other) => other.display_name === name) ||
@@ -342,7 +411,26 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
   };
 
   const handleConfirm = () => {
-    onSelect(tempSelectedUsers);
+    console.log("[UserSelectionPopup] Confirming selection:", {
+      tempSelectedUsers,
+      currentSearchTerm,
+      searchTerm,
+    });
+
+    // Save to search history if we have both a search term and selected users
+    const finalSearchTerm = currentSearchTerm || searchTerm;
+    if (finalSearchTerm && tempSelectedUsers.length > 0) {
+      // For single selection, use the selected user
+      // For multi-selection, use the first user as the primary selection
+      const primaryUser = tempSelectedUsers[0];
+      console.log("[UserSelectionPopup] Saving to search history:", {
+        searchTerm: finalSearchTerm,
+        selectedUser: primaryUser,
+      });
+      searchHistoryService.addToHistory(finalSearchTerm, primaryUser);
+    }
+
+    onSelect(tempSelectedUsers, finalSearchTerm);
     onOpenChange(false);
   };
 
@@ -385,8 +473,56 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
                 className="pl-12 pr-4 py-3 text-base border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg transition-all duration-200"
+                autoFocus
               />
             </div>
+
+            {/* Recent Searches - Show when there's no search term and we have history */}
+            {searchHistory.length > 0 && searchTerm.trim() === "" && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">
+                    Recent Searches
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {searchHistory.map((item, index) => (
+                    <div
+                      key={`${item.searchTerm}-${item.selectedUser}-${index}`}
+                      className="group flex items-center justify-between p-2 rounded-md hover:bg-blue-100 cursor-pointer transition-colors"
+                      onClick={() => handleHistoryItemClick(item)}
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <User className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-blue-900 truncate">
+                            {item.selectedUser}
+                          </div>
+                          <div className="text-xs text-blue-600 truncate">
+                            Search: &quot;{item.searchTerm}&quot;
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) =>
+                          handleRemoveFromHistory(item.searchTerm, e)
+                        }
+                        className="h-6 w-6 p-0 text-blue-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove from history"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-blue-600 mt-2">
+                  Click on a recent search to quickly select that user again.
+                </p>
+              </div>
+            )}
 
             {/* Add Other Option */}
             {showAddOtherOption && (
@@ -671,11 +807,13 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
           {/* Action Buttons */}
           <div className="flex justify-between items-center pt-4 border-t border-gray-100">
             <div className="text-sm text-gray-500">
-              {tempSelectedUsers.length > 0 && (
+              {tempSelectedUsers.length > 0 ? (
                 <span>
                   {tempSelectedUsers.length} user
                   {tempSelectedUsers.length !== 1 ? "s" : ""} selected
                 </span>
+              ) : (
+                <span className="text-gray-400">No users selected</span>
               )}
             </div>
             <div className="flex gap-3">
