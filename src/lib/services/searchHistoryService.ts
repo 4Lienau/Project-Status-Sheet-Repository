@@ -59,6 +59,7 @@ export const searchHistoryService = {
       console.log("[SearchHistoryService] Current history:", history);
 
       // Remove any existing entry with the same search term or selected user
+      // This handles both directory users and custom entries
       const filteredHistory = history.filter(
         (item) =>
           item.searchTerm.toLowerCase() !== trimmedSearchTerm.toLowerCase() &&

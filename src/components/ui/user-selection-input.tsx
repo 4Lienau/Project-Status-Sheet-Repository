@@ -18,7 +18,7 @@ interface UserSelectionInputProps {
 const UserSelectionInput: React.FC<UserSelectionInputProps> = ({
   value,
   onChange,
-  placeholder = "Click to select users...",
+  placeholder = "Click to select users or add custom entries...",
   multiSelect = false,
   className = "",
   id,

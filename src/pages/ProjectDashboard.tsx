@@ -504,7 +504,7 @@ const ProjectDashboard = ({
         calculated_end_date: null,
         total_days_remaining: null,
         working_days_remaining: null,
-        budget: { total: "0.00", actuals: "0.00", forecast: "0.00" },
+        budget: { total: "", actuals: "", forecast: "" },
         charterLink: "",
         sponsors: "",
         businessLeads: "",
@@ -586,15 +586,13 @@ const ProjectDashboard = ({
       total_days_remaining: project.total_days_remaining || null,
       working_days_remaining: project.working_days_remaining || null,
       budget: {
-        total: project.budget_total
-          ? formatCurrency(project.budget_total)
-          : "0.00",
+        total: project.budget_total ? formatCurrency(project.budget_total) : "",
         actuals: project.budget_actuals
           ? formatCurrency(project.budget_actuals)
-          : "0.00",
+          : "",
         forecast: project.budget_forecast
           ? formatCurrency(project.budget_forecast)
-          : "0.00",
+          : "",
       },
       isAnalysisExpanded: false, // Always default to collapsed analysis section
       charterLink: project.charter_link || "",
@@ -965,15 +963,22 @@ const ProjectDashboard = ({
                       ? data.manual_health_percentage
                       : null,
                   manual_status_color: data.manual_status_color || "green",
-                  budget_total: parseFloat(
-                    data.budget.total.replace(/[^0-9.-]+/g, ""),
-                  ),
-                  budget_actuals: parseFloat(
-                    data.budget.actuals.replace(/[^0-9.-]+/g, ""),
-                  ),
-                  budget_forecast: parseFloat(
-                    data.budget.forecast.replace(/[^0-9.-]+/g, ""),
-                  ),
+                  budget_total:
+                    data.budget.total.trim() === ""
+                      ? 0
+                      : parseFloat(data.budget.total.replace(/[^0-9.-]+/g, "")),
+                  budget_actuals:
+                    data.budget.actuals.trim() === ""
+                      ? 0
+                      : parseFloat(
+                          data.budget.actuals.replace(/[^0-9.-]+/g, ""),
+                        ),
+                  budget_forecast:
+                    data.budget.forecast.trim() === ""
+                      ? 0
+                      : parseFloat(
+                          data.budget.forecast.replace(/[^0-9.-]+/g, ""),
+                        ),
                   // truncateActivities removed - now using localStorage
                   charter_link: data.charterLink,
                   sponsors: data.sponsors,

@@ -81,16 +81,10 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
       const history = searchHistoryService.getSearchHistory();
       setSearchHistory(history);
 
-      // Only prepopulate with last search term if no users are currently selected
-      // This prevents confusion when editing existing selections
-      if (selectedUsers.length === 0) {
-        const lastSearchTerm = searchHistoryService.getLastSearchTerm();
-        setSearchTerm(lastSearchTerm);
-        setCurrentSearchTerm(lastSearchTerm);
-      } else {
-        setSearchTerm("");
-        setCurrentSearchTerm("");
-      }
+      // Don't prepopulate search term - always start with empty search
+      // This prevents confusion with old search history
+      setSearchTerm("");
+      setCurrentSearchTerm("");
 
       setShowAddOtherOption(false);
       // Load custom others from localStorage
@@ -106,13 +100,21 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
   // Load custom others from localStorage (with backward compatibility)
   const loadCustomOthers = () => {
     try {
+      console.log(
+        "[UserSelectionPopup] Loading custom others from localStorage",
+      );
+
       // First try to load from new key
       let stored = localStorage.getItem("customOthers");
       let others = [];
 
       if (stored) {
         others = JSON.parse(stored);
+        console.log("[UserSelectionPopup] Loaded custom others:", others);
       } else {
+        console.log(
+          "[UserSelectionPopup] No custom others found, checking for old format",
+        );
         // Check for old "customVendors" key for backward compatibility
         const oldStored = localStorage.getItem("customVendors");
         if (oldStored) {
@@ -126,6 +128,10 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
           // Save in new format and remove old key
           localStorage.setItem("customOthers", JSON.stringify(others));
           localStorage.removeItem("customVendors");
+          console.log(
+            "[UserSelectionPopup] Migrated old vendors to custom others:",
+            others,
+          );
         }
       }
 
@@ -138,6 +144,10 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
   // Save custom others to localStorage
   const saveCustomOthers = (others: CustomOther[]) => {
     try {
+      console.log(
+        "[UserSelectionPopup] Saving custom others to localStorage:",
+        others,
+      );
       localStorage.setItem("customOthers", JSON.stringify(others));
     } catch (error) {
       console.error("Error saving custom others to localStorage:", error);
@@ -145,23 +155,31 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
   };
 
   // Update the setCustomOthers calls to also save to localStorage
+  // Only save if we're not in the middle of adding a new other (to avoid double-saving)
   useEffect(() => {
-    saveCustomOthers(customOthers);
+    // Add a small delay to avoid conflicts with immediate saving in handleAddOther
+    const timeoutId = setTimeout(() => {
+      saveCustomOthers(customOthers);
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [customOthers]);
 
   // Filter users based on search term and check if we should show add other option
   useEffect(() => {
-    console.log("[UserSelectionPopup] Filtering with search term:", searchTerm);
-    console.log("[UserSelectionPopup] Total users to filter:", users.length);
+    console.log("[UserSelectionPopup] Filter effect triggered:", {
+      searchTerm,
+      customOthersCount: customOthers.length,
+      tempSelectedUsersCount: tempSelectedUsers.length,
+      usersCount: users.length,
+    });
 
     if (!searchTerm.trim()) {
       // Don't show any users by default - only show when searching
       setFilteredUsers([]);
       setShowAddOtherOption(false);
-      console.log("[UserSelectionPopup] No search term, hiding user list");
     } else {
       const searchLower = searchTerm.toLowerCase().trim();
-      console.log("[UserSelectionPopup] Search term (lowercase):", searchLower);
 
       const filtered = users.filter((user) => {
         const displayNameMatch =
@@ -175,24 +193,11 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
           user.department &&
           user.department.toLowerCase().includes(searchLower);
 
-        const matches =
-          displayNameMatch || emailMatch || jobTitleMatch || departmentMatch;
-
-        if (matches) {
-          console.log("[UserSelectionPopup] Match found:", {
-            user: user.display_name,
-            email: user.email,
-            displayNameMatch,
-            emailMatch,
-            jobTitleMatch,
-            departmentMatch,
-          });
-        }
-
-        return matches;
+        return (
+          displayNameMatch || emailMatch || jobTitleMatch || departmentMatch
+        );
       });
 
-      console.log("[UserSelectionPopup] Filtered results:", filtered.length);
       setFilteredUsers(filtered);
 
       // Also filter custom others based on search term
@@ -200,17 +205,48 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
         other.display_name.toLowerCase().includes(searchLower),
       );
 
-      // Show add other option ONLY if no results found (neither users nor others)
-      // and the search term is not already selected
+      console.log("[UserSelectionPopup] Filtering results:", {
+        searchTerm,
+        searchLower,
+        filteredUsersCount: filtered.length,
+        filteredOthersCount: filteredOthers.length,
+        customOthers: customOthers.map((o) => ({
+          name: o.display_name,
+          id: o.id,
+        })),
+      });
+
+      // Show add other option if:
+      // 1. There's a search term
+      // 2. The search term is not already selected
+      // 3. NO Azure AD users found matching the search term
+      // 4. The search term doesn't exactly match an existing custom other
       const alreadySelected = tempSelectedUsers.some(
         (selected) => selected.toLowerCase() === searchLower,
       );
 
+      // Check if the search term exactly matches any Azure AD user (display name)
+      const exactAzureMatch = users.some(
+        (user) => user.display_name.toLowerCase() === searchLower,
+      );
+
+      // Check if the search term exactly matches an existing custom other
+      const exactCustomMatch = customOthers.some(
+        (other) => other.display_name.toLowerCase() === searchLower,
+      );
+
+      // Only show "Add Other" option when:
+      // - There's a search term
+      // - It's not already selected
+      // - NO Azure AD users found in filtered results
+      // - It doesn't exactly match any Azure AD user
+      // - It doesn't exactly match an existing custom other
       setShowAddOtherOption(
         searchTerm.trim().length > 0 &&
+          !alreadySelected &&
           filtered.length === 0 &&
-          filteredOthers.length === 0 &&
-          !alreadySelected,
+          !exactAzureMatch &&
+          !exactCustomMatch,
       );
     }
   }, [users, customOthers, searchTerm, tempSelectedUsers]);
@@ -339,28 +375,109 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
     const trimmedName = otherName.trim();
     if (!trimmedName) return;
 
-    // Add to custom others list
-    const newOther: CustomOther = {
-      id: `other-${Date.now()}`,
-      display_name: trimmedName,
-      type: "other",
-    };
-    setCustomOthers((prev) => [...prev, newOther]);
+    console.log("[UserSelectionPopup] Adding custom other (START):", {
+      trimmedName,
+      multiSelect,
+      currentTempSelectedUsers: tempSelectedUsers,
+      currentCustomOthers: customOthers,
+      currentSearchTerm: searchTerm,
+    });
 
-    // Add to selection
-    if (multiSelect) {
+    // Check if it already exists
+    const existingOther = customOthers.find(
+      (other) => other.display_name.toLowerCase() === trimmedName.toLowerCase(),
+    );
+
+    let otherToSelect = trimmedName;
+
+    if (!existingOther) {
+      // Add to custom others list
+      const newOther: CustomOther = {
+        id: `other-${Date.now()}`,
+        display_name: trimmedName,
+        type: "other",
+      };
+
+      console.log("[UserSelectionPopup] Creating new custom other:", newOther);
+
+      // Update both states together to ensure they're synchronized
+      setCustomOthers((prev) => {
+        const updated = [...prev, newOther];
+        console.log("[UserSelectionPopup] Updated customOthers:", updated);
+        // Save to localStorage immediately
+        try {
+          localStorage.setItem("customOthers", JSON.stringify(updated));
+          console.log(
+            "[UserSelectionPopup] Saved to localStorage immediately:",
+            updated,
+          );
+        } catch (error) {
+          console.error("Error saving custom others to localStorage:", error);
+        }
+        return updated;
+      });
+
+      // Add to selection immediately after creating the custom other
       setTempSelectedUsers((prev) => {
-        if (!prev.includes(trimmedName)) {
-          return [...prev, trimmedName];
+        // Only add if not already selected
+        if (!prev.includes(otherToSelect)) {
+          const updatedSelection = multiSelect
+            ? [...prev, otherToSelect]
+            : [otherToSelect];
+          console.log(
+            "[UserSelectionPopup] Updated tempSelectedUsers (NEW ENTRY):",
+            {
+              previous: prev,
+              updated: updatedSelection,
+              multiSelect,
+              otherToSelect,
+            },
+          );
+          return updatedSelection;
         }
         return prev;
       });
     } else {
-      setTempSelectedUsers([trimmedName]);
+      console.log(
+        "[UserSelectionPopup] Custom other already exists:",
+        existingOther,
+      );
+      otherToSelect = existingOther.display_name; // Use the existing name
+
+      // Add to selection if not already selected
+      if (!tempSelectedUsers.includes(otherToSelect)) {
+        setTempSelectedUsers((prev) => {
+          const updatedSelection = multiSelect
+            ? [...prev, otherToSelect]
+            : [otherToSelect];
+          console.log(
+            "[UserSelectionPopup] Updated tempSelectedUsers (EXISTING ENTRY):",
+            {
+              previous: prev,
+              updated: updatedSelection,
+              multiSelect,
+              otherToSelect,
+            },
+          );
+          return updatedSelection;
+        });
+      } else {
+        console.log(
+          "[UserSelectionPopup] User already selected:",
+          otherToSelect,
+        );
+      }
     }
 
-    // Clear search term
-    setSearchTerm("");
+    // Don't clear the search term - keep it so the user can see the entry they just added
+    console.log(
+      "[UserSelectionPopup] Keeping search term to show newly added custom entry (END)",
+      {
+        searchTerm,
+        otherToSelect,
+        multiSelect,
+      },
+    );
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -401,11 +518,14 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
   };
 
   const isOther = (name: string) => {
-    return (
-      customOthers.some((other) => other.display_name === name) ||
-      (tempSelectedUsers.includes(name) &&
-        !users.some((user) => user.display_name === name))
+    const isInCustomOthers = customOthers.some(
+      (other) => other.display_name === name,
     );
+    const isSelectedButNotAzureUser =
+      tempSelectedUsers.includes(name) &&
+      !users.some((user) => user.display_name === name);
+
+    return isInCustomOthers || isSelectedButNotAzureUser;
   };
 
   const handleConfirm = () => {
@@ -529,7 +649,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-green-600" />
                     <span className="text-sm font-medium text-green-800">
-                      Add &quot;{searchTerm}&quot; as other
+                      Add &quot;{searchTerm}&quot; as custom entry
                     </span>
                   </div>
                   <Button
@@ -538,13 +658,14 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                     className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 h-8 text-xs"
                   >
                     <Plus className="h-3 w-3 mr-1" />
-                    Add Other
+                    Add Custom
                   </Button>
                 </div>
                 <p className="text-xs text-green-600 mt-1">
-                  Press Enter or click &quot;Add Other&quot; to add this as a
-                  custom other. You can delete others by hovering over them and
-                  clicking the X button.
+                  Press Enter or click &quot;Add Custom&quot; to add this as a
+                  custom entry (e.g., &quot;External Vendor&quot;,
+                  &quot;Marketing Team&quot;, &quot;Other&quot;). Perfect for
+                  assigning tasks to teams, vendors, or external parties.
                 </p>
               </div>
             )}
@@ -554,7 +675,21 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
           {!loading && searchTerm.trim() && (
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>
-                {`${filteredUsers.length} user${filteredUsers.length !== 1 ? "s" : ""} found${customOthers.length > 0 ? ` • ${customOthers.length} other${customOthers.length !== 1 ? "s" : ""} added` : ""}`}
+                {(() => {
+                  // Count custom entries that match the search term
+                  const matchingCustomOthers = customOthers.filter((other) =>
+                    other.display_name
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase().trim()),
+                  );
+
+                  return `${filteredUsers.length} user${filteredUsers.length !== 1 ? "s" : ""} found${matchingCustomOthers.length > 0 ? ` • ${matchingCustomOthers.length} custom entr${matchingCustomOthers.length !== 1 ? "ies" : "y"} available` : ""}`;
+                })()}
+                {showAddOtherOption && (
+                  <span className="text-green-600 font-medium ml-2">
+                    • Can add &quot;{searchTerm}&quot; as custom entry
+                  </span>
+                )}
               </span>
               <button
                 onClick={() => setSearchTerm("")}
@@ -587,7 +722,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                       {!isOtherEntry && <User className="h-3 w-3" />}
                       <span className="font-medium">{displayName}</span>
                       {isOtherEntry && (
-                        <span className="text-xs opacity-75">(Other)</span>
+                        <span className="text-xs opacity-75">(Custom)</span>
                       )}
                       <X
                         className="h-3 w-3 cursor-pointer hover:text-red-600 transition-colors"
@@ -646,13 +781,75 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
               </div>
             ) : (
               <div className="p-3 space-y-1">
-                {/* Custom Others - Only show when searching or if they match search */}
+                {/* Custom Others - Show ones that match search term */}
                 {customOthers
                   .filter((other) => {
-                    if (!searchTerm.trim()) return false; // Don't show others when not searching
-                    return other.display_name
-                      .toLowerCase()
-                      .includes(searchTerm.toLowerCase().trim());
+                    const isSelected = tempSelectedUsers.includes(
+                      other.display_name,
+                    );
+
+                    console.log(
+                      "[UserSelectionPopup] Filtering custom entry (BEFORE logic):",
+                      {
+                        otherName: other.display_name,
+                        searchTerm: searchTerm,
+                        isSelected,
+                        multiSelect,
+                        tempSelectedUsers,
+                      },
+                    );
+
+                    // ALWAYS show selected custom entries regardless of search term or mode
+                    if (isSelected) {
+                      console.log(
+                        "[UserSelectionPopup] Showing selected custom entry:",
+                        other.display_name,
+                      );
+                      return true;
+                    }
+
+                    // If no search term, don't show unselected custom entries
+                    if (!searchTerm.trim()) {
+                      console.log(
+                        "[UserSelectionPopup] No search term, hiding unselected custom entry:",
+                        other.display_name,
+                      );
+                      return false;
+                    }
+
+                    const searchLower = searchTerm.toLowerCase().trim();
+                    const displayNameLower = other.display_name.toLowerCase();
+
+                    // Show if the custom entry name contains the search term (partial match)
+                    // OR if it exactly matches the search term (for newly added entries)
+                    const partialMatch = displayNameLower.includes(searchLower);
+                    const exactMatch = displayNameLower === searchLower;
+
+                    // CRITICAL FIX: In single-select mode, also show if this custom entry was just created
+                    // by checking if it matches the current search term exactly (case-insensitive)
+                    const isNewlyCreated = exactMatch;
+
+                    const shouldShow =
+                      partialMatch || exactMatch || isNewlyCreated;
+
+                    console.log(
+                      "[UserSelectionPopup] Filtering custom entry (FINAL):",
+                      {
+                        otherName: other.display_name,
+                        searchTerm: searchTerm,
+                        searchLower,
+                        displayNameLower,
+                        partialMatch,
+                        exactMatch,
+                        isNewlyCreated,
+                        isSelected,
+                        shouldShow,
+                        multiSelect,
+                        tempSelectedUsers,
+                      },
+                    );
+
+                    return shouldShow;
                   })
                   .map((other) => {
                     const isSelected = tempSelectedUsers.includes(
@@ -700,7 +897,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                               {other.display_name}
                             </div>
                             <div className="text-sm text-green-600 truncate mt-1">
-                              Custom Other
+                              Custom Entry
                             </div>
                           </div>
                           {isSelected && (
@@ -722,7 +919,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                               removeCustomOther(other.display_name);
                             }}
                             className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Delete other"
+                            title="Delete custom entry"
                           >
                             <X className="h-4 w-4" />
                           </Button>

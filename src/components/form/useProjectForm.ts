@@ -20,9 +20,9 @@ const defaultFormData = {
   manual_status_color: "green" as "green" | "yellow" | "red",
   // truncateActivities removed - now using localStorage
   budget: {
-    total: "0",
-    actuals: "0",
-    forecast: "0",
+    total: "",
+    actuals: "",
+    forecast: "",
   },
   charterLink: "",
   sponsors: "",
