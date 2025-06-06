@@ -155,12 +155,10 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
     console.log("[UserSelectionPopup] Total users to filter:", users.length);
 
     if (!searchTerm.trim()) {
-      setFilteredUsers(users);
+      // Don't show any users by default - only show when searching
+      setFilteredUsers([]);
       setShowAddOtherOption(false);
-      console.log(
-        "[UserSelectionPopup] No search term, showing all users:",
-        users.length,
-      );
+      console.log("[UserSelectionPopup] No search term, hiding user list");
     } else {
       const searchLower = searchTerm.toLowerCase().trim();
       console.log("[UserSelectionPopup] Search term (lowercase):", searchLower);
@@ -552,22 +550,18 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
             )}
           </div>
 
-          {/* Results Count */}
-          {!loading && (
+          {/* Results Count - Only show when searching */}
+          {!loading && searchTerm.trim() && (
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>
-                {searchTerm
-                  ? `${filteredUsers.length} user${filteredUsers.length !== 1 ? "s" : ""} found${customOthers.length > 0 ? ` • ${customOthers.length} other${customOthers.length !== 1 ? "s" : ""} added` : ""}`
-                  : `${users.length} user${users.length !== 1 ? "s" : ""} available${customOthers.length > 0 ? ` • ${customOthers.length} other${customOthers.length !== 1 ? "s" : ""} added` : ""}`}
+                {`${filteredUsers.length} user${filteredUsers.length !== 1 ? "s" : ""} found${customOthers.length > 0 ? ` • ${customOthers.length} other${customOthers.length !== 1 ? "s" : ""} added` : ""}`}
               </span>
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                >
-                  Clear search
-                </button>
-              )}
+              <button
+                onClick={() => setSearchTerm("")}
+                className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              >
+                Clear search
+              </button>
             </div>
           )}
 
@@ -626,28 +620,36 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                   Please wait while we fetch the directory
                 </span>
               </div>
-            ) : filteredUsers.length === 0 ? (
+            ) : filteredUsers.length === 0 && searchTerm.trim() ? (
               <div className="flex flex-col items-center justify-center p-12 text-gray-500">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                   <Search className="h-8 w-8 text-gray-400" />
                 </div>
                 <span className="text-base font-medium mb-2">
-                  {searchTerm
-                    ? "No users found matching your search"
-                    : "No users available"}
+                  No users found matching your search
                 </span>
-                {searchTerm && (
-                  <span className="text-sm text-gray-400">
-                    Try adjusting your search terms
-                  </span>
-                )}
+                <span className="text-sm text-gray-400">
+                  Try adjusting your search terms
+                </span>
+              </div>
+            ) : !searchTerm.trim() ? (
+              <div className="flex flex-col items-center justify-center p-12 text-gray-500">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <Search className="h-8 w-8 text-gray-400" />
+                </div>
+                <span className="text-base font-medium mb-2">
+                  Start typing to search users
+                </span>
+                <span className="text-sm text-gray-400">
+                  Enter a name or email to find users
+                </span>
               </div>
             ) : (
               <div className="p-3 space-y-1">
-                {/* Custom Others */}
+                {/* Custom Others - Only show when searching or if they match search */}
                 {customOthers
                   .filter((other) => {
-                    if (!searchTerm.trim()) return true;
+                    if (!searchTerm.trim()) return false; // Don't show others when not searching
                     return other.display_name
                       .toLowerCase()
                       .includes(searchTerm.toLowerCase().trim());
