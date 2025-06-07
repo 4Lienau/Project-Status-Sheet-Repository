@@ -39,7 +39,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
-import { projectService } from "@/lib/services/project";
+import {
+  projectService,
+  calculateProjectHealthStatusColor,
+} from "@/lib/services/project";
 import { FileSpreadsheet, ArrowLeft, ExternalLink } from "lucide-react";
 import { exportProjectsToExcel } from "@/lib/services/excelExport";
 import { useToast } from "@/components/ui/use-toast";
@@ -67,6 +70,7 @@ interface ProjectsOverviewProps {
   filterManager?: string | string[];
   filterStatus?: string;
   filterDepartment?: string;
+  filterStatusHealth?: string;
 }
 
 // Define project type for better type safety
@@ -94,6 +98,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   filterManager = "all",
   filterStatus = "all",
   filterDepartment = "all",
+  filterStatusHealth = "all",
 }) => {
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,6 +240,58 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
         header: "Project Manager",
         size: 150,
         cell: (info) => info.getValue() || "—",
+      }),
+      columnHelper.accessor((row) => calculateProjectHealthStatusColor(row), {
+        id: "health_status",
+        header: "Health Status",
+        size: 130,
+        enableSorting: true,
+        sortingFn: (rowA, rowB) => {
+          const a = calculateProjectHealthStatusColor(rowA.original);
+          const b = calculateProjectHealthStatusColor(rowB.original);
+          // Sort order: green < yellow < red
+          const order = { green: 0, yellow: 1, red: 2 };
+          return order[a] - order[b];
+        },
+        cell: (info) => {
+          const healthStatus = info.getValue();
+          const project = info.row.original;
+
+          // Don't show health status for cancelled projects
+          if (project.status === "cancelled") {
+            return (
+              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                Cancelled
+              </span>
+            );
+          }
+
+          const statusConfig = {
+            green: {
+              label: "On Track",
+              className: "bg-green-100 text-green-800 border border-green-200",
+            },
+            yellow: {
+              label: "At Risk",
+              className:
+                "bg-yellow-100 text-yellow-800 border border-yellow-200",
+            },
+            red: {
+              label: "Critical",
+              className: "bg-red-100 text-red-800 border border-red-200",
+            },
+          };
+
+          const config = statusConfig[healthStatus] || statusConfig.green;
+
+          return (
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config.className}`}
+            >
+              {config.label}
+            </span>
+          );
+        },
       }),
       columnHelper.accessor((row) => calculateCompletion(row), {
         id: "completion",
@@ -433,6 +490,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
         filterManager,
         filterStatus,
         filterDepartment,
+        filterStatusHealth,
       });
 
       try {
@@ -496,6 +554,27 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
           filtered = filtered.filter((p) => p.status === filterStatus);
         }
 
+        // Apply status health filter
+        if (filterStatusHealth && filterStatusHealth !== "all") {
+          filtered = filtered.filter((project) => {
+            // Special handling: Exclude cancelled projects from "Red (Critical)" filter
+            if (
+              filterStatusHealth === "red" &&
+              project.status === "cancelled"
+            ) {
+              return false;
+            }
+
+            // Use computed status color if available, otherwise calculate it
+            let statusHealthColor = project.computed_status_color;
+            if (!statusHealthColor) {
+              statusHealthColor = calculateProjectHealthStatusColor(project);
+            }
+
+            return statusHealthColor === filterStatusHealth;
+          });
+        }
+
         setProjects(filtered);
       } catch (error) {
         console.error("Error loading projects:", error);
@@ -510,7 +589,14 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     };
 
     loadProjects();
-  }, [user, filterManager, filterStatus, filterDepartment, toast]);
+  }, [
+    user,
+    filterManager,
+    filterStatus,
+    filterDepartment,
+    filterStatusHealth,
+    toast,
+  ]);
 
   // Create the table instance
   const table = useReactTable({

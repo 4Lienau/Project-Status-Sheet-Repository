@@ -1,5 +1,8 @@
 import ExcelJS from "exceljs";
-import { ProjectWithRelations } from "./project";
+import {
+  ProjectWithRelations,
+  calculateProjectHealthStatusColor,
+} from "./project";
 
 // Helper function to strip HTML tags from text
 const stripHtmlTags = (text: string | null | undefined): string => {
@@ -23,6 +26,7 @@ export const exportProjectsToExcel = async (
     { header: "Description", key: "description", width: 80 },
     { header: "Value Statement", key: "value_statement", width: 80 },
     { header: "Status", key: "status", width: 15 },
+    { header: "Health Status", key: "health_status", width: 18 },
     { header: "Overall Complete", key: "overall_complete", width: 15 },
     { header: "Total Budget", key: "budget_total", width: 15 },
     { header: "Actuals", key: "budget_actuals", width: 15 },
@@ -63,12 +67,24 @@ export const exportProjectsToExcel = async (
         )
       : 0;
 
+    // Calculate health status
+    const healthStatusColor = calculateProjectHealthStatusColor(project);
+    const healthStatusText =
+      project.status === "cancelled"
+        ? "Cancelled"
+        : healthStatusColor === "green"
+          ? "Green (On Track)"
+          : healthStatusColor === "yellow"
+            ? "Yellow (At Risk)"
+            : "Red (Critical)";
+
     const row = overviewSheet.addRow({
       project_id: project.project_id || "",
       title: stripHtmlTags(project.title),
       description: stripHtmlTags(project.description || ""),
       value_statement: stripHtmlTags(project.value_statement || ""),
       status: (project.status || "active").toUpperCase(),
+      health_status: healthStatusText,
       overall_complete: overallComplete,
       budget_total: project.budget_total,
       budget_actuals: project.budget_actuals,
@@ -99,16 +115,21 @@ export const exportProjectsToExcel = async (
       // Default vertical middle alignment
       cell.alignment = { vertical: "middle" };
 
-      // Format percentage column (Overall Complete)
-      if (colNumber === 6) {
+      // Format percentage column (Overall Complete) - now column 7
+      if (colNumber === 7) {
         cell.numFmt = '0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      // Format budget columns (7, 8, 9, 10)
-      if (colNumber >= 7 && colNumber <= 10) {
+      // Format budget columns (8, 9, 10, 11)
+      if (colNumber >= 8 && colNumber <= 11) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
+      }
+
+      // Center health status column (6)
+      if (colNumber === 6) {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Bold and left-align project title
@@ -128,23 +149,23 @@ export const exportProjectsToExcel = async (
         cell.font = { bold: true };
       }
 
-      // Format duration columns (15, 16, 17, 18) - center align numbers
-      if (colNumber >= 15 && colNumber <= 18) {
+      // Format duration columns (16, 17, 18, 19) - center align numbers
+      if (colNumber >= 16 && colNumber <= 19) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      // Format date columns (19, 20, 21, 22)
-      if (colNumber >= 19 && colNumber <= 22) {
+      // Format date columns (20, 21, 22, 23)
+      if (colNumber >= 20 && colNumber <= 23) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Center milestone and risk counts
-      if (colNumber === 23 || colNumber === 24) {
+      if (colNumber === 24 || colNumber === 25) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Make charter link clickable
-      if (colNumber === 11 && cell.value) {
+      if (colNumber === 12 && cell.value) {
         const url = cell.value.toString();
         cell.value = { text: url, hyperlink: url };
         cell.font = { color: { argb: "FF0000FF" }, underline: true };
@@ -219,6 +240,61 @@ export const exportProjectsToExcel = async (
     ],
   });
 
+  // Add conditional formatting for health status column
+  overviewSheet.addConditionalFormatting({
+    ref: `F2:F${projects.length + 1}`,
+    rules: [
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "Green",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFE2F0D9" },
+          },
+        },
+      },
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "Yellow",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFFFF2CC" },
+          },
+        },
+      },
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "Red",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFFCE4D6" },
+          },
+        },
+      },
+      {
+        type: "containsText",
+        operator: "containsText",
+        text: "Cancelled",
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FFF0F0F0" },
+          },
+        },
+      },
+    ],
+  });
+
   // Add table formatting
   overviewSheet.addTable({
     name: "ProjectsOverview",
@@ -230,41 +306,54 @@ export const exportProjectsToExcel = async (
       showRowStripes: true,
     },
     columns: overviewColumns.map((col) => ({ name: col.header })),
-    rows: projects.map((project) => [
-      project.project_id || "",
-      stripHtmlTags(project.title),
-      stripHtmlTags(project.description || ""),
-      stripHtmlTags(project.value_statement || ""),
-      (project.status || "active").toUpperCase(),
-      project.milestones?.length
-        ? Math.round(
-            project.milestones.reduce((acc, m) => acc + m.completion, 0) /
-              project.milestones.length,
-          )
-        : 0,
-      project.budget_total,
-      project.budget_actuals,
-      project.budget_forecast,
-      project.budget_total - project.budget_forecast,
-      project.charter_link,
-      stripHtmlTags(project.sponsors || ""),
-      stripHtmlTags(project.business_leads || ""),
-      stripHtmlTags(project.project_manager || ""),
-      project.working_days_remaining || null,
-      project.total_days_remaining || null,
-      project.total_days || null,
-      project.working_days || null,
-      project.calculated_start_date
-        ? new Date(project.calculated_start_date).toLocaleDateString()
-        : null,
-      project.calculated_end_date
-        ? new Date(project.calculated_end_date).toLocaleDateString()
-        : null,
-      new Date(project.created_at || "").toLocaleDateString(),
-      new Date(project.updated_at || "").toLocaleDateString(),
-      project.milestones?.length || 0,
-      project.risks?.length || 0,
-    ]),
+    rows: projects.map((project) => {
+      const healthStatusColor = calculateProjectHealthStatusColor(project);
+      const healthStatusText =
+        project.status === "cancelled"
+          ? "Cancelled"
+          : healthStatusColor === "green"
+            ? "Green (On Track)"
+            : healthStatusColor === "yellow"
+              ? "Yellow (At Risk)"
+              : "Red (Critical)";
+
+      return [
+        project.project_id || "",
+        stripHtmlTags(project.title),
+        stripHtmlTags(project.description || ""),
+        stripHtmlTags(project.value_statement || ""),
+        (project.status || "active").toUpperCase(),
+        healthStatusText,
+        project.milestones?.length
+          ? Math.round(
+              project.milestones.reduce((acc, m) => acc + m.completion, 0) /
+                project.milestones.length,
+            )
+          : 0,
+        project.budget_total,
+        project.budget_actuals,
+        project.budget_forecast,
+        project.budget_total - project.budget_forecast,
+        project.charter_link,
+        stripHtmlTags(project.sponsors || ""),
+        stripHtmlTags(project.business_leads || ""),
+        stripHtmlTags(project.project_manager || ""),
+        project.working_days_remaining || null,
+        project.total_days_remaining || null,
+        project.total_days || null,
+        project.working_days || null,
+        project.calculated_start_date
+          ? new Date(project.calculated_start_date).toLocaleDateString()
+          : null,
+        project.calculated_end_date
+          ? new Date(project.calculated_end_date).toLocaleDateString()
+          : null,
+        new Date(project.created_at || "").toLocaleDateString(),
+        new Date(project.updated_at || "").toLocaleDateString(),
+        project.milestones?.length || 0,
+        project.risks?.length || 0,
+      ];
+    }),
   });
 
   // Milestones Sheet
