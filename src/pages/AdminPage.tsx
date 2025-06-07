@@ -6,6 +6,7 @@ import SupabaseMetrics from "@/components/admin/SupabaseMetrics";
 import PendingUsersManager from "@/components/admin/PendingUsersManager";
 import ProjectDurationManager from "@/components/admin/ProjectDurationManager";
 import UsageAnalytics from "@/components/admin/UsageAnalytics";
+import AIUsageAnalytics from "@/components/admin/AIUsageAnalytics";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -57,6 +58,7 @@ import {
   Users,
   Building,
   Brain,
+  Zap,
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
@@ -640,6 +642,10 @@ const AdminPage = () => {
               <Clock className="h-4 w-4" />
               Project Duration
             </TabsTrigger>
+            <TabsTrigger value="ai-usage" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              AI Usage
+            </TabsTrigger>
             <TabsTrigger value="azure-ad" className="flex items-center gap-2">
               <Cloud className="h-4 w-4" />
               Azure AD Sync
@@ -664,6 +670,10 @@ const AdminPage = () => {
 
           <TabsContent value="supabase" className="space-y-4">
             <SupabaseMetrics />
+          </TabsContent>
+
+          <TabsContent value="ai-usage" className="space-y-4">
+            <AIUsageAnalytics />
           </TabsContent>
 
           <TabsContent value="azure-ad" className="space-y-4">

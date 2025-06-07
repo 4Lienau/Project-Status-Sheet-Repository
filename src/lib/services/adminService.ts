@@ -1583,4 +1583,82 @@ export const adminService = {
       return false;
     }
   },
+
+  // AI Usage Analytics Methods
+  async getAIUsageOverview(): Promise<{
+    totalAIUsage: number;
+    uniqueAIUsers: number;
+    adoptionRate: number;
+    mostPopularFeature: string;
+  }> {
+    try {
+      console.log(
+        "[adminService.getAIUsageOverview] Fetching AI usage overview...",
+      );
+
+      // Get total users count
+      const { count: totalUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+
+      // Get AI usage data
+      const { data: aiUsageData, error: aiUsageError } = await supabase
+        .from("ai_usage_tracking")
+        .select("user_id, feature_type");
+
+      if (aiUsageError) {
+        console.error(
+          "[adminService.getAIUsageOverview] Error fetching AI usage data:",
+          aiUsageError,
+        );
+        return {
+          totalAIUsage: 0,
+          uniqueAIUsers: 0,
+          adoptionRate: 0,
+          mostPopularFeature: "None",
+        };
+      }
+
+      const totalAIUsage = aiUsageData?.length || 0;
+      const uniqueAIUsers = new Set(aiUsageData?.map((u) => u.user_id) || [])
+        .size;
+      const adoptionRate = totalUsers
+        ? Math.round((uniqueAIUsers / totalUsers) * 100)
+        : 0;
+
+      // Find most popular feature
+      const featureCounts = {};
+      aiUsageData?.forEach((usage) => {
+        featureCounts[usage.feature_type] =
+          (featureCounts[usage.feature_type] || 0) + 1;
+      });
+
+      const mostPopularFeature = Object.keys(featureCounts).reduce(
+        (a, b) => (featureCounts[a] > featureCounts[b] ? a : b),
+        "None",
+      );
+
+      const result = {
+        totalAIUsage,
+        uniqueAIUsers,
+        adoptionRate,
+        mostPopularFeature,
+      };
+
+      console.log(
+        "[adminService.getAIUsageOverview] AI usage overview:",
+        result,
+      );
+
+      return result;
+    } catch (error) {
+      console.error("[adminService.getAIUsageOverview] Catch error:", error);
+      return {
+        totalAIUsage: 0,
+        uniqueAIUsers: 0,
+        adoptionRate: 0,
+        mostPopularFeature: "None",
+      };
+    }
+  },
 };

@@ -18,6 +18,11 @@
  */
 
 import OpenAI from "openai";
+import {
+  aiUsageTrackingService,
+  AIFeatureType,
+} from "./aiUsageTrackingService";
+import { supabase } from "../supabase";
 
 // Check if API key is available, otherwise use a placeholder
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY || "";
@@ -69,6 +74,37 @@ Format your response as HTML with 2-3 concise paragraphs (<p> tags). Use bullet 
   }
 };
 
+// Helper function to get current user ID
+const getCurrentUserId = async (): Promise<string | null> => {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user?.id || null;
+  } catch (error) {
+    console.error("Error getting current user:", error);
+    return null;
+  }
+};
+
+// Helper function to map AI service types to tracking feature types
+const mapTypeToFeatureType = (
+  type: "description" | "value" | "milestones" | "analysis",
+): AIFeatureType | null => {
+  switch (type) {
+    case "description":
+      return "description";
+    case "value":
+      return "value_statement";
+    case "milestones":
+      return "milestones";
+    case "analysis":
+      return "project_pilot"; // Analysis is used by Project Pilot
+    default:
+      return null;
+  }
+};
+
 export const aiService = {
   async generateContent(
     type: "description" | "value" | "milestones" | "analysis",
@@ -114,6 +150,23 @@ export const aiService = {
             `Successfully generated ${type} content via Netlify function`,
           );
           const data = await response.json();
+
+          // Track AI usage - only track successful generations
+          const userId = await getCurrentUserId();
+          const featureType = mapTypeToFeatureType(type);
+          if (userId && featureType) {
+            await aiUsageTrackingService.logAIUsage({
+              user_id: userId,
+              feature_type: featureType,
+              project_id: projectData?.id,
+              metadata: {
+                method: "netlify_function",
+                title: title,
+                success: true,
+              },
+            });
+          }
+
           if (type === "milestones") {
             return this.processMilestones(data.content);
           }
@@ -239,6 +292,24 @@ export const aiService = {
         const content = completion.choices[0].message?.content || "";
         if (content.trim() === "") {
           throw new Error("OpenAI API returned empty content");
+        }
+
+        // Track AI usage for successful OpenAI API calls - only when fallback is used
+        const userId = await getCurrentUserId();
+        const featureType = mapTypeToFeatureType(type);
+        if (userId && featureType) {
+          await aiUsageTrackingService.logAIUsage({
+            user_id: userId,
+            feature_type: featureType,
+            project_id: projectData?.id,
+            metadata: {
+              method: "openai_direct_fallback",
+              title: title,
+              success: true,
+              model: "gpt-3.5-turbo",
+              note: "Used as fallback after Netlify function failed",
+            },
+          });
         }
 
         if (type === "milestones") {

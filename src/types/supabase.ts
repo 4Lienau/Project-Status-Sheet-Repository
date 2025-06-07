@@ -44,6 +44,47 @@ export type Database = {
           },
         ]
       }
+      ai_usage_tracking: {
+        Row: {
+          created_at: string | null
+          feature_type: string
+          id: string
+          metadata: Json | null
+          project_id: string | null
+          session_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          feature_type: string
+          id?: string
+          metadata?: Json | null
+          project_id?: string | null
+          session_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          feature_type?: string
+          id?: string
+          metadata?: Json | null
+          project_id?: string | null
+          session_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_tracking_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       azure_sync_logs: {
         Row: {
           created_at: string | null
@@ -519,6 +560,7 @@ export type Database = {
           calculated_end_date: string | null
           calculated_start_date: string | null
           charter_link: string
+          computed_status_color: string | null
           created_at: string | null
           department: string | null
           description: string | null
@@ -547,6 +589,7 @@ export type Database = {
           calculated_end_date?: string | null
           calculated_start_date?: string | null
           charter_link: string
+          computed_status_color?: string | null
           created_at?: string | null
           department?: string | null
           description?: string | null
@@ -575,6 +618,7 @@ export type Database = {
           calculated_end_date?: string | null
           calculated_start_date?: string | null
           charter_link?: string
+          computed_status_color?: string | null
           created_at?: string | null
           department?: string | null
           description?: string | null
@@ -889,6 +933,36 @@ export type Database = {
           session_duration_minutes: number
         }[]
       }
+      get_ai_adoption_overview: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_ai_events: number
+          unique_ai_users: number
+          total_users: number
+          adoption_rate: number
+          most_popular_feature: string
+          daily_average_usage: number
+        }[]
+      }
+      get_ai_usage_analytics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          feature_type: string
+          total_usage: number
+          unique_users: number
+          usage_last_7_days: number
+          usage_last_30_days: number
+          avg_daily_usage: number
+        }[]
+      }
+      get_ai_usage_trends: {
+        Args: { days_back?: number }
+        Returns: {
+          date: string
+          feature_type: string
+          usage_count: number
+        }[]
+      }
       get_auth_users_data: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -935,6 +1009,20 @@ export type Database = {
           size_bytes: number
           size_mb: number
           row_count: number
+        }[]
+      }
+      get_top_ai_users: {
+        Args: { limit_count?: number }
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          total_ai_usage: number
+          description_usage: number
+          value_statement_usage: number
+          milestones_usage: number
+          project_pilot_usage: number
+          last_ai_usage: string
         }[]
       }
       get_user_activity_summary: {
@@ -1083,6 +1171,10 @@ export type Database = {
           similarity: number
         }[]
       }
+      recalculate_all_computed_status_colors: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       sparsevec_out: {
         Args: { "": unknown }
         Returns: unknown
@@ -1109,6 +1201,10 @@ export type Database = {
       }
       update_daily_usage_metrics: {
         Args: { p_user_id: string; p_activity_type: string }
+        Returns: undefined
+      }
+      update_project_computed_status_color: {
+        Args: { project_id: string }
         Returns: undefined
       }
       urlencode: {
