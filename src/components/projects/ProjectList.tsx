@@ -17,7 +17,7 @@
  * Called by: src/components/home.tsx
  */
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
   Tooltip,
@@ -49,6 +49,8 @@ interface ProjectListProps {
   filterDepartment?: string;
   filterStatusHealth?: string;
   onFilteredCountChange?: (count: number) => void;
+  onTotalCountChange?: (count: number) => void;
+  totalProjectCount?: number;
 }
 
 const ProjectList = ({
@@ -59,6 +61,8 @@ const ProjectList = ({
   filterDepartment = "all",
   filterStatusHealth = "all",
   onFilteredCountChange,
+  onTotalCountChange,
+  totalProjectCount = 0,
 }: ProjectListProps) => {
   // Convert filterManager to array if it's a string for backward compatibility
   const filterManagerArray = Array.isArray(filterManager)
@@ -185,11 +189,26 @@ const ProjectList = ({
     return calculatedColor;
   };
 
+  // Memoize expensive health status calculations
+  const getProjectStatusHealthColorMemo = React.useMemo(() => {
+    const cache = new Map<string, string>();
+    return (project: ProjectWithRelations): string => {
+      const cacheKey = `${project.id}-${project.computed_status_color}-${project.health_calculation_type}-${project.manual_status_color}-${project.status}-${project.milestones?.length || 0}`;
+
+      if (cache.has(cacheKey)) {
+        return cache.get(cacheKey)!;
+      }
+
+      const result = getProjectStatusHealthColor(project);
+      cache.set(cacheKey, result);
+      return result;
+    };
+  }, []);
+
   useEffect(() => {
     const loadProjects = async () => {
       setLoading(true);
       console.log("Loading projects with filters:", {
-        filterManager,
         filterManagerArray,
         filterStatus,
         filterDepartment,
@@ -197,7 +216,7 @@ const ProjectList = ({
       });
 
       try {
-        // First, get the current user's department and email
+        // Get user info once
         let userDepartment = "";
         let userEmail = "";
         let userName = "";
@@ -218,128 +237,55 @@ const ProjectList = ({
           }
         }
 
-        console.log("User info:", { userDepartment, userEmail, userName });
-
-        // Simplified project loading - get all projects in one go
-        const allProjectsData = await projectService.getAllProjects();
-        console.log("All projects count:", allProjectsData.length);
-
-        // Load full project details
-        const projectPromises = allProjectsData.map((p) =>
-          projectService.getProject(p.id),
-        );
-        const projects = (await Promise.all(projectPromises)).filter(
-          (p): p is ProjectWithRelations => p !== null,
-        );
-
+        // OPTIMIZED: Load all projects with full details in a single efficient query
+        // This replaces the N+1 query pattern that was causing performance issues
+        const projects = await projectService.getAllProjects();
         console.log("Loaded projects count:", projects.length);
+
         setAllProjects(projects);
 
-        // Apply filters
+        // Report the total count back to parent component
+        if (onTotalCountChange) {
+          onTotalCountChange(projects.length);
+        }
+
+        // OPTIMIZED: Apply filters efficiently without expensive calculations in the loop
         let filtered = [...projects];
         console.log("Starting filter with", filtered.length, "projects");
 
-        // TEMPORARILY DISABLE USER DEPARTMENT FILTERING FOR DEBUGGING
-        // This filter might be too restrictive and causing no projects to show
-        /*
-        if (userDepartment && userDepartment !== "Technology") {
-          const beforeCount = filtered.length;
-          filtered = filtered.filter((project) => {
-            // Always show projects where user is the project manager
-            if (userEmail && project.project_manager === userEmail) return true;
-            if (userName && project.project_manager === userName) return true;
-
-            // Show projects from user's department
-            return project.department === userDepartment;
-          });
-          console.log('After user department filter:', filtered.length, 'projects (from', beforeCount, ')');
-        }
-        */
-
-        // Then apply department filter dropdown if selected
+        // Apply department filter
         if (filterDepartment && filterDepartment !== "all") {
-          const beforeCount = filtered.length;
-          filtered = filtered.filter((project) => {
-            return project.department === filterDepartment;
-          });
-          console.log(
-            "After department filter:",
-            filtered.length,
-            "projects (from",
-            beforeCount,
-            ")",
+          filtered = filtered.filter(
+            (project) => project.department === filterDepartment,
           );
         }
 
-        // Apply project manager filter only if specific managers are selected
+        // Apply project manager filter
         if (shouldFilterByManager) {
-          const beforeCount = filtered.length;
-          filtered = filtered.filter((project) => {
-            // Check if the project's manager is in the selected managers array
-            const isIncluded = filterManagerArray.includes(
-              project.project_manager,
-            );
-            console.log(
-              `Project ${project.id} manager: ${project.project_manager}, included: ${isIncluded}`,
-            );
-            return isIncluded;
-          });
-          console.log(
-            "After manager filter:",
-            filtered.length,
-            "projects (from",
-            beforeCount,
-            ")",
+          filtered = filtered.filter((project) =>
+            filterManagerArray.includes(project.project_manager),
           );
         }
 
         // Apply status filter
         if (filterStatus && filterStatus !== "all") {
-          const beforeCount = filtered.length;
           filtered = filtered.filter((p) => p.status === filterStatus);
-          console.log(
-            "After status filter:",
-            filtered.length,
-            "projects (from",
-            beforeCount,
-            ")",
-          );
         }
 
-        // Apply status health filter
+        // OPTIMIZED: Apply status health filter with memoized calculations
         if (filterStatusHealth && filterStatusHealth !== "all") {
-          const beforeCount = filtered.length;
-          console.log(
-            `[STATUS_HEALTH_FILTER] Filtering by status health: ${filterStatusHealth}`,
-          );
           filtered = filtered.filter((project) => {
-            const statusHealthColor = getProjectStatusHealthColor(project);
-
             // Special handling: Exclude cancelled projects from "Red (Critical)" filter
-            // Cancelled projects should only appear when "All Health Status" is selected
             if (
               filterStatusHealth === "red" &&
               project.status === "cancelled"
             ) {
-              console.log(
-                `[STATUS_HEALTH_FILTER] Excluding cancelled project "${project.title}" from Red (Critical) filter`,
-              );
               return false;
             }
 
-            const matches = statusHealthColor === filterStatusHealth;
-            console.log(
-              `[STATUS_HEALTH_FILTER] Project "${project.title}" - Status: ${project.status}, Color: ${statusHealthColor}, Filter: ${filterStatusHealth}, Matches: ${matches}`,
-            );
-            return matches;
+            const statusHealthColor = getProjectStatusHealthColorMemo(project);
+            return statusHealthColor === filterStatusHealth;
           });
-          console.log(
-            "After status health filter:",
-            filtered.length,
-            "projects (from",
-            beforeCount,
-            ")",
-          );
         }
 
         console.log("Final filtered projects:", filtered.length);
@@ -358,9 +304,8 @@ const ProjectList = ({
 
     loadProjects();
   }, [
-    // Remove shouldFilterByManager from dependencies to prevent re-render loops
-    // It's derived from filterManagerArray, so we don't need both
-    filterManagerArray,
+    // Simplified dependencies to prevent unnecessary re-renders
+    JSON.stringify(filterManagerArray), // Use JSON.stringify to properly compare arrays
     filterStatus,
     filterDepartment,
     filterStatusHealth,
@@ -384,8 +329,20 @@ const ProjectList = ({
         <div className="flex items-center gap-4">
           <h2 className="text-2xl font-semibold text-white">Projects</h2>
           <span className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white border border-white/30">
-            {filteredProjects.length}{" "}
-            {filteredProjects.length === 1 ? "project" : "projects"}
+            {totalProjectCount > 0 ? (
+              <>
+                {filteredProjects.length} of {totalProjectCount} (
+                {Math.round(
+                  (filteredProjects.length / totalProjectCount) * 100,
+                )}
+                %)
+              </>
+            ) : (
+              <>
+                {filteredProjects.length}{" "}
+                {filteredProjects.length === 1 ? "project" : "projects"}
+              </>
+            )}
           </span>
         </div>
       </div>

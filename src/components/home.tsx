@@ -117,6 +117,7 @@ const Home = () => {
   const [profileChecked, setProfileChecked] = useState(false);
   const [filtersLoaded, setFiltersLoaded] = useState(false);
   const [filteredProjectCount, setFilteredProjectCount] = useState(0);
+  const [totalProjectCount, setTotalProjectCount] = useState(0);
 
   // Clear all filters function
   const clearAllFilters = () => {
@@ -683,6 +684,8 @@ const Home = () => {
                 filterDepartment={selectedDepartment}
                 filterStatusHealth={selectedStatusHealth}
                 onFilteredCountChange={setFilteredProjectCount}
+                onTotalCountChange={setTotalProjectCount}
+                totalProjectCount={totalProjectCount}
               />
             </div>
           )}
