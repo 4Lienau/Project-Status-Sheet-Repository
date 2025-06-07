@@ -1,121 +1,88 @@
-/**
- * File: kpiService.ts
- * Purpose: Service for calculating project KPIs and metrics
- * Description: This service provides functions to calculate various KPIs from project data,
- * including financial metrics, performance indicators, resource utilization, and operational metrics.
- * It aggregates data from all projects to provide portfolio-level insights.
- */
-
-import { ProjectWithRelations, calculateWeightedCompletion } from "./project";
 import {
-  format,
-  parseISO,
-  differenceInDays,
-  startOfMonth,
-  endOfMonth,
-  eachMonthOfInterval,
-  subMonths,
-} from "date-fns";
+  ProjectWithRelations,
+  calculateWeightedCompletion,
+  calculateProjectHealthStatusColor,
+} from "./project";
 
 export interface FinancialKPIs {
   totalBudget: number;
   totalActuals: number;
   totalForecast: number;
-  budgetVariance: number;
   budgetUtilization: number;
-  costPerformanceIndex: number;
-  projectsOverBudget: number;
-  projectsUnderBudget: number;
+  budgetVariance: number;
   departmentBudgets: Array<{
     department: string;
     budget: number;
     actuals: number;
     forecast: number;
-    variance: number;
+    utilization: number;
   }>;
 }
 
 export interface PerformanceKPIs {
   overallCompletion: number;
-  statusDistribution: Array<{
-    status: string;
-    count: number;
-    percentage: number;
-  }>;
+  milestoneCompletionRate: number;
+  completedMilestones: number;
+  totalMilestones: number;
   healthDistribution: Array<{
     health: string;
     count: number;
     percentage: number;
   }>;
-  milestoneCompletionRate: number;
-  averageProjectCompletion: number;
-  completedMilestones: number;
-  totalMilestones: number;
+  statusDistribution: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+  }>;
 }
 
 export interface ResourceKPIs {
   departmentDistribution: Array<{
     department: string;
     count: number;
-    percentage: number;
     avgCompletion: number;
   }>;
   projectManagerWorkload: Array<{
     manager: string;
     projectCount: number;
-    avgCompletion: number;
     totalBudget: number;
+    avgCompletion: number;
   }>;
-  resourceUtilization: number;
 }
 
 export interface OperationalKPIs {
   activeProjects: number;
   completedProjects: number;
-  onHoldProjects: number;
-  cancelledProjects: number;
-  averageProjectDuration: number;
+  taskCompletionRate: number;
+  tasksCompleted: number;
+  totalTasks: number;
+  averageProjectDuration: string;
   averageWorkingDays: number;
-  projectsWithDuration: number;
   projectCreationTrend: Array<{
     month: string;
     count: number;
   }>;
-  riskDistribution: Array<{
-    riskLevel: string;
-    count: number;
-    percentage: number;
-  }>;
-  tasksCompleted: number;
-  totalTasks: number;
-  taskCompletionRate: number;
 }
 
 export interface QualityKPIs {
-  projectsWithRisks: number;
-  projectsWithoutRisks: number;
+  projectSuccessRate: number;
+  onTimeDeliveryRate: number;
   averageRisksPerProject: number;
   changeRequestFrequency: number;
-  onTimeDeliveryRate: number;
-  projectSuccessRate: number;
 }
 
 export interface TimelineKPIs {
   upcomingMilestones: Array<{
-    projectTitle: string;
     milestone: string;
-    date: string;
+    projectTitle: string;
     daysUntilDue: number;
     completion: number;
-    status: string;
   }>;
   overdueMilestones: Array<{
-    projectTitle: string;
     milestone: string;
-    date: string;
+    projectTitle: string;
     daysOverdue: number;
     completion: number;
-    status: string;
   }>;
 }
 
@@ -126,37 +93,33 @@ export interface DurationKPIs {
   medianWorkingDays: number;
   medianTotalDaysRemaining: number;
   medianWorkingDaysRemaining: number;
-  projectsWithDuration: number;
-  projectsWithoutDuration: number;
   durationCoverage: number;
-  shortProjects: number; // < 30 days
-  mediumProjects: number; // 30-90 days
-  longProjects: number; // > 90 days
+  projectsWithDuration: number;
+  durationEfficiency: number;
+  shortProjects: number;
+  longProjects: number;
   durationDistribution: Array<{
     range: string;
     count: number;
-    percentage: number;
   }>;
   departmentDurations: Array<{
     department: string;
     avgTotalDays: number;
     avgWorkingDays: number;
-    projectCount: number;
   }>;
-  durationEfficiency: number; // working days / total days ratio
-  longestProject: {
+  longestProject?: {
     title: string;
     totalDays: number;
     workingDays: number;
-  } | null;
-  shortestProject: {
+  };
+  shortestProject?: {
     title: string;
     totalDays: number;
     workingDays: number;
-  } | null;
+  };
 }
 
-export const kpiService = {
+class KPIService {
   calculateFinancialKPIs(projects: ProjectWithRelations[]): FinancialKPIs {
     const totalBudget = projects.reduce(
       (sum, p) => sum + (p.budget_total || 0),
@@ -171,41 +134,28 @@ export const kpiService = {
       0,
     );
 
-    const budgetVariance = totalBudget - (totalActuals + totalForecast);
     const budgetUtilization =
       totalBudget > 0 ? (totalActuals / totalBudget) * 100 : 0;
-    const costPerformanceIndex =
-      totalActuals > 0 ? totalBudget / totalActuals : 1;
-
-    const projectsOverBudget = projects.filter(
-      (p) => p.budget_actuals + p.budget_forecast > (p.budget_total || 0),
-    ).length;
-
-    const projectsUnderBudget = projects.filter(
-      (p) => p.budget_actuals + p.budget_forecast < (p.budget_total || 0),
-    ).length;
+    const budgetVariance = totalBudget - totalForecast;
 
     // Department budget breakdown
     const departmentMap = new Map<
       string,
-      {
-        budget: number;
-        actuals: number;
-        forecast: number;
-      }
+      { budget: number; actuals: number; forecast: number }
     >();
 
     projects.forEach((p) => {
       const dept = p.department || "Unknown";
-      const existing = departmentMap.get(dept) || {
+      const current = departmentMap.get(dept) || {
         budget: 0,
         actuals: 0,
         forecast: 0,
       };
+
       departmentMap.set(dept, {
-        budget: existing.budget + (p.budget_total || 0),
-        actuals: existing.actuals + (p.budget_actuals || 0),
-        forecast: existing.forecast + (p.budget_forecast || 0),
+        budget: current.budget + (p.budget_total || 0),
+        actuals: current.actuals + (p.budget_actuals || 0),
+        forecast: current.forecast + (p.budget_forecast || 0),
       });
     });
 
@@ -213,7 +163,7 @@ export const kpiService = {
       ([department, data]) => ({
         department,
         ...data,
-        variance: data.budget - (data.actuals + data.forecast),
+        utilization: data.budget > 0 ? (data.actuals / data.budget) * 100 : 0,
       }),
     );
 
@@ -221,29 +171,87 @@ export const kpiService = {
       totalBudget,
       totalActuals,
       totalForecast,
-      budgetVariance,
       budgetUtilization,
-      costPerformanceIndex,
-      projectsOverBudget,
-      projectsUnderBudget,
+      budgetVariance,
       departmentBudgets,
     };
-  },
+  }
 
   calculatePerformanceKPIs(projects: ProjectWithRelations[]): PerformanceKPIs {
-    // Calculate overall completion
-    const totalWeightedCompletion = projects.reduce((sum, p) => {
-      const completion =
-        p.health_calculation_type === "manual"
-          ? p.manual_health_percentage || 0
-          : calculateWeightedCompletion(p.milestones);
-      return sum + completion;
+    // Overall completion
+    const totalCompletion = projects.reduce((sum, p) => {
+      if (
+        p.health_calculation_type === "manual" &&
+        p.manual_health_percentage !== null
+      ) {
+        return sum + p.manual_health_percentage;
+      }
+      return sum + calculateWeightedCompletion(p.milestones);
     }, 0);
 
     const overallCompletion =
-      projects.length > 0
-        ? Math.round(totalWeightedCompletion / projects.length)
+      projects.length > 0 ? Math.round(totalCompletion / projects.length) : 0;
+
+    // Milestone completion
+    const allMilestones = projects.flatMap((p) => p.milestones);
+    const completedMilestones = allMilestones.filter(
+      (m) => m.completion_percentage === 100,
+    ).length;
+    const totalMilestones = allMilestones.length;
+    const milestoneCompletionRate =
+      totalMilestones > 0
+        ? Math.round((completedMilestones / totalMilestones) * 100)
         : 0;
+
+    // Health distribution - using standardized health calculation
+    const healthCounts = new Map<string, number>();
+    projects.forEach((p) => {
+      // Use the standardized health calculation function
+      const health = calculateProjectHealthStatusColor(p);
+
+      // Special handling: Exclude cancelled projects from health distribution
+      // Cancelled projects should be tracked separately
+      if (p.status === "cancelled") {
+        // Don't include cancelled projects in health distribution
+        // They will be tracked in status distribution instead
+        return;
+      }
+
+      healthCounts.set(health, (healthCounts.get(health) || 0) + 1);
+    });
+
+    // Calculate health distribution percentage based on non-cancelled projects only
+    const nonCancelledProjects = projects.filter(
+      (p) => p.status !== "cancelled",
+    );
+    const healthDistribution = Array.from(healthCounts.entries()).map(
+      ([health, count]) => ({
+        health: health.toUpperCase(),
+        count,
+        percentage:
+          nonCancelledProjects.length > 0
+            ? Math.round((count / nonCancelledProjects.length) * 100)
+            : 0,
+      }),
+    );
+
+    // Ensure all health statuses are represented (even if count is 0)
+    const allHealthStatuses = ["green", "yellow", "red"];
+    allHealthStatuses.forEach((status) => {
+      if (!healthDistribution.find((h) => h.health === status.toUpperCase())) {
+        healthDistribution.push({
+          health: status.toUpperCase(),
+          count: 0,
+          percentage: 0,
+        });
+      }
+    });
+
+    // Sort health distribution for consistent display
+    healthDistribution.sort((a, b) => {
+      const order = { GREEN: 0, YELLOW: 1, RED: 2 };
+      return order[a.health] - order[b.health];
+    });
 
     // Status distribution
     const statusCounts = new Map<string, number>();
@@ -254,194 +262,120 @@ export const kpiService = {
 
     const statusDistribution = Array.from(statusCounts.entries()).map(
       ([status, count]) => ({
-        status: status.replace("_", " ").toUpperCase(),
+        status: status.charAt(0).toUpperCase() + status.slice(1),
         count,
         percentage: Math.round((count / projects.length) * 100),
       }),
     );
-
-    // Health distribution
-    const healthCounts = new Map<string, number>();
-    projects.forEach((p) => {
-      let health = "green";
-      if (p.health_calculation_type === "manual" && p.manual_status_color) {
-        health = p.manual_status_color;
-      } else {
-        // Determine health based on milestones
-        const redMilestones = p.milestones.filter(
-          (m) => m.status === "red",
-        ).length;
-        const yellowMilestones = p.milestones.filter(
-          (m) => m.status === "yellow",
-        ).length;
-
-        if (redMilestones > 0) health = "red";
-        else if (yellowMilestones > 0) health = "yellow";
-      }
-
-      healthCounts.set(health, (healthCounts.get(health) || 0) + 1);
-    });
-
-    const healthDistribution = Array.from(healthCounts.entries()).map(
-      ([health, count]) => ({
-        health: health.toUpperCase(),
-        count,
-        percentage: Math.round((count / projects.length) * 100),
-      }),
-    );
-
-    // Milestone completion
-    const allMilestones = projects.flatMap((p) => p.milestones);
-    const completedMilestones = allMilestones.filter(
-      (m) => m.completion === 100,
-    ).length;
-    const totalMilestones = allMilestones.length;
-    const milestoneCompletionRate =
-      totalMilestones > 0
-        ? Math.round((completedMilestones / totalMilestones) * 100)
-        : 0;
-
-    const averageProjectCompletion = overallCompletion;
 
     return {
       overallCompletion,
-      statusDistribution,
-      healthDistribution,
       milestoneCompletionRate,
-      averageProjectCompletion,
       completedMilestones,
       totalMilestones,
+      healthDistribution,
+      statusDistribution,
     };
-  },
+  }
 
   calculateResourceKPIs(projects: ProjectWithRelations[]): ResourceKPIs {
     // Department distribution
-    const departmentCounts = new Map<
+    const departmentMap = new Map<
       string,
       { count: number; totalCompletion: number }
     >();
+
     projects.forEach((p) => {
       const dept = p.department || "Unknown";
-      const completion =
-        p.health_calculation_type === "manual"
-          ? p.manual_health_percentage || 0
-          : calculateWeightedCompletion(p.milestones);
-
-      const existing = departmentCounts.get(dept) || {
+      const current = departmentMap.get(dept) || {
         count: 0,
         totalCompletion: 0,
       };
-      departmentCounts.set(dept, {
-        count: existing.count + 1,
-        totalCompletion: existing.totalCompletion + completion,
+
+      const completion =
+        p.health_calculation_type === "manual" &&
+        p.manual_health_percentage !== null
+          ? p.manual_health_percentage
+          : calculateWeightedCompletion(p.milestones);
+
+      departmentMap.set(dept, {
+        count: current.count + 1,
+        totalCompletion: current.totalCompletion + completion,
       });
     });
 
-    const departmentDistribution = Array.from(departmentCounts.entries()).map(
+    const departmentDistribution = Array.from(departmentMap.entries()).map(
       ([department, data]) => ({
         department,
         count: data.count,
-        percentage: Math.round((data.count / projects.length) * 100),
         avgCompletion: Math.round(data.totalCompletion / data.count),
       }),
     );
 
     // Project manager workload
-    const managerCounts = new Map<
+    const pmMap = new Map<
       string,
-      { count: number; totalCompletion: number; totalBudget: number }
+      { count: number; totalBudget: number; totalCompletion: number }
     >();
 
-    console.log(
-      "[KPI_SERVICE] Processing projects for PM workload:",
-      projects.length,
-    );
-
-    projects.forEach((p, index) => {
-      // Handle null, undefined, empty string, and whitespace-only project managers
-      let manager = "Unknown";
-
-      if (p.project_manager) {
-        const trimmedManager = p.project_manager.trim();
-        if (trimmedManager.length > 0) {
-          manager = trimmedManager;
-        }
-      }
-
-      console.log(
-        `[KPI_SERVICE] Project ${index + 1}: "${p.title}" -> PM: "${manager}" (original: "${p.project_manager}")`,
-      );
-
-      const completion =
-        p.health_calculation_type === "manual"
-          ? p.manual_health_percentage || 0
-          : calculateWeightedCompletion(p.milestones);
-
-      const existing = managerCounts.get(manager) || {
+    projects.forEach((p) => {
+      const pm = p.project_manager || "Unassigned";
+      const current = pmMap.get(pm) || {
         count: 0,
-        totalCompletion: 0,
         totalBudget: 0,
+        totalCompletion: 0,
       };
 
-      managerCounts.set(manager, {
-        count: existing.count + 1,
-        totalCompletion: existing.totalCompletion + completion,
-        totalBudget: existing.totalBudget + (p.budget_total || 0),
+      const completion =
+        p.health_calculation_type === "manual" &&
+        p.manual_health_percentage !== null
+          ? p.manual_health_percentage
+          : calculateWeightedCompletion(p.milestones);
+
+      pmMap.set(pm, {
+        count: current.count + 1,
+        totalBudget: current.totalBudget + (p.budget_total || 0),
+        totalCompletion: current.totalCompletion + completion,
       });
     });
 
-    console.log(
-      "[KPI_SERVICE] Final manager counts:",
-      Array.from(managerCounts.entries()),
-    );
-
-    const projectManagerWorkload = Array.from(managerCounts.entries())
+    const projectManagerWorkload = Array.from(pmMap.entries())
+      .filter(([manager]) => manager && manager !== "Unassigned")
       .map(([manager, data]) => ({
         manager,
         projectCount: data.count,
-        avgCompletion: Math.round(data.totalCompletion / data.count),
         totalBudget: data.totalBudget,
+        avgCompletion: Math.round(data.totalCompletion / data.count),
       }))
       .sort((a, b) => b.projectCount - a.projectCount);
-
-    console.log(
-      "[KPI_SERVICE] Final PM workload data:",
-      projectManagerWorkload,
-    );
-
-    // Resource utilization (based on active projects vs total capacity)
-    const activeProjects = projects.filter((p) => p.status === "active").length;
-    const resourceUtilization =
-      projects.length > 0
-        ? Math.round((activeProjects / projects.length) * 100)
-        : 0;
 
     return {
       departmentDistribution,
       projectManagerWorkload,
-      resourceUtilization,
     };
-  },
+  }
 
   calculateOperationalKPIs(projects: ProjectWithRelations[]): OperationalKPIs {
     const activeProjects = projects.filter((p) => p.status === "active").length;
     const completedProjects = projects.filter(
       (p) => p.status === "completed",
     ).length;
-    const onHoldProjects = projects.filter(
-      (p) => p.status === "on_hold",
-    ).length;
-    const cancelledProjects = projects.filter(
-      (p) => p.status === "cancelled",
-    ).length;
 
-    // Average project duration (using calculated duration fields)
+    // Task completion (using milestones as tasks)
+    const allMilestones = projects.flatMap((p) => p.milestones);
+    const completedMilestones = allMilestones.filter(
+      (m) => m.completion_percentage === 100,
+    ).length;
+    const taskCompletionRate =
+      allMilestones.length > 0
+        ? Math.round((completedMilestones / allMilestones.length) * 100)
+        : 0;
+
+    // Average project duration
     const projectsWithDuration = projects.filter(
-      (p) =>
-        p.total_days !== null && p.total_days !== undefined && p.total_days > 0,
+      (p) => p.total_days && p.total_days > 0,
     );
-
-    const averageProjectDuration =
+    const avgTotalDays =
       projectsWithDuration.length > 0
         ? Math.round(
             projectsWithDuration.reduce(
@@ -451,55 +385,7 @@ export const kpiService = {
           )
         : 0;
 
-    // Project creation trend (last 12 months)
-    const now = new Date();
-    const twelveMonthsAgo = subMonths(now, 11);
-    const months = eachMonthOfInterval({ start: twelveMonthsAgo, end: now });
-
-    const projectCreationTrend = months.map((month) => {
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
-
-      const count = projects.filter((p) => {
-        if (!p.created_at) return false;
-        const createdDate = parseISO(p.created_at);
-        return createdDate >= monthStart && createdDate <= monthEnd;
-      }).length;
-
-      return {
-        month: format(month, "MMM yyyy"),
-        count,
-      };
-    });
-
-    // Risk distribution
-    const projectsWithRisks = projects.filter((p) => p.risks.length > 0).length;
-    const projectsWithoutRisks = projects.length - projectsWithRisks;
-
-    const riskDistribution = [
-      {
-        riskLevel: "High Risk",
-        count: projectsWithRisks,
-        percentage: Math.round((projectsWithRisks / projects.length) * 100),
-      },
-      {
-        riskLevel: "Low Risk",
-        count: projectsWithoutRisks,
-        percentage: Math.round((projectsWithoutRisks / projects.length) * 100),
-      },
-    ];
-
-    // Task completion
-    const allTasks = projects.flatMap((p) =>
-      p.milestones.flatMap((m) => m.tasks || []),
-    );
-    const completedTasks = allTasks.filter((t) => t.completion === 100).length;
-    const totalTasks = allTasks.length;
-    const taskCompletionRate =
-      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    // Average working days
-    const averageWorkingDays =
+    const avgWorkingDays =
       projectsWithDuration.length > 0
         ? Math.round(
             projectsWithDuration.reduce(
@@ -509,43 +395,56 @@ export const kpiService = {
           )
         : 0;
 
+    const averageProjectDuration = `${avgTotalDays} days`;
+
+    // Project creation trend (last 12 months)
+    const now = new Date();
+    const monthsData = [];
+
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "2-digit",
+      });
+
+      const projectsInMonth = projects.filter((p) => {
+        if (!p.created_at) return false;
+        const projectDate = new Date(p.created_at);
+        return (
+          projectDate.getFullYear() === date.getFullYear() &&
+          projectDate.getMonth() === date.getMonth()
+        );
+      }).length;
+
+      monthsData.push({ month: monthName, count: projectsInMonth });
+    }
+
     return {
       activeProjects,
       completedProjects,
-      onHoldProjects,
-      cancelledProjects,
-      averageProjectDuration,
-      averageWorkingDays,
-      projectsWithDuration: projectsWithDuration.length,
-      projectCreationTrend,
-      riskDistribution,
-      tasksCompleted: completedTasks,
-      totalTasks,
       taskCompletionRate,
+      tasksCompleted: completedMilestones,
+      totalTasks: allMilestones.length,
+      averageProjectDuration,
+      averageWorkingDays: avgWorkingDays,
+      projectCreationTrend: monthsData,
     };
-  },
+  }
 
   calculateQualityKPIs(projects: ProjectWithRelations[]): QualityKPIs {
-    const projectsWithRisks = projects.filter((p) => p.risks.length > 0).length;
-    const projectsWithoutRisks = projects.length - projectsWithRisks;
-
-    const totalRisks = projects.reduce((sum, p) => sum + p.risks.length, 0);
-    const averageRisksPerProject =
-      projects.length > 0
-        ? Math.round((totalRisks / projects.length) * 10) / 10
-        : 0;
-
-    const totalChanges = projects.reduce((sum, p) => sum + p.changes.length, 0);
-    const changeRequestFrequency =
-      projects.length > 0
-        ? Math.round((totalChanges / projects.length) * 10) / 10
-        : 0;
-
-    // On-time delivery rate (based on completed projects with milestones)
     const completedProjects = projects.filter((p) => p.status === "completed");
+    const projectSuccessRate =
+      projects.length > 0
+        ? Math.round((completedProjects.length / projects.length) * 100)
+        : 0;
+
+    // On-time delivery (projects completed by their end date)
     const onTimeProjects = completedProjects.filter((p) => {
-      // Consider on-time if all milestones were completed by their due date
-      return p.milestones.every((m) => m.completion === 100);
+      if (!p.end_date) return false;
+      // For now, assume all completed projects are on time
+      // This could be enhanced with actual completion date tracking
+      return true;
     }).length;
 
     const onTimeDeliveryRate =
@@ -553,121 +452,86 @@ export const kpiService = {
         ? Math.round((onTimeProjects / completedProjects.length) * 100)
         : 0;
 
-    // Project success rate (completed projects vs total projects)
-    const projectSuccessRate =
+    // Average risks per project
+    const totalRisks = projects.reduce(
+      (sum, p) => sum + (p.risks?.length || 0),
+      0,
+    );
+    const averageRisksPerProject =
       projects.length > 0
-        ? Math.round((completedProjects.length / projects.length) * 100)
+        ? Math.round((totalRisks / projects.length) * 10) / 10
+        : 0;
+
+    // Change request frequency (using considerations as proxy)
+    const totalChanges = projects.reduce(
+      (sum, p) => sum + (p.considerations?.length || 0),
+      0,
+    );
+    const changeRequestFrequency =
+      projects.length > 0
+        ? Math.round((totalChanges / projects.length) * 10) / 10
         : 0;
 
     return {
-      projectsWithRisks,
-      projectsWithoutRisks,
+      projectSuccessRate,
+      onTimeDeliveryRate,
       averageRisksPerProject,
       changeRequestFrequency,
-      onTimeDeliveryRate,
-      projectSuccessRate,
     };
-  },
+  }
 
   calculateTimelineKPIs(projects: ProjectWithRelations[]): TimelineKPIs {
-    const today = new Date();
-    const allMilestones = projects.flatMap((p) =>
-      p.milestones.map((m) => ({
-        ...m,
-        projectTitle: p.title,
-      })),
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000,
     );
 
-    // Upcoming milestones (next 30 days)
-    const upcomingMilestones = allMilestones
-      .filter((m) => {
-        const milestoneDate = parseISO(m.date);
-        const daysUntilDue = differenceInDays(milestoneDate, today);
-        return daysUntilDue >= 0 && daysUntilDue <= 30 && m.completion < 100;
-      })
-      .map((m) => {
-        const milestoneDate = parseISO(m.date);
-        return {
-          projectTitle: m.projectTitle,
-          milestone: m.milestone,
-          date: m.date,
-          daysUntilDue: differenceInDays(milestoneDate, today),
-          completion: m.completion,
-          status: m.status,
-        };
-      })
-      .sort((a, b) => a.daysUntilDue - b.daysUntilDue)
-      .slice(0, 10);
+    const upcomingMilestones = [];
+    const overdueMilestones = [];
 
-    // Overdue milestones
-    const overdueMilestones = allMilestones
-      .filter((m) => {
-        const milestoneDate = parseISO(m.date);
-        const daysOverdue = differenceInDays(today, milestoneDate);
-        return daysOverdue > 0 && m.completion < 100;
-      })
-      .map((m) => {
-        const milestoneDate = parseISO(m.date);
-        return {
-          projectTitle: m.projectTitle,
-          milestone: m.milestone,
-          date: m.date,
-          daysOverdue: differenceInDays(today, milestoneDate),
-          completion: m.completion,
-          status: m.status,
-        };
-      })
-      .sort((a, b) => b.daysOverdue - a.daysOverdue)
-      .slice(0, 10);
+    projects.forEach((project) => {
+      project.milestones.forEach((milestone) => {
+        if (!milestone.date) return;
+
+        const milestoneDate = new Date(milestone.date);
+        const daysUntilDue = Math.ceil(
+          (milestoneDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
+        );
+
+        if (daysUntilDue > 0 && daysUntilDue <= 30) {
+          upcomingMilestones.push({
+            milestone: milestone.description,
+            projectTitle: project.title,
+            daysUntilDue,
+            completion: milestone.completion_percentage || 0,
+          });
+        } else if (daysUntilDue < 0) {
+          overdueMilestones.push({
+            milestone: milestone.description,
+            projectTitle: project.title,
+            daysOverdue: Math.abs(daysUntilDue),
+            completion: milestone.completion_percentage || 0,
+          });
+        }
+      });
+    });
+
+    // Sort by urgency
+    upcomingMilestones.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+    overdueMilestones.sort((a, b) => b.daysOverdue - a.daysOverdue);
 
     return {
       upcomingMilestones,
       overdueMilestones,
     };
-  },
+  }
 
   calculateDurationKPIs(projects: ProjectWithRelations[]): DurationKPIs {
-    console.log(
-      "[DURATION_KPI] Starting duration KPI calculation for",
-      projects.length,
-      "projects",
-    );
-
-    // Filter projects with duration data
     const projectsWithDuration = projects.filter(
-      (p) =>
-        p.total_days !== null &&
-        p.total_days !== undefined &&
-        p.total_days > 0 &&
-        p.working_days !== null &&
-        p.working_days !== undefined &&
-        p.working_days > 0,
+      (p) => p.total_days && p.total_days > 0,
     );
-
-    console.log(
-      "[DURATION_KPI] Projects with duration data:",
-      projectsWithDuration.length,
-    );
-    console.log(
-      "[DURATION_KPI] Sample duration data:",
-      projectsWithDuration.slice(0, 3).map((p) => ({
-        title: p.title,
-        totalDays: p.total_days,
-        workingDays: p.working_days,
-        totalDaysRemaining: p.total_days_remaining,
-        workingDaysRemaining: p.working_days_remaining,
-      })),
-    );
-
-    const projectsWithoutDuration =
-      projects.length - projectsWithDuration.length;
-    const durationCoverage =
-      projects.length > 0
-        ? Math.round((projectsWithDuration.length / projects.length) * 100)
-        : 0;
 
     if (projectsWithDuration.length === 0) {
-      console.log("[DURATION_KPI] No projects with duration data found");
       return {
         averageTotalDays: 0,
         averageWorkingDays: 0,
@@ -675,284 +539,159 @@ export const kpiService = {
         medianWorkingDays: 0,
         medianTotalDaysRemaining: 0,
         medianWorkingDaysRemaining: 0,
-        projectsWithDuration: 0,
-        projectsWithoutDuration,
         durationCoverage: 0,
+        projectsWithDuration: 0,
+        durationEfficiency: 0,
         shortProjects: 0,
-        mediumProjects: 0,
         longProjects: 0,
         durationDistribution: [],
         departmentDurations: [],
-        durationEfficiency: 0,
-        longestProject: null,
-        shortestProject: null,
       };
     }
 
     // Calculate averages
-    const totalDaysSum = projectsWithDuration.reduce(
-      (sum, p) => sum + (p.total_days || 0),
-      0,
+    const totalDays = projectsWithDuration.map((p) => p.total_days || 0);
+    const workingDays = projectsWithDuration.map((p) => p.working_days || 0);
+    const totalDaysRemaining = projectsWithDuration.map(
+      (p) => p.total_days_remaining || 0,
     );
-    const workingDaysSum = projectsWithDuration.reduce(
-      (sum, p) => sum + (p.working_days || 0),
-      0,
+    const workingDaysRemaining = projectsWithDuration.map(
+      (p) => p.working_days_remaining || 0,
     );
 
     const averageTotalDays = Math.round(
-      totalDaysSum / projectsWithDuration.length,
+      totalDays.reduce((sum, days) => sum + days, 0) / totalDays.length,
     );
     const averageWorkingDays = Math.round(
-      workingDaysSum / projectsWithDuration.length,
+      workingDays.reduce((sum, days) => sum + days, 0) / workingDays.length,
     );
 
     // Calculate medians
-    const sortedTotalDays = projectsWithDuration
-      .map((p) => p.total_days || 0)
-      .sort((a, b) => a - b);
-    const sortedWorkingDays = projectsWithDuration
-      .map((p) => p.working_days || 0)
-      .sort((a, b) => a - b);
-
-    console.log("[DURATION_KPI] Sorted total days:", sortedTotalDays);
-    console.log("[DURATION_KPI] Sorted working days:", sortedWorkingDays);
+    const sortedTotalDays = [...totalDays].sort((a, b) => a - b);
+    const sortedWorkingDays = [...workingDays].sort((a, b) => a - b);
+    const sortedTotalDaysRemaining = [...totalDaysRemaining].sort(
+      (a, b) => a - b,
+    );
+    const sortedWorkingDaysRemaining = [...workingDaysRemaining].sort(
+      (a, b) => a - b,
+    );
 
     const medianTotalDays =
-      sortedTotalDays.length % 2 === 0
-        ? Math.round(
-            (sortedTotalDays[sortedTotalDays.length / 2 - 1] +
-              sortedTotalDays[sortedTotalDays.length / 2]) /
-              2,
-          )
-        : sortedTotalDays[Math.floor(sortedTotalDays.length / 2)];
-
+      sortedTotalDays[Math.floor(sortedTotalDays.length / 2)];
     const medianWorkingDays =
-      sortedWorkingDays.length % 2 === 0
-        ? Math.round(
-            (sortedWorkingDays[sortedWorkingDays.length / 2 - 1] +
-              sortedWorkingDays[sortedWorkingDays.length / 2]) /
-              2,
-          )
-        : sortedWorkingDays[Math.floor(sortedWorkingDays.length / 2)];
+      sortedWorkingDays[Math.floor(sortedWorkingDays.length / 2)];
+    const medianTotalDaysRemaining =
+      sortedTotalDaysRemaining[Math.floor(sortedTotalDaysRemaining.length / 2)];
+    const medianWorkingDaysRemaining =
+      sortedWorkingDaysRemaining[
+        Math.floor(sortedWorkingDaysRemaining.length / 2)
+      ];
 
-    console.log(
-      "[DURATION_KPI] Calculated medians - Total:",
-      medianTotalDays,
-      "Working:",
-      medianWorkingDays,
+    // Duration coverage
+    const durationCoverage = Math.round(
+      (projectsWithDuration.length / projects.length) * 100,
     );
 
-    // Calculate median remaining days
-    // Use the same filtered dataset for consistency
-    const projectsWithRemainingDays = projectsWithDuration.filter(
-      (p) =>
-        p.total_days_remaining !== null &&
-        p.total_days_remaining !== undefined &&
-        p.working_days_remaining !== null &&
-        p.working_days_remaining !== undefined,
-    );
+    // Duration efficiency
+    const totalWorkingDays = workingDays.reduce((sum, days) => sum + days, 0);
+    const totalTotalDays = totalDays.reduce((sum, days) => sum + days, 0);
+    const durationEfficiency =
+      totalTotalDays > 0
+        ? Math.round((totalWorkingDays / totalTotalDays) * 100)
+        : 0;
 
-    console.log(
-      "[DURATION_KPI] Projects with remaining days data:",
-      projectsWithRemainingDays.length,
-    );
-    console.log(
-      "[DURATION_KPI] Sample remaining days data:",
-      projectsWithRemainingDays.slice(0, 3).map((p) => ({
-        title: p.title,
-        totalDaysRemaining: p.total_days_remaining,
-        workingDaysRemaining: p.working_days_remaining,
-      })),
-    );
-
-    let medianTotalDaysRemaining = 0;
-    let medianWorkingDaysRemaining = 0;
-
-    if (projectsWithRemainingDays.length > 0) {
-      // Calculate median for total days remaining
-      const sortedTotalDaysRemaining = projectsWithRemainingDays
-        .map((p) => p.total_days_remaining || 0)
-        .sort((a, b) => a - b);
-
-      console.log(
-        "[DURATION_KPI] Sorted total days remaining:",
-        sortedTotalDaysRemaining,
-      );
-
-      medianTotalDaysRemaining =
-        sortedTotalDaysRemaining.length % 2 === 0
-          ? Math.round(
-              (sortedTotalDaysRemaining[
-                sortedTotalDaysRemaining.length / 2 - 1
-              ] +
-                sortedTotalDaysRemaining[sortedTotalDaysRemaining.length / 2]) /
-                2,
-            )
-          : sortedTotalDaysRemaining[
-              Math.floor(sortedTotalDaysRemaining.length / 2)
-            ];
-
-      // Calculate median for working days remaining
-      const sortedWorkingDaysRemaining = projectsWithRemainingDays
-        .map((p) => p.working_days_remaining || 0)
-        .sort((a, b) => a - b);
-
-      console.log(
-        "[DURATION_KPI] Sorted working days remaining:",
-        sortedWorkingDaysRemaining,
-      );
-
-      medianWorkingDaysRemaining =
-        sortedWorkingDaysRemaining.length % 2 === 0
-          ? Math.round(
-              (sortedWorkingDaysRemaining[
-                sortedWorkingDaysRemaining.length / 2 - 1
-              ] +
-                sortedWorkingDaysRemaining[
-                  sortedWorkingDaysRemaining.length / 2
-                ]) /
-                2,
-            )
-          : sortedWorkingDaysRemaining[
-              Math.floor(sortedWorkingDaysRemaining.length / 2)
-            ];
-
-      console.log(
-        "[DURATION_KPI] Calculated remaining medians - Total:",
-        medianTotalDaysRemaining,
-        "Working:",
-        medianWorkingDaysRemaining,
-      );
-    } else {
-      console.log("[DURATION_KPI] No projects with remaining days data found");
-    }
-
-    // Duration categories
+    // Project categories
     const shortProjects = projectsWithDuration.filter(
       (p) => (p.total_days || 0) < 30,
-    ).length;
-    const mediumProjects = projectsWithDuration.filter(
-      (p) => (p.total_days || 0) >= 30 && (p.total_days || 0) <= 90,
     ).length;
     const longProjects = projectsWithDuration.filter(
       (p) => (p.total_days || 0) > 90,
     ).length;
 
     // Duration distribution
-    const durationDistribution = [
-      {
-        range: "Short (< 30 days)",
-        count: shortProjects,
-        percentage: Math.round(
-          (shortProjects / projectsWithDuration.length) * 100,
-        ),
-      },
-      {
-        range: "Medium (30-90 days)",
-        count: mediumProjects,
-        percentage: Math.round(
-          (mediumProjects / projectsWithDuration.length) * 100,
-        ),
-      },
-      {
-        range: "Long (> 90 days)",
-        count: longProjects,
-        percentage: Math.round(
-          (longProjects / projectsWithDuration.length) * 100,
-        ),
-      },
+    const ranges = [
+      { range: "< 30 days", min: 0, max: 29 },
+      { range: "30-60 days", min: 30, max: 60 },
+      { range: "61-90 days", min: 61, max: 90 },
+      { range: "> 90 days", min: 91, max: Infinity },
     ];
 
-    // Department duration analysis
+    const durationDistribution = ranges.map(({ range, min, max }) => ({
+      range,
+      count: projectsWithDuration.filter((p) => {
+        const days = p.total_days || 0;
+        return days >= min && days <= max;
+      }).length,
+    }));
+
+    // Department durations
     const departmentMap = new Map<
       string,
-      {
-        totalDaysSum: number;
-        workingDaysSum: number;
-        count: number;
-      }
+      { totalDays: number; workingDays: number; count: number }
     >();
 
     projectsWithDuration.forEach((p) => {
       const dept = p.department || "Unknown";
-      const existing = departmentMap.get(dept) || {
-        totalDaysSum: 0,
-        workingDaysSum: 0,
+      const current = departmentMap.get(dept) || {
+        totalDays: 0,
+        workingDays: 0,
         count: 0,
       };
+
       departmentMap.set(dept, {
-        totalDaysSum: existing.totalDaysSum + (p.total_days || 0),
-        workingDaysSum: existing.workingDaysSum + (p.working_days || 0),
-        count: existing.count + 1,
+        totalDays: current.totalDays + (p.total_days || 0),
+        workingDays: current.workingDays + (p.working_days || 0),
+        count: current.count + 1,
       });
     });
 
     const departmentDurations = Array.from(departmentMap.entries()).map(
       ([department, data]) => ({
         department,
-        avgTotalDays: Math.round(data.totalDaysSum / data.count),
-        avgWorkingDays: Math.round(data.workingDaysSum / data.count),
-        projectCount: data.count,
+        avgTotalDays: Math.round(data.totalDays / data.count),
+        avgWorkingDays: Math.round(data.workingDays / data.count),
       }),
     );
 
-    // Duration efficiency (working days / total days)
-    const durationEfficiency = Math.round(
-      (workingDaysSum / totalDaysSum) * 100,
+    // Extremes
+    const longestProject = projectsWithDuration.reduce((longest, p) =>
+      (p.total_days || 0) > (longest?.total_days || 0) ? p : longest,
     );
 
-    // Longest and shortest projects
-    const longestProject = projectsWithDuration.reduce((longest, current) => {
-      return (current.total_days || 0) > (longest.total_days || 0)
-        ? current
-        : longest;
-    });
+    const shortestProject = projectsWithDuration.reduce((shortest, p) =>
+      (p.total_days || 0) < (shortest?.total_days || 0) ? p : shortest,
+    );
 
-    const shortestProject = projectsWithDuration.reduce((shortest, current) => {
-      return (current.total_days || 0) < (shortest.total_days || 0)
-        ? current
-        : shortest;
-    });
-
-    const result = {
+    return {
       averageTotalDays,
       averageWorkingDays,
       medianTotalDays,
       medianWorkingDays,
       medianTotalDaysRemaining,
       medianWorkingDaysRemaining,
-      projectsWithDuration: projectsWithDuration.length,
-      projectsWithoutDuration,
       durationCoverage,
+      projectsWithDuration: projectsWithDuration.length,
+      durationEfficiency,
       shortProjects,
-      mediumProjects,
       longProjects,
       durationDistribution,
       departmentDurations,
-      durationEfficiency,
-      longestProject: {
-        title: longestProject.title,
-        totalDays: longestProject.total_days || 0,
-        workingDays: longestProject.working_days || 0,
-      },
-      shortestProject: {
-        title: shortestProject.title,
-        totalDays: shortestProject.total_days || 0,
-        workingDays: shortestProject.working_days || 0,
-      },
+      longestProject: longestProject
+        ? {
+            title: longestProject.title,
+            totalDays: longestProject.total_days || 0,
+            workingDays: longestProject.working_days || 0,
+          }
+        : undefined,
+      shortestProject: shortestProject
+        ? {
+            title: shortestProject.title,
+            totalDays: shortestProject.total_days || 0,
+            workingDays: shortestProject.working_days || 0,
+          }
+        : undefined,
     };
+  }
+}
 
-    console.log("[DURATION_KPI] Final duration KPIs:", {
-      averageTotalDays: result.averageTotalDays,
-      averageWorkingDays: result.averageWorkingDays,
-      medianTotalDays: result.medianTotalDays,
-      medianWorkingDays: result.medianWorkingDays,
-      medianTotalDaysRemaining: result.medianTotalDaysRemaining,
-      medianWorkingDaysRemaining: result.medianWorkingDaysRemaining,
-      projectsWithDuration: result.projectsWithDuration,
-      durationCoverage: result.durationCoverage,
-    });
-
-    return result;
-  },
-};
+export const kpiService = new KPIService();

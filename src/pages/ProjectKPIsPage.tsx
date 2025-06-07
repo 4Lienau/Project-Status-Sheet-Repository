@@ -33,6 +33,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import {
   projectService,
+  calculateProjectHealthStatusColor,
+  calculateWeightedCompletion,
   type ProjectWithRelations,
 } from "@/lib/services/project";
 import {
@@ -66,6 +68,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Utility function to strip HTML tags from text
 const stripHtmlTags = (text: string): string => {
@@ -117,6 +125,19 @@ const ProjectKPIsPage = () => {
   const [qualityKPIs, setQualityKPIs] = useState<QualityKPIs | null>(null);
   const [timelineKPIs, setTimelineKPIs] = useState<TimelineKPIs | null>(null);
   const [durationKPIs, setDurationKPIs] = useState<DurationKPIs | null>(null);
+  const [timeAwareInsights, setTimeAwareInsights] = useState<{
+    projectsByTimeCategory: Array<{
+      category: string;
+      count: number;
+      avgCompletion: number;
+      healthDistribution: { green: number; yellow: number; red: number };
+    }>;
+    overallHealthImprovement: {
+      oldGreenCount: number;
+      newGreenCount: number;
+      improvement: number;
+    };
+  } | null>(null);
 
   useEffect(() => {
     const loadKPIs = async () => {
@@ -149,6 +170,10 @@ const ProjectKPIsPage = () => {
           setQualityKPIs(kpiService.calculateQualityKPIs(allProjects));
           setTimelineKPIs(kpiService.calculateTimelineKPIs(allProjects));
           setDurationKPIs(kpiService.calculateDurationKPIs(allProjects));
+
+          // Calculate time-aware insights
+          const insights = calculateTimeAwareInsights(allProjects);
+          setTimeAwareInsights(insights);
         }
       } catch (error) {
         console.error("Error loading KPIs:", error);
@@ -176,6 +201,105 @@ const ProjectKPIsPage = () => {
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat("en-US").format(num);
+  };
+
+  // Function to calculate time-aware health insights
+  const calculateTimeAwareInsights = (projects: ProjectWithRelations[]) => {
+    const activeProjects = projects.filter(
+      (p) =>
+        p.status === "active" &&
+        p.total_days &&
+        p.total_days_remaining !== null,
+    );
+
+    const categories = {
+      "Substantial Time (>60%)": { projects: [], threshold: 60 },
+      "Plenty of Time (30-60%)": { projects: [], threshold: 30 },
+      "Moderate Time (15-30%)": { projects: [], threshold: 15 },
+      "Little Time (<15%)": { projects: [], threshold: 0 },
+    };
+
+    // Categorize projects by time remaining percentage
+    activeProjects.forEach((project) => {
+      if (!project.total_days || project.total_days_remaining === null) return;
+
+      const timeRemainingPercentage =
+        project.total_days_remaining < 0
+          ? 0
+          : Math.round(
+              (project.total_days_remaining / project.total_days) * 100,
+            );
+
+      if (timeRemainingPercentage > 60) {
+        categories["Substantial Time (>60%)"].projects.push(project);
+      } else if (timeRemainingPercentage > 30) {
+        categories["Plenty of Time (30-60%)"].projects.push(project);
+      } else if (timeRemainingPercentage > 15) {
+        categories["Moderate Time (15-30%)"].projects.push(project);
+      } else {
+        categories["Little Time (<15%)"].projects.push(project);
+      }
+    });
+
+    const projectsByTimeCategory = Object.entries(categories).map(
+      ([category, data]) => {
+        const projectList = data.projects as ProjectWithRelations[];
+        const avgCompletion =
+          projectList.length > 0
+            ? Math.round(
+                projectList.reduce((sum, p) => {
+                  const completion =
+                    p.health_calculation_type === "manual"
+                      ? p.manual_health_percentage || 0
+                      : calculateWeightedCompletion(p.milestones);
+                  return sum + completion;
+                }, 0) / projectList.length,
+              )
+            : 0;
+
+        const healthDistribution = { green: 0, yellow: 0, red: 0 };
+        projectList.forEach((p) => {
+          const health = calculateProjectHealthStatusColor(p);
+          healthDistribution[health]++;
+        });
+
+        return {
+          category,
+          count: projectList.length,
+          avgCompletion,
+          healthDistribution,
+        };
+      },
+    );
+
+    // Calculate overall health improvement (simulated old vs new calculation)
+    const newGreenCount = activeProjects.filter(
+      (p) => calculateProjectHealthStatusColor(p) === "green",
+    ).length;
+    // Simulate old calculation (stricter thresholds)
+    const oldGreenCount = activeProjects.filter((p) => {
+      const completion =
+        p.health_calculation_type === "manual"
+          ? p.manual_health_percentage || 0
+          : calculateWeightedCompletion(p.milestones);
+      return completion >= 70; // Old threshold was 70%
+    }).length;
+
+    const improvement =
+      activeProjects.length > 0
+        ? Math.round(
+            ((newGreenCount - oldGreenCount) / activeProjects.length) * 100,
+          )
+        : 0;
+
+    return {
+      projectsByTimeCategory,
+      overallHealthImprovement: {
+        oldGreenCount,
+        newGreenCount,
+        improvement,
+      },
+    };
   };
 
   if (loading) {
@@ -387,6 +511,125 @@ const ProjectKPIsPage = () => {
             </div>
           )}
 
+          {/* Time-Aware Health Analysis */}
+          {performanceKPIs && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+                <Clock className="h-6 w-6" />
+                Time-Aware Health Analysis
+              </h2>
+
+              <Card className="bg-white/90 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle>Health Calculation Rules</CardTitle>
+                  <CardDescription>
+                    Projects are now evaluated based on time remaining vs.
+                    completion percentage
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div className="text-green-800 font-semibold mb-2">
+                        Substantial Time (&gt;60%)
+                      </div>
+                      <div className="text-sm text-green-700">
+                        <div>
+                          • ≥10% completion = <strong>Green</strong>
+                        </div>
+                        <div>
+                          • 5-9% completion = <strong>Yellow</strong>
+                        </div>
+                        <div>
+                          • &lt;5% completion = <strong>Red</strong>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-blue-800 font-semibold mb-2">
+                        Plenty of Time (30-60%)
+                      </div>
+                      <div className="text-sm text-blue-700">
+                        <div>
+                          • ≥20% completion = <strong>Green</strong>
+                        </div>
+                        <div>
+                          • 10-19% completion = <strong>Yellow</strong>
+                        </div>
+                        <div>
+                          • &lt;10% completion = <strong>Red</strong>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="text-yellow-800 font-semibold mb-2">
+                        Moderate Time (15-30%)
+                      </div>
+                      <div className="text-sm text-yellow-700">
+                        <div>
+                          • ≥40% completion = <strong>Green</strong>
+                        </div>
+                        <div>
+                          • 25-39% completion = <strong>Yellow</strong>
+                        </div>
+                        <div>
+                          • &lt;25% completion = <strong>Red</strong>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                      <div className="text-red-800 font-semibold mb-2">
+                        Little Time (&lt;15%)
+                      </div>
+                      <div className="text-sm text-red-700">
+                        <div>
+                          • ≥80% completion = <strong>Green</strong>
+                        </div>
+                        <div>
+                          • 60-79% completion = <strong>Yellow</strong>
+                        </div>
+                        <div>
+                          • &lt;60% completion = <strong>Red</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="text-sm text-gray-700">
+                      <strong>Special Cases:</strong>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        <li>
+                          Completed projects ={" "}
+                          <span className="text-green-600 font-semibold">
+                            Green (100%)
+                          </span>
+                        </li>
+                        <li>
+                          Cancelled projects ={" "}
+                          <span className="text-gray-600 font-semibold">
+                            Excluded from health metrics
+                          </span>
+                        </li>
+                        <li>
+                          Draft/On Hold projects ={" "}
+                          <span className="text-yellow-600 font-semibold">
+                            Yellow
+                          </span>
+                        </li>
+                        <li>
+                          Overdue projects ={" "}
+                          <span className="text-red-600 font-semibold">
+                            Strict thresholds applied
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Performance KPIs */}
           {performanceKPIs && (
             <div className="space-y-6">
@@ -433,33 +676,54 @@ const ProjectKPIsPage = () => {
                 <Card className="bg-white/90 backdrop-blur-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-gray-600">
-                      Project Health
+                      Project Health (Time-Aware)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {performanceKPIs.healthDistribution.map((item, index) => (
-                        <div
-                          key={item.health}
-                          className="flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                item.health === "GREEN"
-                                  ? "bg-green-500"
-                                  : item.health === "YELLOW"
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
-                              }`}
-                            />
-                            <span className="text-sm">{item.health}</span>
+                      {performanceKPIs.healthDistribution.map((item, index) => {
+                        const healthLabel =
+                          item.health === "GREEN"
+                            ? "On Track"
+                            : item.health === "YELLOW"
+                              ? "At Risk"
+                              : "Critical";
+                        return (
+                          <div
+                            key={item.health}
+                            className="flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-3 h-3 rounded-full ${
+                                  item.health === "GREEN"
+                                    ? "bg-green-500"
+                                    : item.health === "YELLOW"
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
+                                }`}
+                              />
+                              <span className="text-sm">{healthLabel}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-medium">
+                                {item.count}
+                              </span>
+                              <div className="text-xs text-gray-500">
+                                {item.percentage}%
+                              </div>
+                            </div>
                           </div>
-                          <span className="text-sm font-medium">
-                            {item.count}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-200">
+                      <div className="text-xs text-gray-500">
+                        <strong>New Lenient Calculation:</strong> Projects with
+                        substantial time remaining (&gt;60%) need only ≥10%
+                        completion for Green status. Cancelled projects
+                        excluded.
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -526,7 +790,11 @@ const ProjectKPIsPage = () => {
 
                 <Card className="bg-white/90 backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle>Health Status Distribution</CardTitle>
+                    <CardTitle>Time-Aware Health Distribution</CardTitle>
+                    <CardDescription>
+                      New lenient calculation considers time remaining vs.
+                      completion
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={250}>
@@ -538,9 +806,15 @@ const ProjectKPIsPage = () => {
                           outerRadius={80}
                           dataKey="count"
                           nameKey="health"
-                          label={({ name, value, percent }) =>
-                            `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
-                          }
+                          label={({ name, value, percent }) => {
+                            const healthLabel =
+                              name === "GREEN"
+                                ? "On Track"
+                                : name === "YELLOW"
+                                  ? "At Risk"
+                                  : "Critical";
+                            return `${healthLabel}: ${value} (${(percent * 100).toFixed(0)}%)`;
+                          }}
                           labelLine={false}
                         >
                           {performanceKPIs.healthDistribution.map(
@@ -558,9 +832,39 @@ const ProjectKPIsPage = () => {
                             ),
                           )}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip
+                          formatter={(value, name) => {
+                            const healthLabel =
+                              name === "GREEN"
+                                ? "On Track"
+                                : name === "YELLOW"
+                                  ? "At Risk"
+                                  : "Critical";
+                            return [value, healthLabel];
+                          }}
+                        />
                       </RechartsPieChart>
                     </ResponsiveContainer>
+                    <div className="mt-4 space-y-2 text-xs text-gray-600">
+                      <div>
+                        <strong>On Track (Green):</strong> Projects meeting
+                        completion thresholds for their time remaining
+                      </div>
+                      <div>
+                        <strong>At Risk (Yellow):</strong> Projects behind
+                        schedule but recoverable
+                      </div>
+                      <div>
+                        <strong>Critical (Red):</strong> Projects significantly
+                        behind or overdue
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">
+                        <em>
+                          Note: Cancelled projects are excluded from health
+                          calculations
+                        </em>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -904,373 +1208,407 @@ const ProjectKPIsPage = () => {
 
           {/* Duration KPIs */}
           {durationKPIs && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
-                <Clock className="h-6 w-6" />
-                Project Duration Analysis
-              </h2>
+            <TooltipProvider>
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+                  <Clock className="h-6 w-6" />
+                  Project Duration Analysis
+                </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
-                      Avg Total Duration
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-blue-600">
-                      {durationKPIs.averageTotalDays}
-                    </div>
-                    <div className="text-sm text-gray-500">days</div>
-                  </CardContent>
-                </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <Card className="bg-white/90 backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600">
+                        Avg Total Duration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-blue-600">
+                        {durationKPIs.averageTotalDays}
+                      </div>
+                      <div className="text-sm text-gray-500">days</div>
+                    </CardContent>
+                  </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
-                      Avg Working Days
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-green-600">
-                      {durationKPIs.averageWorkingDays}
-                    </div>
-                    <div className="text-sm text-gray-500">working days</div>
-                  </CardContent>
-                </Card>
+                  <Card className="bg-white/90 backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600">
+                        Avg Working Days
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-green-600">
+                        {durationKPIs.averageWorkingDays}
+                      </div>
+                      <div className="text-sm text-gray-500">working days</div>
+                    </CardContent>
+                  </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
-                      Duration Coverage
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-purple-600 mb-2">
-                      {durationKPIs.durationCoverage}%
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {durationKPIs.projectsWithDuration} of {projects.length}{" "}
-                      projects
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white/90 backdrop-blur-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
-                      Duration Efficiency
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-orange-600 mb-2">
-                      {durationKPIs.durationEfficiency}%
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      working/total ratio
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Duration Distribution and Department Analysis */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle>Duration Distribution</CardTitle>
-                    <CardDescription>
-                      Project distribution by duration categories
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <RechartsPieChart>
-                        <Pie
-                          data={durationKPIs.durationDistribution}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          dataKey="count"
-                          nameKey="range"
-                          label={({ name, value, percent }) =>
-                            `${value} (${(percent * 100).toFixed(0)}%)`
-                          }
-                          labelLine={false}
-                        >
-                          {durationKPIs.durationDistribution.map(
-                            (entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={COLORS[index % COLORS.length]}
-                              />
-                            ),
-                          )}
-                        </Pie>
-                        <Tooltip />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white/90 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle>Duration by Department</CardTitle>
-                    <CardDescription>
-                      Average project duration across departments
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={durationKPIs.departmentDurations}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="department" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar
-                          dataKey="avgTotalDays"
-                          fill="#3B82F6"
-                          name="Total Days"
-                        >
-                          {durationKPIs.departmentDurations.map(
-                            (entry, index) => (
-                              <Cell key={`total-${index}`} />
-                            ),
-                          )}
-                        </Bar>
-                        <Bar
-                          dataKey="avgWorkingDays"
-                          fill="#10B981"
-                          name="Working Days"
-                        >
-                          {durationKPIs.departmentDurations.map(
-                            (entry, index) => (
-                              <Cell key={`working-${index}`} />
-                            ),
-                          )}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Duration Extremes */}
-              {(durationKPIs.longestProject ||
-                durationKPIs.shortestProject) && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {durationKPIs.longestProject && (
-                    <Card className="bg-white/90 backdrop-blur-sm">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <TrendingUp className="h-5 w-5 text-red-500" />
-                          Longest Project
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="font-medium text-lg">
-                            {stripHtmlTags(durationKPIs.longestProject.title)}
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <Card className="bg-white/90 backdrop-blur-sm cursor-help">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium text-gray-600">
+                            Duration Coverage
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-3xl font-bold text-purple-600 mb-2">
+                            {durationKPIs.durationCoverage}%
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">
-                              Total Duration:
-                            </span>
-                            <span className="font-semibold">
-                              {durationKPIs.longestProject.totalDays} days
-                            </span>
+                          <div className="text-sm text-gray-500">
+                            {durationKPIs.projectsWithDuration} of{" "}
+                            {projects.length} projects
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">
-                              Working Days:
-                            </span>
-                            <span className="font-semibold">
-                              {durationKPIs.longestProject.workingDays} days
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                        </CardContent>
+                      </Card>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>
+                        <strong>Duration Coverage:</strong> Percentage of
+                        projects with milestone dates available for duration
+                        calculation. Higher coverage means better project
+                        planning and tracking. This metric shows how many
+                        projects have sufficient milestone data to calculate
+                        accurate project timelines.
+                      </p>
+                    </TooltipContent>
+                  </UITooltip>
 
-                  {durationKPIs.shortestProject && (
-                    <Card className="bg-white/90 backdrop-blur-sm">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <TrendingDown className="h-5 w-5 text-green-500" />
-                          Shortest Project
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="font-medium text-lg">
-                            {stripHtmlTags(durationKPIs.shortestProject.title)}
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <Card className="bg-white/90 backdrop-blur-sm cursor-help">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium text-gray-600">
+                            Duration Efficiency
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-3xl font-bold text-orange-600 mb-2">
+                            {durationKPIs.durationEfficiency}%
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">
-                              Total Duration:
-                            </span>
-                            <span className="font-semibold">
-                              {durationKPIs.shortestProject.totalDays} days
-                            </span>
+                          <div className="text-sm text-gray-500">
+                            working/total ratio
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">
-                              Working Days:
-                            </span>
-                            <span className="font-semibold">
-                              {durationKPIs.shortestProject.workingDays} days
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                        </CardContent>
+                      </Card>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>
+                        <strong>Duration Efficiency:</strong> Ratio of working
+                        days to total calendar days across all projects (Working
+                        Days ÷ Total Days × 100). Shows how efficiently project
+                        time is utilized, excluding weekends. Higher efficiency
+                        indicates better time management and fewer calendar gaps
+                        in project execution.
+                      </p>
+                    </TooltipContent>
+                  </UITooltip>
                 </div>
-              )}
 
-              {/* Duration Statistics Summary */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Duration Distribution and Department Analysis */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-white/90 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle>Duration Distribution</CardTitle>
+                      <CardDescription>
+                        Project distribution by duration categories
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <RechartsPieChart>
+                          <Pie
+                            data={durationKPIs.durationDistribution}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            dataKey="count"
+                            nameKey="range"
+                            label={({ name, value, percent }) =>
+                              `${value} (${(percent * 100).toFixed(0)}%)`
+                            }
+                            labelLine={false}
+                          >
+                            {durationKPIs.durationDistribution.map(
+                              (entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={COLORS[index % COLORS.length]}
+                                />
+                              ),
+                            )}
+                          </Pie>
+                          <Tooltip />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white/90 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle>Duration by Department</CardTitle>
+                      <CardDescription>
+                        Average project duration across departments
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={durationKPIs.departmentDurations}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="department" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar
+                            dataKey="avgTotalDays"
+                            fill="#3B82F6"
+                            name="Total Days"
+                          >
+                            {durationKPIs.departmentDurations.map(
+                              (entry, index) => (
+                                <Cell key={`total-${index}`} />
+                              ),
+                            )}
+                          </Bar>
+                          <Bar
+                            dataKey="avgWorkingDays"
+                            fill="#10B981"
+                            name="Working Days"
+                          >
+                            {durationKPIs.departmentDurations.map(
+                              (entry, index) => (
+                                <Cell key={`working-${index}`} />
+                              ),
+                            )}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Duration Extremes */}
+                {(durationKPIs.longestProject ||
+                  durationKPIs.shortestProject) && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {durationKPIs.longestProject && (
+                      <Card className="bg-white/90 backdrop-blur-sm">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-red-500" />
+                            Longest Project
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <div className="font-medium text-lg">
+                              {stripHtmlTags(durationKPIs.longestProject.title)}
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">
+                                Total Duration:
+                              </span>
+                              <span className="font-semibold">
+                                {durationKPIs.longestProject.totalDays} days
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">
+                                Working Days:
+                              </span>
+                              <span className="font-semibold">
+                                {durationKPIs.longestProject.workingDays} days
+                              </span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {durationKPIs.shortestProject && (
+                      <Card className="bg-white/90 backdrop-blur-sm">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <TrendingDown className="h-5 w-5 text-green-500" />
+                            Shortest Project
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <div className="font-medium text-lg">
+                              {stripHtmlTags(
+                                durationKPIs.shortestProject.title,
+                              )}
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">
+                                Total Duration:
+                              </span>
+                              <span className="font-semibold">
+                                {durationKPIs.shortestProject.totalDays} days
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">
+                                Working Days:
+                              </span>
+                              <span className="font-semibold">
+                                {durationKPIs.shortestProject.workingDays} days
+                              </span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* Duration Statistics Summary */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-white/90 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle>Average Duration (Planning Metrics)</CardTitle>
+                      <CardDescription>
+                        Mean values - useful for resource planning and budgeting
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-blue-600">
+                            {durationKPIs.averageTotalDays}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Avg Total Days
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Calendar days from start to end
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-green-600">
+                            {durationKPIs.averageWorkingDays}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Avg Working Days
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Business days (excludes weekends)
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white/90 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle>Median Duration (Typical Projects)</CardTitle>
+                      <CardDescription>
+                        Middle values - not skewed by extremely long projects
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-blue-600">
+                            {durationKPIs.medianTotalDays}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Median Total Days
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            50% of projects are shorter
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-green-600">
+                            {durationKPIs.medianWorkingDays}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Median Working Days
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Typical project effort
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Remaining Days and Project Categories */}
                 <Card className="bg-white/90 backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle>Average Duration (Planning Metrics)</CardTitle>
+                    <CardTitle>Current Status & Project Categories</CardTitle>
                     <CardDescription>
-                      Mean values - useful for resource planning and budgeting
+                      Remaining time and project distribution by duration
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600">
-                          {durationKPIs.averageTotalDays}
+                        <div
+                          className={`text-2xl font-bold ${
+                            durationKPIs.medianTotalDaysRemaining >= 0
+                              ? "text-blue-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {durationKPIs.medianTotalDaysRemaining}
                         </div>
                         <div className="text-sm text-gray-600">
-                          Avg Total Days
+                          Median Days Remaining
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          Calendar days from start to end
+                          {durationKPIs.medianTotalDaysRemaining < 0
+                            ? "Overdue"
+                            : "Until completion"}
                         </div>
                       </div>
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600">
-                          {durationKPIs.averageWorkingDays}
+                        <div
+                          className={`text-2xl font-bold ${
+                            durationKPIs.medianWorkingDaysRemaining >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {durationKPIs.medianWorkingDaysRemaining}
                         </div>
                         <div className="text-sm text-gray-600">
-                          Avg Working Days
+                          Median Working Days Remaining
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          Business days (excludes weekends)
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white/90 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle>Median Duration (Typical Projects)</CardTitle>
-                    <CardDescription>
-                      Middle values - not skewed by extremely long projects
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600">
-                          {durationKPIs.medianTotalDays}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Median Total Days
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          50% of projects are shorter
+                          Business days left
                         </div>
                       </div>
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600">
-                          {durationKPIs.medianWorkingDays}
+                        <div className="text-2xl font-bold text-orange-600">
+                          {durationKPIs.shortProjects}
                         </div>
                         <div className="text-sm text-gray-600">
-                          Median Working Days
+                          Short Projects
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          Typical project effort
+                          &lt; 30 days
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-red-600">
+                          {durationKPIs.longProjects}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Long Projects
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          &gt; 90 days
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Remaining Days and Project Categories */}
-              <Card className="bg-white/90 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle>Current Status & Project Categories</CardTitle>
-                  <CardDescription>
-                    Remaining time and project distribution by duration
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div className="text-center">
-                      <div
-                        className={`text-2xl font-bold ${
-                          durationKPIs.medianTotalDaysRemaining >= 0
-                            ? "text-blue-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {durationKPIs.medianTotalDaysRemaining}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Median Days Remaining
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {durationKPIs.medianTotalDaysRemaining < 0
-                          ? "Overdue"
-                          : "Until completion"}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div
-                        className={`text-2xl font-bold ${
-                          durationKPIs.medianWorkingDaysRemaining >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {durationKPIs.medianWorkingDaysRemaining}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Median Working Days Remaining
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Business days left
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">
-                        {durationKPIs.shortProjects}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Short Projects
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        &lt; 30 days
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600">
-                        {durationKPIs.longProjects}
-                      </div>
-                      <div className="text-sm text-gray-600">Long Projects</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        &gt; 90 days
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            </TooltipProvider>
           )}
 
           {/* Quality KPIs */}

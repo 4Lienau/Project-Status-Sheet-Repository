@@ -3,6 +3,7 @@ import { Database } from "@/types/supabase";
 
 export type Project = Database["public"]["Tables"]["projects"]["Row"] & {
   manual_status_color?: "red" | "yellow" | "green";
+  computed_status_color?: "red" | "yellow" | "green";
 };
 export type Milestone = Database["public"]["Tables"]["milestones"]["Row"] & {
   weight?: number;
@@ -45,8 +46,9 @@ export type Task = {
 };
 
 export interface ProjectWithRelations
-  extends Omit<Project, "manual_status_color"> {
-  manual_status_color: "red" | "yellow" | "green";
+  extends Omit<Project, "manual_status_color" | "computed_status_color"> {
+  manual_status_color: "red" | "yellow" | "green" | null;
+  computed_status_color: "red" | "yellow" | "green" | null;
   projectId: string; // Form field mapping for project_id
   milestones: (Milestone & { tasks?: Task[] })[];
   accomplishments: Accomplishment[];
@@ -173,6 +175,350 @@ export const calculateProjectDuration = (milestones: Milestone[]) => {
     totalDaysRemaining,
     workingDaysRemaining,
   };
+};
+
+// Calculate time remaining as a percentage of total project duration
+const calculateTimeRemainingPercentage = (
+  project: ProjectWithRelations | Project,
+): number | null => {
+  const projectWithRelations = project as ProjectWithRelations;
+
+  // Check if we have duration data
+  if (
+    !projectWithRelations.total_days ||
+    projectWithRelations.total_days_remaining === null ||
+    projectWithRelations.total_days_remaining === undefined
+  ) {
+    return null;
+  }
+
+  const totalDays = projectWithRelations.total_days;
+  const remainingDays = projectWithRelations.total_days_remaining;
+
+  // If project is overdue, return 0%
+  if (remainingDays < 0) {
+    return 0;
+  }
+
+  // Calculate percentage of time remaining
+  const timeRemainingPercentage = Math.round((remainingDays / totalDays) * 100);
+  return Math.max(0, Math.min(100, timeRemainingPercentage));
+};
+
+// Standardized function to calculate project health status color with time awareness
+export const calculateProjectHealthStatusColor = (
+  project: ProjectWithRelations | Project,
+  milestones?: Milestone[],
+): "red" | "yellow" | "green" => {
+  console.log(`[HEALTH_CALC] Calculating health status for project:`, {
+    id: project.id,
+    title: project.title,
+    health_calculation_type: project.health_calculation_type,
+    manual_status_color: project.manual_status_color,
+    status: project.status,
+    milestones_count:
+      milestones?.length ||
+      (project as ProjectWithRelations).milestones?.length ||
+      0,
+  });
+
+  // For manual calculation, use the manual status color if available
+  if (
+    project.health_calculation_type === "manual" &&
+    project.manual_status_color
+  ) {
+    console.log(
+      `[HEALTH_CALC] Using manual status color: ${project.manual_status_color}`,
+    );
+    return project.manual_status_color;
+  }
+
+  // For automatic calculation or when manual color is not set
+  // Use status-based colors first
+  if (project.status === "completed") {
+    console.log(`[HEALTH_CALC] Status-based color: green (completed)`);
+    return "green";
+  } else if (project.status === "cancelled") {
+    console.log(`[HEALTH_CALC] Status-based color: red (cancelled)`);
+    return "red";
+  } else if (project.status === "draft" || project.status === "on_hold") {
+    console.log(`[HEALTH_CALC] Status-based color: yellow (${project.status})`);
+    return "yellow";
+  }
+
+  // For active projects, determine based on milestone completion AND time remaining
+  const projectMilestones =
+    milestones || (project as ProjectWithRelations).milestones || [];
+
+  if (projectMilestones.length > 0) {
+    // Calculate milestone completion percentage
+    const weightedCompletion = calculateWeightedCompletion(projectMilestones);
+
+    // Calculate time remaining percentage
+    const timeRemainingPercentage = calculateTimeRemainingPercentage(project);
+
+    console.log(`[HEALTH_CALC] Time-aware calculation:`, {
+      weightedCompletion,
+      timeRemainingPercentage,
+      total_days: (project as ProjectWithRelations).total_days,
+      total_days_remaining: (project as ProjectWithRelations)
+        .total_days_remaining,
+    });
+
+    // If we don't have time data, fall back to milestone-only calculation
+    if (timeRemainingPercentage === null) {
+      let color: "red" | "yellow" | "green" = "green";
+      if (weightedCompletion >= 70) color = "green";
+      else if (weightedCompletion >= 40) color = "yellow";
+      else color = "red";
+
+      console.log(
+        `[HEALTH_CALC] Milestone-only color: ${color} (weighted completion: ${weightedCompletion}%)`,
+      );
+      return color;
+    }
+
+    // Time-aware health calculation with more lenient thresholds
+    let color: "red" | "yellow" | "green" = "green";
+
+    // If project is overdue (0% time remaining), be strict with milestone requirements
+    if (timeRemainingPercentage === 0) {
+      if (weightedCompletion >= 90)
+        color = "yellow"; // Even high completion is concerning if overdue
+      else color = "red";
+      console.log(
+        `[HEALTH_CALC] Overdue project color: ${color} (completion: ${weightedCompletion}%, overdue)`,
+      );
+      return color;
+    }
+
+    // If substantial time remaining (>60% of total duration), be very lenient
+    if (timeRemainingPercentage > 60) {
+      if (weightedCompletion >= 10)
+        color = "green"; // Very low threshold for green when substantial time remains
+      else if (weightedCompletion >= 5) color = "yellow";
+      else color = "red";
+      console.log(
+        `[HEALTH_CALC] Substantial time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
+      );
+      return color;
+    }
+
+    // If plenty of time remaining (30-60% of total duration), be more lenient
+    if (timeRemainingPercentage > 30) {
+      if (weightedCompletion >= 20)
+        color = "green"; // Lower threshold for green when plenty of time
+      else if (weightedCompletion >= 10) color = "yellow";
+      else color = "red";
+      console.log(
+        `[HEALTH_CALC] Plenty of time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
+      );
+      return color;
+    }
+
+    // If moderate time remaining (15-30% of total duration), use balanced approach
+    if (timeRemainingPercentage > 15) {
+      if (weightedCompletion >= 40) color = "green";
+      else if (weightedCompletion >= 25) color = "yellow";
+      else color = "red";
+      console.log(
+        `[HEALTH_CALC] Moderate time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
+      );
+      return color;
+    }
+
+    // If little time remaining (1-15% of total duration), be stricter
+    if (weightedCompletion >= 80) color = "green";
+    else if (weightedCompletion >= 60) color = "yellow";
+    else color = "red";
+
+    console.log(
+      `[HEALTH_CALC] Little time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
+    );
+    return color;
+  }
+
+  // Default to green for active projects with no milestones
+  console.log(`[HEALTH_CALC] Default color: green (active, no milestones)`);
+  return "green";
+};
+
+// Service function to update computed status color for a project
+export const updateProjectComputedStatusColor = async (
+  projectId: string,
+): Promise<boolean> => {
+  try {
+    console.log(
+      "[COMPUTED_STATUS] Updating computed status color for project:",
+      projectId,
+    );
+
+    // Get the project with its milestones
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("*")
+      .eq("id", projectId)
+      .single();
+
+    if (projectError || !project) {
+      console.error("[COMPUTED_STATUS] Error fetching project:", projectError);
+      return false;
+    }
+
+    const { data: milestones, error: milestonesError } = await supabase
+      .from("milestones")
+      .select("*")
+      .eq("project_id", projectId);
+
+    if (milestonesError) {
+      console.error(
+        "[COMPUTED_STATUS] Error fetching milestones:",
+        milestonesError,
+      );
+      // Continue with empty milestones array
+    }
+
+    // Calculate the computed status color using the standardized function
+    const computedColor = calculateProjectHealthStatusColor(
+      project,
+      milestones || [],
+    );
+
+    console.log(
+      `[COMPUTED_STATUS] Calculated color for project "${project.title}":`,
+      {
+        projectId,
+        status: project.status,
+        health_calculation_type: project.health_calculation_type,
+        manual_status_color: project.manual_status_color,
+        manual_health_percentage: project.manual_health_percentage,
+        milestones_count: (milestones || []).length,
+        weighted_completion:
+          (milestones || []).length > 0
+            ? calculateWeightedCompletion(milestones || [])
+            : 0,
+        computed_color: computedColor,
+      },
+    );
+
+    // Update the project with the computed status color
+    const { error: updateError } = await supabase
+      .from("projects")
+      .update({ computed_status_color: computedColor })
+      .eq("id", projectId);
+
+    if (updateError) {
+      console.error(
+        "[COMPUTED_STATUS] Error updating computed status color:",
+        updateError,
+      );
+      return false;
+    }
+
+    console.log(
+      `[COMPUTED_STATUS] Successfully updated computed status color to: ${computedColor}`,
+    );
+    return true;
+  } catch (error) {
+    console.error(
+      "[COMPUTED_STATUS] Unexpected error updating computed status color:",
+      error,
+    );
+    return false;
+  }
+};
+
+// Service function to recalculate all computed status colors
+export const recalculateAllComputedStatusColors = async (): Promise<number> => {
+  try {
+    console.log("[COMPUTED_STATUS] Recalculating all computed status colors");
+
+    // Get all projects
+    const { data: projects, error: projectsError } = await supabase
+      .from("projects")
+      .select("*");
+
+    if (projectsError) {
+      console.error(
+        "[COMPUTED_STATUS] Error fetching projects:",
+        projectsError,
+      );
+      return 0;
+    }
+
+    if (!projects || projects.length === 0) {
+      console.log("[COMPUTED_STATUS] No projects found");
+      return 0;
+    }
+
+    // Get all milestones for all projects
+    const projectIds = projects.map((p) => p.id);
+    const { data: allMilestones, error: milestonesError } = await supabase
+      .from("milestones")
+      .select("*")
+      .in("project_id", projectIds);
+
+    if (milestonesError) {
+      console.error(
+        "[COMPUTED_STATUS] Error fetching milestones:",
+        milestonesError,
+      );
+      // Continue with empty milestones
+    }
+
+    let updatedCount = 0;
+    const updates = [];
+
+    // Calculate computed status color for each project
+    for (const project of projects) {
+      const projectMilestones = (allMilestones || []).filter(
+        (m) => m.project_id === project.id,
+      );
+
+      const computedColor = calculateProjectHealthStatusColor(
+        project,
+        projectMilestones,
+      );
+
+      // Only update if the computed color is different
+      if (project.computed_status_color !== computedColor) {
+        updates.push({
+          id: project.id,
+          computed_status_color: computedColor,
+        });
+      }
+    }
+
+    // Batch update all projects that need updating
+    if (updates.length > 0) {
+      for (const update of updates) {
+        const { error: updateError } = await supabase
+          .from("projects")
+          .update({ computed_status_color: update.computed_status_color })
+          .eq("id", update.id);
+
+        if (updateError) {
+          console.error(
+            `[COMPUTED_STATUS] Error updating project ${update.id}:`,
+            updateError,
+          );
+        } else {
+          updatedCount++;
+        }
+      }
+    }
+
+    console.log(
+      `[COMPUTED_STATUS] Successfully recalculated computed status colors for ${updatedCount} projects`,
+    );
+    return updatedCount;
+  } catch (error) {
+    console.error(
+      "[COMPUTED_STATUS] Unexpected error recalculating computed status colors:",
+      error,
+    );
+    return 0;
+  }
 };
 
 export const projectService = {
@@ -337,6 +683,8 @@ export const projectService = {
           project.id,
           "manual_status_color:",
           project.manual_status_color,
+          "health_calculation_type:",
+          project.health_calculation_type,
           "project_id:",
           project.project_id,
         );
@@ -344,7 +692,8 @@ export const projectService = {
           ...project,
           // Map database field project_id to form field projectId - handle null/undefined properly
           projectId: (project.project_id ?? "").toString(),
-          manual_status_color: project.manual_status_color,
+          manual_status_color: project.manual_status_color || null,
+          computed_status_color: project.computed_status_color || null,
           milestones: milestonesWithTasks.filter(
             (m) => m.project_id === project.id,
           ),
@@ -879,6 +1228,28 @@ export const projectService = {
         console.error("Error updating project duration:", error);
       }
 
+      // Update computed status color after saving project
+      try {
+        console.log(
+          "[COMPUTED_STATUS] Updating computed status color after project update",
+        );
+        const success = await updateProjectComputedStatusColor(id);
+        if (success) {
+          console.log(
+            "[COMPUTED_STATUS] Successfully updated computed status color after project update",
+          );
+        } else {
+          console.error(
+            "[COMPUTED_STATUS] Failed to update computed status color after project update",
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[COMPUTED_STATUS] Error updating computed status color:",
+          error,
+        );
+      }
+
       const updatedProject = await this.getProject(id);
       if (!updatedProject) {
         console.error("Failed to fetch updated project after save");
@@ -1217,6 +1588,28 @@ export const projectService = {
         );
       }
 
+      // Update computed status color after creating project
+      try {
+        console.log(
+          "[COMPUTED_STATUS] Updating computed status color after project creation",
+        );
+        const success = await updateProjectComputedStatusColor(project.id);
+        if (success) {
+          console.log(
+            "[COMPUTED_STATUS] Successfully updated computed status color after project creation",
+          );
+        } else {
+          console.error(
+            "[COMPUTED_STATUS] Failed to update computed status color after project creation",
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[COMPUTED_STATUS] Error updating computed status color:",
+          error,
+        );
+      }
+
       const completeProject = await this.getProject(project.id);
       console.log(
         "Complete project fetched:",
@@ -1353,11 +1746,18 @@ export const projectService = {
         }
       });
 
+      console.log("[PROJECT_ID] Final project data:", {
+        dbProjectId: project.project_id,
+        manual_status_color: project.manual_status_color,
+        health_calculation_type: project.health_calculation_type,
+      });
+
       return {
         ...project,
         // Map database field project_id to form field projectId - handle null/undefined properly
         projectId: (project.project_id ?? "").toString(),
-        manual_status_color: project.manual_status_color,
+        manual_status_color: project.manual_status_color || null,
+        computed_status_color: project.computed_status_color || null,
         milestones: milestonesWithTasks,
         accomplishments: accomplishments || [],
         next_period_activities: activities || [],

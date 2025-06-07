@@ -34,6 +34,7 @@ import { useNavigate } from "react-router-dom";
 import {
   projectService,
   calculateWeightedCompletion,
+  calculateProjectHealthStatusColor,
 } from "@/lib/services/project";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -46,6 +47,8 @@ interface ProjectListProps {
   filterManager?: string | string[];
   filterStatus?: string;
   filterDepartment?: string;
+  filterStatusHealth?: string;
+  onFilteredCountChange?: (count: number) => void;
 }
 
 const ProjectList = ({
@@ -54,6 +57,8 @@ const ProjectList = ({
   filterManager = "all",
   filterStatus = "all",
   filterDepartment = "all",
+  filterStatusHealth = "all",
+  onFilteredCountChange,
 }: ProjectListProps) => {
   // Convert filterManager to array if it's a string for backward compatibility
   const filterManagerArray = Array.isArray(filterManager)
@@ -98,6 +103,88 @@ const ProjectList = ({
 
   const { toast } = useToast();
 
+  // Helper function to get project status health color using standardized calculation
+  const getProjectStatusHealthColor = (
+    project: ProjectWithRelations,
+  ): string => {
+    // Calculate time remaining percentage for debug info
+    let timeRemainingPercentage: number | null = null;
+    if (
+      project.total_days &&
+      project.total_days_remaining !== null &&
+      project.total_days_remaining !== undefined
+    ) {
+      const totalDays = project.total_days;
+      const remainingDays = project.total_days_remaining;
+
+      if (remainingDays < 0) {
+        timeRemainingPercentage = 0;
+      } else {
+        timeRemainingPercentage = Math.round((remainingDays / totalDays) * 100);
+      }
+    }
+
+    console.log(
+      `[STATUS_HEALTH_DEBUG] Project "${project.title}" (${project.id}):`,
+      {
+        title: project.title,
+        computed_status_color: project.computed_status_color,
+        health_calculation_type: project.health_calculation_type,
+        manual_status_color: project.manual_status_color,
+        manual_health_percentage: project.manual_health_percentage,
+        status: project.status,
+        milestones_count: project.milestones?.length || 0,
+        weighted_completion:
+          project.milestones?.length > 0
+            ? calculateWeightedCompletion(project.milestones)
+            : 0,
+        total_days: project.total_days,
+        total_days_remaining: project.total_days_remaining,
+        time_remaining_percentage: timeRemainingPercentage,
+        working_days_remaining: project.working_days_remaining,
+      },
+    );
+
+    // Always use the standardized calculation to ensure consistency
+    // This ensures the same logic is used everywhere in the application
+    const calculatedColor = calculateProjectHealthStatusColor(project);
+
+    console.log(
+      `[STATUS_HEALTH_DEBUG] Calculated color for "${project.title}": ${calculatedColor}`,
+    );
+
+    // If computed_status_color exists but doesn't match our calculation, log a warning
+    // and trigger an update to fix the discrepancy
+    if (
+      project.computed_status_color &&
+      project.computed_status_color !== calculatedColor
+    ) {
+      console.warn(
+        `[STATUS_HEALTH_DEBUG] Mismatch detected for "${project.title}"! Computed: ${project.computed_status_color}, Calculated: ${calculatedColor}`,
+      );
+
+      // Automatically fix the discrepancy by updating the computed status color
+      // This is done asynchronously to not block the UI
+      import("@/lib/services/project").then(
+        ({ updateProjectComputedStatusColor }) => {
+          updateProjectComputedStatusColor(project.id).then((success) => {
+            if (success) {
+              console.log(
+                `[STATUS_HEALTH_DEBUG] Fixed computed status color for "${project.title}"`,
+              );
+            } else {
+              console.error(
+                `[STATUS_HEALTH_DEBUG] Failed to fix computed status color for "${project.title}"`,
+              );
+            }
+          });
+        },
+      );
+    }
+
+    return calculatedColor;
+  };
+
   useEffect(() => {
     const loadProjects = async () => {
       setLoading(true);
@@ -106,6 +193,7 @@ const ProjectList = ({
         filterManagerArray,
         filterStatus,
         filterDepartment,
+        filterStatusHealth,
       });
 
       try {
@@ -218,8 +306,49 @@ const ProjectList = ({
           );
         }
 
+        // Apply status health filter
+        if (filterStatusHealth && filterStatusHealth !== "all") {
+          const beforeCount = filtered.length;
+          console.log(
+            `[STATUS_HEALTH_FILTER] Filtering by status health: ${filterStatusHealth}`,
+          );
+          filtered = filtered.filter((project) => {
+            const statusHealthColor = getProjectStatusHealthColor(project);
+
+            // Special handling: Exclude cancelled projects from "Red (Critical)" filter
+            // Cancelled projects should only appear when "All Health Status" is selected
+            if (
+              filterStatusHealth === "red" &&
+              project.status === "cancelled"
+            ) {
+              console.log(
+                `[STATUS_HEALTH_FILTER] Excluding cancelled project "${project.title}" from Red (Critical) filter`,
+              );
+              return false;
+            }
+
+            const matches = statusHealthColor === filterStatusHealth;
+            console.log(
+              `[STATUS_HEALTH_FILTER] Project "${project.title}" - Status: ${project.status}, Color: ${statusHealthColor}, Filter: ${filterStatusHealth}, Matches: ${matches}`,
+            );
+            return matches;
+          });
+          console.log(
+            "After status health filter:",
+            filtered.length,
+            "projects (from",
+            beforeCount,
+            ")",
+          );
+        }
+
         console.log("Final filtered projects:", filtered.length);
         setFilteredProjects(filtered);
+
+        // Report the filtered count back to parent component
+        if (onFilteredCountChange) {
+          onFilteredCountChange(filtered.length);
+        }
       } catch (error) {
         console.error("Error loading projects:", error);
       } finally {
@@ -234,6 +363,7 @@ const ProjectList = ({
     filterManagerArray,
     filterStatus,
     filterDepartment,
+    filterStatusHealth,
     user?.id,
   ]);
 
@@ -251,7 +381,13 @@ const ProjectList = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-semibold text-white">Projects</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold text-white">Projects</h2>
+          <span className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white border border-white/30">
+            {filteredProjects.length}{" "}
+            {filteredProjects.length === 1 ? "project" : "projects"}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -280,7 +416,7 @@ const ProjectList = ({
                       completed:
                         "bg-blue-100 text-blue-800 border border-blue-200",
                       cancelled:
-                        "bg-red-100 text-red-800 border border-red-200",
+                        "bg-gray-100 text-gray-800 border border-gray-200",
                       draft:
                         "bg-yellow-100 text-yellow-800 border border-yellow-200",
                     }[project.status || "active"]
@@ -367,25 +503,37 @@ const ProjectList = ({
                     ? project.manual_health_percentage
                     : calculateWeightedCompletion(project.milestones);
 
-                // Determine background color
+                // Get the standardized health status color
+                const healthStatusColor = getProjectStatusHealthColor(project);
+
+                // Determine background color based on health status color and project status
                 let bgColor = "bg-green-500";
-                if (
+                if (project.status === "completed") {
+                  bgColor = "bg-blue-500"; // Blue for completed projects
+                } else if (project.status === "cancelled") {
+                  bgColor = "bg-gray-500"; // Gray for cancelled projects
+                } else if (
                   project.health_calculation_type === "manual" &&
                   project.manual_status_color
                 ) {
                   // Use the manual color if specified
                   bgColor = `bg-${project.manual_status_color}-500`;
                 } else {
-                  // Use status-based colors for automatic calculation or if manual color is not set
-                  if (project.status === "draft") bgColor = "bg-yellow-500";
-                  else if (project.status === "completed")
-                    bgColor = "bg-blue-500";
-                  else if (project.status === "on_hold")
-                    bgColor = "bg-yellow-500";
-                  else if (project.status === "cancelled")
-                    bgColor = "bg-red-500";
+                  // Use the computed health status color
+                  switch (healthStatusColor) {
+                    case "green":
+                      bgColor = "bg-green-500";
+                      break;
+                    case "yellow":
+                      bgColor = "bg-yellow-500";
+                      break;
+                    case "red":
+                      bgColor = "bg-red-500";
+                      break;
+                    default:
+                      bgColor = "bg-green-500";
+                  }
                 }
-                // For active projects, use green by default
 
                 // Determine status text
                 let statusText = "In Progress";

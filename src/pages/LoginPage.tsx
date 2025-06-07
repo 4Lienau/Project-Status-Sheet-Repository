@@ -16,6 +16,15 @@ const LoginPage = () => {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo/Brand section */}
         <div className="text-center mb-8">
+          {/* Logo Container */}
+          <div className="mb-6 flex justify-center">
+            <img
+              src="/images/rewa-logo-color.png"
+              alt="ReWa Logo"
+              className="h-20 w-auto"
+            />
+          </div>
+
           <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">
             ReWa Project Status Sheet Repository
           </h1>

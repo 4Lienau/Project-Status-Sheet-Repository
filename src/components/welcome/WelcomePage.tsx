@@ -4,9 +4,18 @@ import { Card } from "@/components/ui/card";
 const WelcomePage = ({ onGetStarted }: { onGetStarted: () => void }) => {
   return (
     <div className="max-w-5xl mx-auto p-8 space-y-8">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight">
-          Welcome to the Project Status Dashboard
+      <div className="text-center space-y-6">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img
+            src="/images/rewa-logo-color.png"
+            alt="ReWa Logo"
+            className="h-16 w-auto"
+          />
+        </div>
+
+        <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+          Welcome to the ReWa Project Status Dashboard
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Your central hub for tracking project progress, managing milestones,

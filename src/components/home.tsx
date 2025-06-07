@@ -108,24 +108,29 @@ const Home = () => {
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [selectedStatusHealth, setSelectedStatusHealth] =
+    useState<string>("all");
   const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
   const [projectManagers, setProjectManagers] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
   const [filtersLoaded, setFiltersLoaded] = useState(false);
+  const [filteredProjectCount, setFilteredProjectCount] = useState(0);
 
   // Clear all filters function
   const clearAllFilters = () => {
     setSelectedManagers([]);
     setSelectedStatus("all");
     setSelectedDepartment("all");
+    setSelectedStatusHealth("all");
 
     // Save cleared filters to localStorage
     if (user?.id) {
       saveFilterToStorage(user.id, "managers", []);
       saveFilterToStorage(user.id, "status", "all");
       saveFilterToStorage(user.id, "department", "all");
+      saveFilterToStorage(user.id, "statusHealth", "all");
     }
   };
 
@@ -139,16 +144,23 @@ const Home = () => {
         "department",
         "all",
       );
+      const savedStatusHealth = loadFilterFromStorage(
+        user.id,
+        "statusHealth",
+        "all",
+      );
 
       setSelectedManagers(savedManagers);
       setSelectedStatus(savedStatus);
       setSelectedDepartment(savedDepartment);
+      setSelectedStatusHealth(savedStatusHealth);
       setFiltersLoaded(true);
 
       console.log("Loaded persistent filters:", {
         managers: savedManagers,
         status: savedStatus,
         department: savedDepartment,
+        statusHealth: savedStatusHealth,
       });
     }
   }, [user?.id, filtersLoaded]);
@@ -288,38 +300,72 @@ const Home = () => {
 
   return (
     <Layout>
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="p-6 relative">
+        {/* Subtle background logo */}
+        <div className="absolute top-8 right-8 opacity-5 pointer-events-none">
+          <img
+            src="/images/rewa-logo-color.png"
+            alt="ReWa Logo"
+            className="h-24 w-auto"
+          />
+        </div>
+
+        <div className="max-w-7xl mx-auto space-y-6 relative z-10">
           {mode === "list" && (
             <div className="space-y-6">
+              {/* Header with logo */}
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold text-white">
+                    Project Dashboard
+                  </h1>
+                  <p className="text-white/70">
+                    Track and report your projects status
+                  </p>
+                </div>
+                <img
+                  src="/images/rewa-logo-color.png"
+                  alt="ReWa Logo"
+                  className="h-10 w-auto"
+                />
+              </div>
+
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start gap-4">
-                  <Select
-                    value={selectedDepartment}
-                    onValueChange={(value) => {
-                      setSelectedDepartment(value);
-                      if (user?.id) {
-                        saveFilterToStorage(user.id, "department", value);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-[280px] text-white border-white/30 bg-white/10 hover:bg-white/20">
-                      <SelectValue
-                        placeholder="Filter by Department"
-                        className="text-white"
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Departments</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-white/80 mb-2">
+                      Filter by Department
+                    </label>
+                    <Select
+                      value={selectedDepartment}
+                      onValueChange={(value) => {
+                        setSelectedDepartment(value);
+                        if (user?.id) {
+                          saveFilterToStorage(user.id, "department", value);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[280px] text-white border-white/30 bg-white/10 hover:bg-white/20">
+                        <SelectValue
+                          placeholder="All Departments"
+                          className="text-white"
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   <div className="w-[280px] flex flex-col">
+                    <label className="text-sm font-medium text-white/80 mb-2">
+                      Filter by Project Manager
+                    </label>
                     <Popover
                       open={managerPopoverOpen}
                       onOpenChange={setManagerPopoverOpen}
@@ -333,7 +379,7 @@ const Home = () => {
                         >
                           {selectedManagers.length > 0
                             ? `${selectedManagers.length} manager${selectedManagers.length > 1 ? "s" : ""} selected`
-                            : "Filter by Project Manager"}
+                            : "All Project Managers"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[280px] p-0" align="start">
@@ -446,30 +492,63 @@ const Home = () => {
                     )}
                   </div>
 
-                  <Select
-                    value={selectedStatus}
-                    onValueChange={(value) => {
-                      setSelectedStatus(value);
-                      if (user?.id) {
-                        saveFilterToStorage(user.id, "status", value);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-[200px] text-white border-white/30 bg-white/10 hover:bg-white/20">
-                      <SelectValue
-                        placeholder="Filter by Status"
-                        className="text-white"
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="on_hold">On Hold</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="draft">Draft</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-white/80 mb-2">
+                      Filter by Status
+                    </label>
+                    <Select
+                      value={selectedStatus}
+                      onValueChange={(value) => {
+                        setSelectedStatus(value);
+                        if (user?.id) {
+                          saveFilterToStorage(user.id, "status", value);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[200px] text-white border-white/30 bg-white/10 hover:bg-white/20">
+                        <SelectValue
+                          placeholder="All Statuses"
+                          className="text-white"
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="on_hold">On Hold</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-white/80 mb-2">
+                      Filter by Status Health
+                    </label>
+                    <Select
+                      value={selectedStatusHealth}
+                      onValueChange={(value) => {
+                        setSelectedStatusHealth(value);
+                        if (user?.id) {
+                          saveFilterToStorage(user.id, "statusHealth", value);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[200px] text-white border-white/30 bg-white/10 hover:bg-white/20">
+                        <SelectValue
+                          placeholder="All Health Status"
+                          className="text-white"
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Health Status</SelectItem>
+                        <SelectItem value="green">Green (On Track)</SelectItem>
+                        <SelectItem value="yellow">Yellow (At Risk)</SelectItem>
+                        <SelectItem value="red">Red (Critical)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -524,6 +603,28 @@ const Home = () => {
                                 (p) => p.status === selectedStatus,
                               );
                             }
+                            if (selectedStatusHealth !== "all") {
+                              filteredProjects = filteredProjects.filter(
+                                (p) => {
+                                  // Use computed status color if available, otherwise use standardized calculation
+                                  let statusHealthColor =
+                                    p.computed_status_color;
+
+                                  if (!statusHealthColor) {
+                                    // Import and use the standardized calculation function
+                                    const {
+                                      calculateProjectHealthStatusColor,
+                                    } = require("@/lib/services/project");
+                                    statusHealthColor =
+                                      calculateProjectHealthStatusColor(p);
+                                  }
+
+                                  return (
+                                    statusHealthColor === selectedStatusHealth
+                                  );
+                                },
+                              );
+                            }
 
                             await exportProjectsToExcel(filteredProjects);
                             toast({
@@ -570,6 +671,8 @@ const Home = () => {
                 filterManager={selectedManagers}
                 filterStatus={selectedStatus}
                 filterDepartment={selectedDepartment}
+                filterStatusHealth={selectedStatusHealth}
+                onFilteredCountChange={setFilteredProjectCount}
               />
             </div>
           )}
@@ -723,6 +826,7 @@ const Home = () => {
               filterManager={selectedManagers}
               filterStatus={selectedStatus}
               filterDepartment={selectedDepartment}
+              filterStatusHealth={selectedStatusHealth}
             />
           )}
         </div>
