@@ -29,6 +29,10 @@ import { Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import ProjectForm from "@/components/ProjectForm";
 import StatusSheet from "@/components/StatusSheet";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  compareVersions,
+  type VersionChanges,
+} from "@/lib/utils/versionComparison";
 
 interface ProjectDashboardProps {
   project?: any;
@@ -55,6 +59,7 @@ const ProjectDashboard = ({
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1); // -1 means current
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
   const [formattedData, setFormattedData] = useState(null);
+  const [versionChanges, setVersionChanges] = useState<VersionChanges>({});
 
   // Add state to track when milestones were recently added
   const [milestonesAddedTimestamp, setMilestonesAddedTimestamp] = useState<
@@ -195,6 +200,23 @@ const ProjectDashboard = ({
           console.log("Successfully loaded current version:", projectData);
           setProject(projectData);
           setCurrentVersionIndex(-1);
+
+          // Compare current with most recent version to identify changes
+          if (versions.length > 0) {
+            const mostRecentVersion = versions[0];
+            if (mostRecentVersion && mostRecentVersion.data) {
+              const changes = compareVersions(
+                projectData,
+                mostRecentVersion.data,
+              );
+              setVersionChanges(changes);
+              console.log("Current vs most recent version changes:", changes);
+            } else {
+              setVersionChanges({});
+            }
+          } else {
+            setVersionChanges({});
+          }
         } else {
           console.error("Failed to load current project data");
           toast({
@@ -245,6 +267,22 @@ const ProjectDashboard = ({
 
         setProject(version.data);
         setCurrentVersionIndex(versionIndex);
+
+        // Compare with previous version to identify changes
+        const previousVersionIndex = versionIndex + 1;
+        if (previousVersionIndex < versions.length) {
+          const previousVersion = versions[previousVersionIndex];
+          if (previousVersion && previousVersion.data) {
+            const changes = compareVersions(version.data, previousVersion.data);
+            setVersionChanges(changes);
+            console.log("Version changes detected:", changes);
+          } else {
+            setVersionChanges({});
+          }
+        } else {
+          // This is the oldest version, no previous version to compare
+          setVersionChanges({});
+        }
       } catch (error) {
         console.error("Error loading project version:", error);
         toast({
@@ -1099,6 +1137,10 @@ const ProjectDashboard = ({
             summaryCreatedAt: formattedData?.summaryCreatedAt,
             summaryIsStale: formattedData?.summaryIsStale,
           }}
+          versionChanges={versionChanges}
+          showChangeIndicators={
+            currentVersionIndex !== -1 && Object.keys(versionChanges).length > 0
+          }
         />
       )}
     </div>

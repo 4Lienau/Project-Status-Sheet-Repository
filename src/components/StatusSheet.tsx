@@ -32,8 +32,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  hasFieldChanged,
+  type VersionChanges,
+  getChangeDescription,
+} from "@/lib/utils/versionComparison";
 
 interface StatusSheetProps {
+  versionChanges?: VersionChanges;
+  showChangeIndicators?: boolean;
   data?: {
     title: string;
     description?: string;
@@ -92,8 +99,45 @@ interface StatusSheetProps {
  * StatusSheet component
  * Renders a formatted project status sheet with export capabilities
  */
-const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
+const StatusSheet: React.FC<StatusSheetProps> = ({
+  data,
+  versionChanges = {},
+  showChangeIndicators = false,
+}) => {
   const { toast } = useToast();
+
+  // Helper function to render change indicator
+  const renderChangeIndicator = (fieldPath: string, tooltip?: string) => {
+    if (!showChangeIndicators || !hasFieldChanged(versionChanges, fieldPath)) {
+      return null;
+    }
+
+    const change = versionChanges[fieldPath];
+    const description = tooltip || getChangeDescription(change);
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="inline-flex items-center ml-1">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-sm">{description}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  // Helper function to add subtle background highlight for changed sections
+  const getChangedSectionClass = (fieldPath: string) => {
+    if (!showChangeIndicators || !hasFieldChanged(versionChanges, fieldPath)) {
+      return "";
+    }
+    return "bg-blue-50/30 border-l-2 border-blue-200";
+  };
 
   if (!data) {
     console.warn("No data provided to StatusSheet component");
@@ -327,7 +371,18 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
 
         <div className="px-3">
           {/* Overall Status Section */}
-          <div className="border-2 border-gray-300 p-3 mb-2">
+          <div
+            className={`border-2 border-gray-300 p-3 mb-2 ${
+              getChangedSectionClass("status") ||
+              getChangedSectionClass("health_calculation_type") ||
+              getChangedSectionClass("manual_health_percentage") ||
+              getChangedSectionClass("overall_completion") ||
+              getChangedSectionClass("manual_status_color") ||
+              getChangedSectionClass("sponsors") ||
+              getChangedSectionClass("business_leads") ||
+              getChangedSectionClass("project_manager")
+            }`}
+          >
             <div className="flex items-start">
               <div className="flex-none">
                 <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
@@ -338,9 +393,17 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                     className={`w-14 h-14 flex items-center justify-center text-white dark:text-white text-2xl font-bold border-2 border-gray-400 ${getStatusColor(data.status || "active")}`}
                   >
                     {overallCompletion}%
+                    {renderChangeIndicator(
+                      "overall_completion",
+                      "Overall completion percentage has changed",
+                    )}
+                    {renderChangeIndicator(
+                      "manual_health_percentage",
+                      "Manual health percentage has changed",
+                    )}
                   </div>
                   <div>
-                    <div className="text-gray-900 dark:text-gray-900">
+                    <div className="text-gray-900 dark:text-gray-900 flex items-center">
                       Health:{" "}
                       {data.status
                         ? data.status
@@ -349,6 +412,18 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                             .toUpperCase() +
                           data.status.slice(1).replace("_", " ")
                         : "Active"}
+                      {renderChangeIndicator(
+                        "status",
+                        "Project status has changed",
+                      )}
+                      {renderChangeIndicator(
+                        "health_calculation_type",
+                        "Health calculation method has changed",
+                      )}
+                      {renderChangeIndicator(
+                        "manual_status_color",
+                        "Status color has changed",
+                      )}
                     </div>
                     <div className="text-cyan-600 dark:text-cyan-600">
                       {data.status === "completed"
@@ -370,24 +445,33 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                   <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                     Sponsors
                   </div>
-                  <div className="text-gray-900 dark:text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-900 flex items-center">
                     {data.sponsors || ""}
+                    {renderChangeIndicator("sponsors", "Sponsors have changed")}
                   </div>
                 </div>
                 <div className="flex-1 border-l-2 border-gray-300 pl-4">
                   <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                     Business Lead(s)
                   </div>
-                  <div className="text-gray-900 dark:text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-900 flex items-center">
                     {data.businessLeads || ""}
+                    {renderChangeIndicator(
+                      "business_leads",
+                      "Business leads have changed",
+                    )}
                   </div>
                 </div>
                 <div className="flex-1 border-l-2 border-gray-300 pl-4">
                   <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                     PM
                   </div>
-                  <div className="text-gray-900 dark:text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-900 flex items-center">
                     {data.projectManager || ""}
+                    {renderChangeIndicator(
+                      "project_manager",
+                      "Project manager has changed",
+                    )}
                   </div>
                 </div>
               </div>
@@ -395,31 +479,45 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
           </div>
 
           {/* Budget and Charter Section */}
-          <div className="border-2 border-gray-300 p-3 mb-2">
+          <div
+            className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("budget_total") || getChangedSectionClass("budget_actuals") || getChangedSectionClass("budget_forecast") || getChangedSectionClass("charter_link")}`}
+          >
             <div className="flex items-center">
               <div className="flex-1 grid grid-cols-4 gap-8">
                 <div>
                   <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                     Budget
                   </div>
-                  <div className="text-gray-900 dark:text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-900 flex items-center">
                     ${data.budget?.total || "0"}
+                    {renderChangeIndicator(
+                      "budget_total",
+                      "Budget total has changed",
+                    )}
                   </div>
                 </div>
                 <div className="border-l-2 border-gray-300 pl-4">
                   <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                     Actuals
                   </div>
-                  <div className="text-gray-900 dark:text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-900 flex items-center">
                     ${data.budget?.actuals || "0"}
+                    {renderChangeIndicator(
+                      "budget_actuals",
+                      "Budget actuals have changed",
+                    )}
                   </div>
                 </div>
                 <div className="border-l-2 border-gray-300 pl-4">
                   <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                     Forecast
                   </div>
-                  <div className="text-gray-900 dark:text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-900 flex items-center">
                     ${data.budget?.forecast || "0"}
+                    {renderChangeIndicator(
+                      "budget_forecast",
+                      "Budget forecast has changed",
+                    )}
                   </div>
                 </div>
                 <div className="border-l-2 border-gray-300 pl-4">
@@ -431,12 +529,18 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                       data.budget.actuals,
                       data.budget.total,
                       data.budget.forecast,
-                    )}`}
+                    )} flex items-center`}
                   >
-                    {getBudgetStatus(
-                      data.budget.actuals,
-                      data.budget.total,
-                      data.budget.forecast,
+                    <span>
+                      {getBudgetStatus(
+                        data.budget.actuals,
+                        data.budget.total,
+                        data.budget.forecast,
+                      )}
+                    </span>
+                    {renderChangeIndicator(
+                      "budget_status",
+                      "Budget status has changed",
                     )}
                   </div>
                 </div>
@@ -445,37 +549,43 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                 <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                   Charter
                 </div>
-                {data.charterLink ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          asChild
-                          className="relative bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 gap-2 transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-lg"
-                        >
-                          <a
-                            href={data.charterLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center px-4 py-2"
+                <div className="flex items-center">
+                  {data.charterLink ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            asChild
+                            className="relative bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 gap-2 transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-lg"
                           >
-                            <FileText className="h-4 w-4 mr-2" />
-                            View Charter
-                          </a>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-[400px] break-all">
-                          {data.charterLink}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <div className="text-gray-500 italic">
-                    No charter link provided
-                  </div>
-                )}
+                            <a
+                              href={data.charterLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center px-4 py-2"
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              View Charter
+                            </a>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-[400px] break-all">
+                            {data.charterLink}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <div className="text-gray-500 italic">
+                      No charter link provided
+                    </div>
+                  )}
+                  {renderChangeIndicator(
+                    "charter_link",
+                    "Charter link has changed",
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -483,7 +593,9 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
           <div className="grid grid-cols-2 gap-2">
             <div>
               {/* Accomplishments Section */}
-              <div className="border-2 border-gray-300 p-3 mb-2">
+              <div
+                className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("accomplishments")}`}
+              >
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Accomplishments To Date
                 </h3>
@@ -491,16 +603,23 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                   {(data.accomplishments || []).map((item, index) => (
                     <li
                       key={index}
-                      className="text-gray-900 dark:text-gray-900"
+                      className="text-gray-900 dark:text-gray-900 flex items-center"
                     >
-                      {item}
+                      <span>{item}</span>
+                      {index === 0 &&
+                        renderChangeIndicator(
+                          "accomplishments",
+                          "Accomplishments have changed",
+                        )}
                     </li>
                   ))}
                 </ul>
               </div>
 
               {/* Next Period's Activities Section */}
-              <div className="border-2 border-gray-300 p-3 mb-2">
+              <div
+                className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("next_period_activities")}`}
+              >
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Next Period's Key Activities
                 </h3>
@@ -562,7 +681,14 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                               className={`py-1 pr-4 text-gray-900 dark:text-gray-900 ${shouldTruncate ? "whitespace-nowrap overflow-hidden text-ellipsis" : "break-words"}`}
                               style={{ maxWidth: "200px" }}
                             >
-                              {truncatedDescription}
+                              <div className="flex items-center">
+                                <span>{truncatedDescription}</span>
+                                {index === 0 &&
+                                  renderChangeIndicator(
+                                    "next_period_activities",
+                                    "Next period activities have changed",
+                                  )}
+                              </div>
                             </td>
                             <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
                               {date
@@ -612,7 +738,9 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
               </div>
 
               {/* Considerations Section */}
-              <div className="border-2 border-gray-300 p-3 mb-2">
+              <div
+                className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("considerations")}`}
+              >
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Questions / Items for Consideration
                 </h3>
@@ -620,16 +748,23 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                   {(data.considerations || []).map((item, index) => (
                     <li
                       key={index}
-                      className="text-gray-900 dark:text-gray-900"
+                      className="text-gray-900 dark:text-gray-900 flex items-center"
                     >
-                      {item}
+                      <span>{item}</span>
+                      {index === 0 &&
+                        renderChangeIndicator(
+                          "considerations",
+                          "Considerations have changed",
+                        )}
                     </li>
                   ))}
                 </ul>
               </div>
 
               {/* Changes Section */}
-              <div className="border-2 border-gray-300 p-3">
+              <div
+                className={`border-2 border-gray-300 p-3 ${getChangedSectionClass("changes")}`}
+              >
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Changes
                 </h3>
@@ -657,7 +792,14 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                       return (
                         <tr key={index} className="border-b border-gray-300">
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            {change}
+                            <div className="flex items-center">
+                              <span>{change}</span>
+                              {index === 0 &&
+                                renderChangeIndicator(
+                                  "changes",
+                                  "Changes section has been updated",
+                                )}
+                            </div>
                           </td>
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
                             {impact}
@@ -675,7 +817,9 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
 
             <div>
               {/* Project Schedule Section */}
-              <div className="border-2 border-gray-300 p-3 mb-2">
+              <div
+                className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("milestones")}`}
+              >
                 <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   High Level Project Schedule
                 </h2>
@@ -706,22 +850,76 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                         <React.Fragment key={index}>
                           <tr className="border-b border-gray-300">
                             <td className="py-1 pr-4">
-                              <div
-                                className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion || 0, milestone.status || "green")}`}
-                              >
-                                {milestone.completion || 0}%
+                              <div className="flex items-center">
+                                <div
+                                  className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion || 0, milestone.status || "green")}`}
+                                >
+                                  {milestone.completion || 0}%
+                                </div>
+                                {/* Show change indicator for completion percentage changes */}
+                                {(() => {
+                                  const milestone = data.milestones?.[index];
+                                  if (!milestone) return null;
+                                  const stableId =
+                                    `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
+                                  return renderChangeIndicator(
+                                    `milestone_completion_${stableId}`,
+                                    `Milestone completion changed`,
+                                  );
+                                })()}
                               </div>
                             </td>
                             <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                              {milestone.date
-                                ? format(
-                                    new Date(milestone.date + "T00:00:00"),
-                                    "MM/dd/yy",
-                                  )
-                                : ""}
+                              <div className="flex items-center">
+                                <span>
+                                  {milestone.date
+                                    ? format(
+                                        new Date(milestone.date + "T00:00:00"),
+                                        "MM/dd/yy",
+                                      )
+                                    : ""}
+                                </span>
+                                {/* Show change indicator for date changes */}
+                                {(() => {
+                                  const milestone = data.milestones?.[index];
+                                  if (!milestone) return null;
+                                  const stableId =
+                                    `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
+                                  return renderChangeIndicator(
+                                    `milestone_date_${stableId}`,
+                                    `Milestone date changed`,
+                                  );
+                                })()}
+                              </div>
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
-                              {milestone.milestone || ""}
+                              <div className="flex items-center">
+                                <span>{milestone.milestone || ""}</span>
+                                {/* Check for specific milestone changes using stable IDs */}
+                                {(() => {
+                                  const milestone = data.milestones?.[index];
+                                  if (!milestone) return null;
+                                  const stableId =
+                                    `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
+
+                                  return (
+                                    <>
+                                      {renderChangeIndicator(
+                                        `milestone_milestone_${stableId}`,
+                                        `Milestone description changed`,
+                                      )}
+                                      {renderChangeIndicator(
+                                        `milestone_added_${stableId}`,
+                                        `New milestone added`,
+                                      )}
+                                      {renderChangeIndicator(
+                                        `milestone_removed_${stableId}`,
+                                        `Milestone removed`,
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </div>
                             </td>
                           </tr>
                           {/* Tasks are hidden from Status Sheet view */}
@@ -732,7 +930,9 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
               </div>
 
               {/* Risks Section */}
-              <div className="border-2 border-gray-300 p-3">
+              <div
+                className={`border-2 border-gray-300 p-3 ${getChangedSectionClass("risks")}`}
+              >
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Risks and Issues
                 </h3>
@@ -760,7 +960,14 @@ const StatusSheet: React.FC<StatusSheetProps> = ({ data }) => {
                       return (
                         <tr key={index} className="border-b border-gray-300">
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            {description}
+                            <div className="flex items-center">
+                              <span>{description}</span>
+                              {index === 0 &&
+                                renderChangeIndicator(
+                                  "risks",
+                                  "Risks and issues have changed",
+                                )}
+                            </div>
                           </td>
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
                             {impact}
