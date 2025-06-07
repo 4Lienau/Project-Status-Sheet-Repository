@@ -146,7 +146,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           {/* Project Status Section */}
           <ProjectStatusSection formData={formData} setFormData={setFormData} />
 
-          {/* Health Calculation Section */}
+          {/* Health Calculation Section (includes Health Status when manual) */}
           <HealthCalculationSection
             formData={formData}
             setFormData={setFormData}

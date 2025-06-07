@@ -95,7 +95,7 @@ const ProjectList = ({
     ProjectWithRelations[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -241,16 +241,7 @@ const ProjectList = ({
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-semibold text-white">Projects</h2>
-            <Button variant="outline" size="sm" disabled>
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Export to Excel
-            </Button>
-          </div>
-          <Button disabled>
-            <Plus className="w-4 h-4 mr-2" /> New Project
-          </Button>
+          <h2 className="text-2xl font-semibold text-white">Projects</h2>
         </div>
         <ProjectListSkeleton />
       </div>
@@ -260,51 +251,7 @@ const ProjectList = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold text-white">Projects</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                setExporting(true);
-                await new Promise((resolve) => setTimeout(resolve, 100)); // Let UI update
-                const username =
-                  profile.full_name || user?.email?.split("@")[0] || "user";
-                await exportProjectsToExcel(filteredProjects, username);
-                toast({
-                  title: "Export Successful",
-                  description:
-                    "The Excel file has been generated and downloaded.",
-                  className: "bg-green-50 border-green-200",
-                });
-              } catch (error) {
-                toast({
-                  title: "Export Failed",
-                  description: "There was an error generating the Excel file.",
-                  variant: "destructive",
-                });
-              } finally {
-                setExporting(false);
-              }
-            }}
-            disabled={filteredProjects.length === 0 || exporting}
-            className="flex items-center gap-2"
-          >
-            {exporting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <FileSpreadsheet className="h-4 w-4" />
-            )}
-            {exporting ? "Generating..." : "Export to Excel"}
-          </Button>
-        </div>
-        <Button
-          onClick={onCreateNew}
-          className="bg-purple-500 hover:bg-purple-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-        >
-          <Plus className="w-4 h-4 mr-2" /> New Project
-        </Button>
+        <h2 className="text-2xl font-semibold text-white">Projects</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -472,7 +419,7 @@ const ProjectList = ({
             {loading
               ? "Loading projects..."
               : allProjects.length === 0
-                ? 'No projects yet. Click "New Project" to create one.'
+                ? "No projects yet. Use the Options menu to create one."
                 : "No projects match the current filters. Try changing your filter criteria."}
           </div>
         )}

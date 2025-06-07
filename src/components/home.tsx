@@ -29,7 +29,7 @@ import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, X, Check, BarChart3 } from "lucide-react";
+import { FileSpreadsheet, X, Check, BarChart3, Download } from "lucide-react";
 import ProfileSetupDialog from "./auth/ProfileSetupDialog";
 import { supabase } from "@/lib/supabase";
 import {
@@ -53,6 +53,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Plus } from "lucide-react";
+import { exportProjectsToExcel } from "@/lib/services/excelExport";
 
 // Helper functions for localStorage persistence
 const getStorageKey = (userId: string, filterType: string) =>
@@ -471,20 +480,88 @@ const Home = () => {
                     <X className="h-4 w-4" />
                     Clear Filters
                   </Button>
-                  <Button
-                    onClick={() => setMode("overview")}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 shadow-lg"
-                  >
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Projects Overview
-                  </Button>
-                  <Button
-                    onClick={() => navigate("/kpis")}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold flex items-center gap-2 shadow-lg"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    KPIs Dashboard
-                  </Button>
+
+                  {/* Options Menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="default"
+                        className="bg-blue-600 hover:bg-blue-700 text-white border-0 font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                        Options
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem
+                        onClick={() => setMode("form")}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <Plus className="h-4 w-4" />
+                        New Project
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            const projects =
+                              await projectService.getAllProjects();
+                            let filteredProjects = projects;
+
+                            // Apply filters
+                            if (selectedDepartment !== "all") {
+                              filteredProjects = filteredProjects.filter(
+                                (p) => p.department === selectedDepartment,
+                              );
+                            }
+                            if (selectedManagers.length > 0) {
+                              filteredProjects = filteredProjects.filter((p) =>
+                                selectedManagers.includes(p.project_manager),
+                              );
+                            }
+                            if (selectedStatus !== "all") {
+                              filteredProjects = filteredProjects.filter(
+                                (p) => p.status === selectedStatus,
+                              );
+                            }
+
+                            await exportProjectsToExcel(filteredProjects);
+                            toast({
+                              title: "Export Successful",
+                              description:
+                                "Projects exported to Excel successfully",
+                              className: "bg-green-50 border-green-200",
+                            });
+                          } catch (error) {
+                            console.error("Export failed:", error);
+                            toast({
+                              title: "Export Failed",
+                              description: "Failed to export projects to Excel",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export to Excel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setMode("overview")}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <FileSpreadsheet className="h-4 w-4" />
+                        Projects Overview
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => navigate("/kpis")}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                        KPIs Dashboard
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
               <ProjectList
