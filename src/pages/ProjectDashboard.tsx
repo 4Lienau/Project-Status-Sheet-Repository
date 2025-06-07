@@ -1097,6 +1097,7 @@ const ProjectDashboard = ({
               project.health_calculation_type || "automatic",
             manual_health_percentage: project.manual_health_percentage || 0,
             manual_status_color: project.manual_status_color || "green",
+            computed_status_color: project.computed_status_color,
             budget: {
               total:
                 typeof project.budget_total === "number"

@@ -188,42 +188,79 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
   return (
     <TooltipProvider>
       <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-1">
-            <h3 className="text-2xl font-bold text-blue-800">
-              Health Calculation
-            </h3>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs">
-                  Choose how project health is calculated. Automatic uses
-                  milestone completion percentages, while Manual allows you to
-                  set a specific percentage.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleRefreshComputedStatus}
-            className="flex items-center gap-1 text-xs"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Sync Status
-          </Button>
+        <div className="flex items-center gap-1 mb-4">
+          <h3 className="text-2xl font-bold text-blue-800">
+            Health Calculation
+          </h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">
+                Choose how project health is calculated. Automatic uses
+                milestone completion percentages, while Manual allows you to set
+                a specific percentage.
+              </p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Current Health Status Display */}
         <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <Label className="text-sm font-medium text-gray-700">
-              Current Health Status
-            </Label>
+            <div className="flex items-center gap-1">
+              <Label className="text-sm font-medium text-gray-700">
+                Current Health Status
+              </Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-4xl">
+                  <div className="text-xs space-y-2">
+                    <div className="font-semibold">
+                      Time-Aware Health Calculation Rules:
+                    </div>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Completed projects = GREEN (100%)</li>
+                      <li>Cancelled projects = RED (0%)</li>
+                      <li>Draft/On Hold projects = YELLOW</li>
+                      <li className="font-medium">
+                        Active projects with time awareness:
+                      </li>
+                      <li className="ml-4">
+                        • Overdue: Strict thresholds (≥90% = YELLOW, &lt;90% =
+                        RED)
+                      </li>
+                      <li className="ml-4">
+                        • Substantial time (&gt;60% remaining): Very lenient
+                        (≥10% = GREEN, 5-9% = YELLOW, &lt;5% = RED)
+                      </li>
+                      <li className="ml-4">
+                        • Plenty of time (30-60% remaining): Lenient (≥20% =
+                        GREEN, 10-19% = YELLOW, &lt;10% = RED)
+                      </li>
+                      <li className="ml-4">
+                        • Moderate time (15-30% remaining): Balanced (≥40% =
+                        GREEN, 25-39% = YELLOW, &lt;25% = RED)
+                      </li>
+                      <li className="ml-4">
+                        • Little time (&lt;15% remaining): Strict (≥80% = GREEN,
+                        60-79% = YELLOW, &lt;60% = RED)
+                      </li>
+                      <li className="ml-4">
+                        • No time data: Original thresholds (≥70% = GREEN,
+                        40-69% = YELLOW, &lt;40% = RED)
+                      </li>
+                      <li>
+                        Manual override uses your specified color and percentage
+                      </li>
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <Badge
               className={`text-xs font-medium ${
                 currentHealthStatus.color === "green"
@@ -240,43 +277,6 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
           <p className="text-xs text-gray-600 leading-relaxed">
             {currentHealthStatus.reasoning}
           </p>
-          <div className="mt-2 text-xs text-gray-500">
-            <strong>Time-Aware Health Calculation Rules:</strong>
-            <ul className="list-disc list-inside mt-1 space-y-1">
-              <li>Completed projects = GREEN (100%)</li>
-              <li>Cancelled projects = RED (0%)</li>
-              <li>Draft/On Hold projects = YELLOW</li>
-              <li>
-                <strong>
-                  Active projects with time awareness (Lenient Mode):
-                </strong>
-              </li>
-              <li className="ml-4">
-                • Overdue: Strict thresholds (≥90% = YELLOW, &lt;90% = RED)
-              </li>
-              <li className="ml-4">
-                • Substantial time (&gt;60% remaining): Very lenient (≥10% =
-                GREEN, 5-9% = YELLOW, &lt;5% = RED)
-              </li>
-              <li className="ml-4">
-                • Plenty of time (30-60% remaining): Lenient (≥20% = GREEN,
-                10-19% = YELLOW, &lt;10% = RED)
-              </li>
-              <li className="ml-4">
-                • Moderate time (15-30% remaining): Balanced (≥40% = GREEN,
-                25-39% = YELLOW, &lt;25% = RED)
-              </li>
-              <li className="ml-4">
-                • Little time (&lt;15% remaining): Strict (≥80% = GREEN, 60-79%
-                = YELLOW, &lt;60% = RED)
-              </li>
-              <li className="ml-4">
-                • No time data: Original thresholds (≥70% = GREEN, 40-69% =
-                YELLOW, &lt;40% = RED)
-              </li>
-              <li>Manual override uses your specified color and percentage</li>
-            </ul>
-          </div>
         </div>
         <Select
           value={formData.health_calculation_type}

@@ -550,119 +550,129 @@ const Home = () => {
                     </Select>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={clearAllFilters}
-                    variant="outline"
-                    className="text-white border-white/30 bg-white/10 hover:bg-white/20 hover:text-white font-semibold flex items-center gap-2"
-                  >
-                    <X className="h-4 w-4" />
-                    Clear Filters
-                  </Button>
+                <div className="flex flex-col">
+                  {/* Invisible label to match the spacing of filter dropdowns */}
+                  <div className="text-sm font-medium text-transparent mb-2">
+                    Actions
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={clearAllFilters}
+                      variant="outline"
+                      className="text-white border-white/30 bg-white/10 hover:bg-white/20 hover:text-white font-semibold flex items-center gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      Clear Filters
+                    </Button>
 
-                  {/* Options Menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="default"
-                        className="bg-blue-600 hover:bg-blue-700 text-white border-0 font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                        Options
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem
-                        onClick={() => setMode("form")}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <Plus className="h-4 w-4" />
-                        New Project
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={async () => {
-                          try {
-                            const projects =
-                              await projectService.getAllProjects();
-                            let filteredProjects = projects;
+                    {/* Options Menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="default"
+                          className="bg-blue-600 hover:bg-blue-700 text-white border-0 font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                          Options
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem
+                          onClick={() => setMode("form")}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Plus className="h-4 w-4" />
+                          New Project
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={async () => {
+                            try {
+                              const projects =
+                                await projectService.getAllProjects();
+                              let filteredProjects = projects;
 
-                            // Apply filters
-                            if (selectedDepartment !== "all") {
-                              filteredProjects = filteredProjects.filter(
-                                (p) => p.department === selectedDepartment,
-                              );
+                              // Apply filters
+                              if (selectedDepartment !== "all") {
+                                filteredProjects = filteredProjects.filter(
+                                  (p) => p.department === selectedDepartment,
+                                );
+                              }
+                              if (selectedManagers.length > 0) {
+                                filteredProjects = filteredProjects.filter(
+                                  (p) =>
+                                    selectedManagers.includes(
+                                      p.project_manager,
+                                    ),
+                                );
+                              }
+                              if (selectedStatus !== "all") {
+                                filteredProjects = filteredProjects.filter(
+                                  (p) => p.status === selectedStatus,
+                                );
+                              }
+                              if (selectedStatusHealth !== "all") {
+                                filteredProjects = filteredProjects.filter(
+                                  (p) => {
+                                    // Use computed status color if available, otherwise use standardized calculation
+                                    let statusHealthColor =
+                                      p.computed_status_color;
+
+                                    if (!statusHealthColor) {
+                                      // Import and use the standardized calculation function
+                                      const {
+                                        calculateProjectHealthStatusColor,
+                                      } = require("@/lib/services/project");
+                                      statusHealthColor =
+                                        calculateProjectHealthStatusColor(p);
+                                    }
+
+                                    return (
+                                      statusHealthColor === selectedStatusHealth
+                                    );
+                                  },
+                                );
+                              }
+
+                              await exportProjectsToExcel(filteredProjects);
+                              toast({
+                                title: "Export Successful",
+                                description:
+                                  "Projects exported to Excel successfully",
+                                className: "bg-green-50 border-green-200",
+                              });
+                            } catch (error) {
+                              console.error("Export failed:", error);
+                              toast({
+                                title: "Export Failed",
+                                description:
+                                  "Failed to export projects to Excel",
+                                variant: "destructive",
+                              });
                             }
-                            if (selectedManagers.length > 0) {
-                              filteredProjects = filteredProjects.filter((p) =>
-                                selectedManagers.includes(p.project_manager),
-                              );
-                            }
-                            if (selectedStatus !== "all") {
-                              filteredProjects = filteredProjects.filter(
-                                (p) => p.status === selectedStatus,
-                              );
-                            }
-                            if (selectedStatusHealth !== "all") {
-                              filteredProjects = filteredProjects.filter(
-                                (p) => {
-                                  // Use computed status color if available, otherwise use standardized calculation
-                                  let statusHealthColor =
-                                    p.computed_status_color;
-
-                                  if (!statusHealthColor) {
-                                    // Import and use the standardized calculation function
-                                    const {
-                                      calculateProjectHealthStatusColor,
-                                    } = require("@/lib/services/project");
-                                    statusHealthColor =
-                                      calculateProjectHealthStatusColor(p);
-                                  }
-
-                                  return (
-                                    statusHealthColor === selectedStatusHealth
-                                  );
-                                },
-                              );
-                            }
-
-                            await exportProjectsToExcel(filteredProjects);
-                            toast({
-                              title: "Export Successful",
-                              description:
-                                "Projects exported to Excel successfully",
-                              className: "bg-green-50 border-green-200",
-                            });
-                          } catch (error) {
-                            console.error("Export failed:", error);
-                            toast({
-                              title: "Export Failed",
-                              description: "Failed to export projects to Excel",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <Download className="h-4 w-4" />
-                        Export to Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setMode("overview")}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Projects Overview
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => navigate("/kpis")}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                        KPIs Dashboard
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                          }}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Download className="h-4 w-4" />
+                          Export to Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setMode("overview")}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Projects Overview
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate("/kpis")}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                          KPIs Dashboard
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </div>
               <ProjectList

@@ -269,6 +269,8 @@ const StatusSheetView = () => {
     status: project.status || "active",
     health_calculation_type: project.health_calculation_type || "automatic",
     manual_health_percentage: project.manual_health_percentage || 0,
+    computed_status_color: project.computed_status_color,
+    manual_status_color: project.manual_status_color,
     budget: {
       total:
         typeof project.budget_total === "number"

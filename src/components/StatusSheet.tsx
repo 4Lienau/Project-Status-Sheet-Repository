@@ -48,6 +48,8 @@ interface StatusSheetProps {
     status?: "active" | "on_hold" | "completed" | "cancelled" | "draft";
     health_calculation_type?: "automatic" | "manual";
     manual_health_percentage?: number;
+    computed_status_color?: "green" | "yellow" | "red";
+    manual_status_color?: "green" | "yellow" | "red";
     budget: {
       total: string | number;
       actuals: string | number;
@@ -106,6 +108,22 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
 }) => {
   const { toast } = useToast();
 
+  // Helper function to extract first name from full name
+  const getFirstName = (fullName: string): string => {
+    if (!fullName || typeof fullName !== "string") {
+      return "";
+    }
+
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
+      return "";
+    }
+
+    // Split by space and take the first part
+    const nameParts = trimmedName.split(/\s+/);
+    return nameParts[0] || "";
+  };
+
   // Helper function to render change indicator
   const renderChangeIndicator = (fieldPath: string, tooltip?: string) => {
     if (!showChangeIndicators || !hasFieldChanged(versionChanges, fieldPath)) {
@@ -154,15 +172,32 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
       ? data.manual_health_percentage || 0
       : calculateWeightedCompletion(data.milestones || []);
 
-  // Determine overall status color
-  const getStatusColor = (status: string) => {
-    // If using manual calculation and manual color is set, use that
+  // Determine overall status color using computed_status_color from database
+  const getStatusColor = () => {
+    // Debug logging for status color determination
+    console.log("[STATUS_COLOR_DEBUG] StatusSheet getStatusColor data:", {
+      computed_status_color: data.computed_status_color,
+      manual_status_color: data.manual_status_color,
+      health_calculation_type: data.health_calculation_type,
+      status: data.status,
+      title: data.title,
+    });
+
+    // First priority: Use computed_status_color from database if available
+    if (data.computed_status_color) {
+      console.log(
+        `[STATUS_COLOR_DEBUG] Using computed_status_color: ${data.computed_status_color}`,
+      );
+      return `bg-${data.computed_status_color}-500`;
+    }
+
+    // Second priority: If using manual calculation and manual color is set, use that
     if (data.health_calculation_type === "manual" && data.manual_status_color) {
       return `bg-${data.manual_status_color}-500`;
     }
 
-    // Otherwise use status-based colors
-    switch (status) {
+    // Fallback: Use status-based colors (should rarely be used now)
+    switch (data.status) {
       case "draft":
         return "bg-yellow-500";
       case "completed":
@@ -390,7 +425,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                 </div>
                 <div className="flex items-start gap-2">
                   <div
-                    className={`w-14 h-14 flex items-center justify-center text-white dark:text-white text-2xl font-bold border-2 border-gray-400 ${getStatusColor(data.status || "active")}`}
+                    className={`w-14 h-14 flex items-center justify-center text-white dark:text-white text-2xl font-bold border-2 border-gray-400 ${getStatusColor()}`}
                   >
                     {overallCompletion}%
                     {renderChangeIndicator(
@@ -728,7 +763,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                               </div>
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                              {assignee}
+                              {getFirstName(assignee)}
                             </td>
                           </tr>
                         );
