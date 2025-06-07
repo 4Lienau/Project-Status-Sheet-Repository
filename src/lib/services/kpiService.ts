@@ -193,9 +193,9 @@ class KPIService {
       projects.length > 0 ? Math.round(totalCompletion / projects.length) : 0;
 
     // Milestone completion
-    const allMilestones = projects.flatMap((p) => p.milestones);
+    const allMilestones = projects.flatMap((p) => p.milestones || []);
     const completedMilestones = allMilestones.filter(
-      (m) => m.completion_percentage === 100,
+      (m) => (m.completion_percentage || m.completion) === 100,
     ).length;
     const totalMilestones = allMilestones.length;
     const milestoneCompletionRate =
@@ -362,9 +362,9 @@ class KPIService {
     ).length;
 
     // Task completion (using milestones as tasks)
-    const allMilestones = projects.flatMap((p) => p.milestones);
+    const allMilestones = projects.flatMap((p) => p.milestones || []);
     const completedMilestones = allMilestones.filter(
-      (m) => m.completion_percentage === 100,
+      (m) => (m.completion_percentage || m.completion) === 100,
     ).length;
     const taskCompletionRate =
       allMilestones.length > 0
@@ -490,7 +490,7 @@ class KPIService {
     const overdueMilestones = [];
 
     projects.forEach((project) => {
-      project.milestones.forEach((milestone) => {
+      (project.milestones || []).forEach((milestone) => {
         if (!milestone.date) return;
 
         const milestoneDate = new Date(milestone.date);
@@ -500,17 +500,19 @@ class KPIService {
 
         if (daysUntilDue > 0 && daysUntilDue <= 30) {
           upcomingMilestones.push({
-            milestone: milestone.description,
+            milestone: milestone.description || milestone.milestone,
             projectTitle: project.title,
             daysUntilDue,
-            completion: milestone.completion_percentage || 0,
+            completion:
+              milestone.completion_percentage || milestone.completion || 0,
           });
         } else if (daysUntilDue < 0) {
           overdueMilestones.push({
-            milestone: milestone.description,
+            milestone: milestone.description || milestone.milestone,
             projectTitle: project.title,
             daysOverdue: Math.abs(daysUntilDue),
-            completion: milestone.completion_percentage || 0,
+            completion:
+              milestone.completion_percentage || milestone.completion || 0,
           });
         }
       });
