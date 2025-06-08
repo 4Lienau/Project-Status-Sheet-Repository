@@ -114,7 +114,7 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
         if (timeRemainingPercentage === 0) {
           reasoning = `Project is OVERDUE with ${weightedCompletion}% completion - set to ${calculatedColor.toUpperCase()} (Critical/At Risk).`;
         } else if (timeRemainingPercentage > 40) {
-          reasoning = `${weightedCompletion}% completion with ${timeRemainingPercentage}% time remaining (${timeDesc}) - set to ${calculatedColor.toUpperCase()}. More lenient thresholds applied due to ample time.`;
+          reasoning = `${weightedCompletion}% completion with ${timeRemainingPercentage}% time remaining (${timeDesc}) - set to ${calculatedColor.toUpperCase()}.`;
         } else if (timeRemainingPercentage > 15) {
           reasoning = `${weightedCompletion}% completion with ${timeRemainingPercentage}% time remaining (${timeDesc}) - set to ${calculatedColor.toUpperCase()}. Balanced approach considering time and progress.`;
         } else {
