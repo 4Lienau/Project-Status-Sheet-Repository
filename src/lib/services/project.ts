@@ -1945,6 +1945,137 @@ export const projectService = {
           );
           // Don't fail the entire creation if version creation fails
         }
+
+        // Track project creation in usage analytics - ENHANCED DEBUG VERSION
+        try {
+          console.log(
+            "[USAGE_TRACKING] Starting project creation tracking for analytics",
+            {
+              projectId: project.id,
+              projectTitle: project.title,
+              department: department,
+              timestamp: new Date().toISOString(),
+            },
+          );
+
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser();
+
+          console.log("[USAGE_TRACKING] User authentication check:", {
+            user: user ? { id: user.id, email: user.email } : null,
+            userError,
+          });
+
+          if (userError) {
+            console.error(
+              "[USAGE_TRACKING] User authentication error:",
+              userError,
+            );
+            throw new Error(`User auth failed: ${userError.message}`);
+          }
+
+          if (!user) {
+            console.error("[USAGE_TRACKING] No authenticated user found");
+            throw new Error("No authenticated user");
+          }
+
+          // Try the database test function first for immediate feedback
+          console.log("[USAGE_TRACKING] Testing with database function...");
+          const { data: dbTestResult, error: dbTestError } = await supabase.rpc(
+            "test_project_creation_tracking",
+            {
+              p_user_id: user.id,
+              p_test_project_id: project.id,
+            },
+          );
+
+          console.log("[USAGE_TRACKING] Database test result:", {
+            dbTestResult,
+            dbTestError,
+          });
+
+          if (!dbTestError && dbTestResult?.success) {
+            console.log(
+              "[USAGE_TRACKING] ✅ Database tracking test successful",
+            );
+          }
+
+          // Import adminService
+          console.log("[USAGE_TRACKING] Importing adminService...");
+          const { adminService } = await import("./adminService");
+          console.log("[USAGE_TRACKING] AdminService imported successfully");
+
+          // Get current page URL safely
+          const pageUrl =
+            typeof window !== "undefined" && window.location
+              ? window.location.href
+              : "project-creation";
+          console.log("[USAGE_TRACKING] Page URL:", pageUrl);
+
+          // Log project creation activity with the exact activity type expected by the database
+          console.log(
+            "[USAGE_TRACKING] Calling adminService.logUserActivity...",
+          );
+          const trackingResult = await adminService.logUserActivity(
+            user.id,
+            "project-creation-session", // More descriptive session ID
+            "project_creation", // This must match the database function expectation
+            {
+              project_id: project.id,
+              project_title: project.title,
+              department: department,
+              timestamp: new Date().toISOString(),
+              created_via: "project_form",
+            },
+            pageUrl,
+          );
+
+          console.log("[USAGE_TRACKING] Tracking result:", trackingResult);
+
+          if (trackingResult) {
+            console.log(
+              "[USAGE_TRACKING] ✅ Successfully tracked project creation",
+            );
+
+            // Verify the tracking worked by checking the count
+            setTimeout(async () => {
+              try {
+                const { data: verifyCount, error: verifyError } = await supabase
+                  .from("user_activity_logs")
+                  .select("*", { count: "exact", head: true })
+                  .eq("activity_type", "project_creation")
+                  .eq("user_id", user.id);
+
+                console.log("[USAGE_TRACKING] 🔍 Verification count:", {
+                  count: verifyCount,
+                  error: verifyError,
+                });
+              } catch (verifyError) {
+                console.warn(
+                  "[USAGE_TRACKING] Verification failed:",
+                  verifyError,
+                );
+              }
+            }, 1000);
+          } else {
+            console.error(
+              "[USAGE_TRACKING] ❌ Tracking returned false - check adminService.logUserActivity",
+            );
+          }
+        } catch (error) {
+          console.error(
+            "[USAGE_TRACKING] ❌ CRITICAL ERROR tracking project creation:",
+            {
+              error: error.message,
+              stack: error.stack,
+              projectId: project.id,
+              timestamp: new Date().toISOString(),
+            },
+          );
+          // Don't fail project creation if tracking fails, but make the error very visible
+        }
       }
 
       return completeProject;

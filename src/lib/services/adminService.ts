@@ -25,65 +25,6 @@ export interface PendingUser {
 }
 
 export const adminService = {
-  // Debug function to check database connectivity and table structure
-  async debugDatabaseAccess(): Promise<any> {
-    try {
-      console.log(
-        "[adminService.debugDatabaseAccess] Starting database debug...",
-      );
-
-      // Test basic connectivity with a simple query
-      const { data: testData, error: testError } = await supabase
-        .from("profiles")
-        .select("id")
-        .limit(1);
-
-      console.log(
-        "[adminService.debugDatabaseAccess] Basic connectivity test:",
-        {
-          testData,
-          testError,
-        },
-      );
-
-      // Check if directory_users table exists by trying to get its structure
-      const { data: tableInfo, error: tableError } = await supabase.rpc(
-        "execute_sql",
-        {
-          sql_query:
-            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'directory_users' ORDER BY ordinal_position;",
-        },
-      );
-
-      console.log("[adminService.debugDatabaseAccess] Table structure query:", {
-        tableInfo,
-        tableError,
-      });
-
-      // Try to get row count from directory_users
-      const { data: countData, error: countError } = await supabase.rpc(
-        "execute_sql",
-        {
-          sql_query: "SELECT COUNT(*) as total_rows FROM directory_users;",
-        },
-      );
-
-      console.log("[adminService.debugDatabaseAccess] Row count query:", {
-        countData,
-        countError,
-      });
-
-      return {
-        connectivity: { testData, testError },
-        tableStructure: { tableInfo, tableError },
-        rowCount: { countData, countError },
-      };
-    } catch (error) {
-      console.error("[adminService.debugDatabaseAccess] Debug failed:", error);
-      return { error: error.message };
-    }
-  },
-
   async getPendingUsers(): Promise<PendingUser[]> {
     const { data, error } = await supabase
       .from("pending_users")
@@ -247,171 +188,32 @@ export const adminService = {
 
   async getDirectoryUsers(): Promise<any[]> {
     try {
-      console.log(
-        "[adminService.getDirectoryUsers] Starting to fetch directory users...",
-      );
-
-      // First, let's test basic connectivity and check if the table exists
-      console.log("[adminService.getDirectoryUsers] Testing table access...");
-
       const { count, error: countError } = await supabase
         .from("directory_users")
         .select("*", { count: "exact", head: true });
 
-      console.log("[adminService.getDirectoryUsers] Table count check:", {
-        count,
-        countError: countError
-          ? {
-              message: countError.message,
-              code: countError.code,
-              details: countError.details,
-              hint: countError.hint,
-            }
-          : null,
-      });
-
       if (countError) {
-        console.error(
-          "[adminService.getDirectoryUsers] Cannot access directory_users table:",
-          countError,
-        );
-
-        if (countError.code === "42P01") {
-          console.error(
-            "[adminService.getDirectoryUsers] Table 'directory_users' does not exist!",
-          );
-        } else if (countError.code === "42501") {
-          console.error(
-            "[adminService.getDirectoryUsers] Permission denied - RLS policy issue",
-          );
-        }
-
+        console.error("Error accessing directory_users table:", countError);
         return [];
       }
-
-      console.log(
-        `[adminService.getDirectoryUsers] Table accessible with ${count} total records`,
-      );
 
       if (count === 0) {
-        console.warn(
-          "[adminService.getDirectoryUsers] directory_users table is empty!",
-        );
-        console.warn(
-          "[adminService.getDirectoryUsers] You may need to run the Azure AD sync to populate users.",
-        );
         return [];
       }
 
-      // Now fetch the actual data
       const { data, error } = await supabase
         .from("directory_users")
         .select("*")
         .order("last_synced", { ascending: false, nullsFirst: false });
 
-      console.log("[adminService.getDirectoryUsers] Query result:", {
-        dataExists: !!data,
-        dataLength: data?.length || 0,
-        errorExists: !!error,
-        error: error
-          ? {
-              message: error.message,
-              code: error.code,
-              details: error.details,
-              hint: error.hint,
-            }
-          : null,
-      });
-
       if (error) {
-        console.error(
-          "[adminService.getDirectoryUsers] Error fetching directory users:",
-          error,
-        );
-
-        // Provide specific guidance based on error type
-        if (error.code === "42501") {
-          console.error(
-            "[adminService.getDirectoryUsers] RLS Policy Issue: Row Level Security is blocking access to directory_users table",
-          );
-          console.error(
-            "[adminService.getDirectoryUsers] This might be resolved by running the migration: 20250603000001_allow_authenticated_users_read_directory_users.sql",
-          );
-        }
-
+        console.error("Error fetching directory users:", error);
         return [];
-      }
-
-      console.log(
-        "[adminService.getDirectoryUsers] Successfully fetched",
-        data?.length || 0,
-        "directory users",
-      );
-
-      if (data && data.length > 0) {
-        console.log(
-          "[adminService.getDirectoryUsers] Sample data (first 2 users):",
-          data.slice(0, 2),
-        );
-
-        const syncStatuses = [...new Set(data.map((u) => u.sync_status))];
-        const activeUsers = data.filter(
-          (u) => u.sync_status === "active",
-        ).length;
-        const usersWithDisplayNames = data.filter((u) => u.display_name).length;
-
-        console.log("[adminService.getDirectoryUsers] Data analysis:", {
-          totalUsers: data.length,
-          syncStatuses,
-          activeUsers,
-          usersWithDisplayNames,
-          sampleActiveUser: data.find(
-            (u) => u.sync_status === "active" && u.display_name,
-          ),
-        });
-
-        // Check if user "Lienau" exists in any form
-        const lienauUsers = data.filter(
-          (u) =>
-            (u.display_name &&
-              u.display_name.toLowerCase().includes("lienau")) ||
-            (u.email && u.email.toLowerCase().includes("lienau")),
-        );
-
-        if (lienauUsers.length > 0) {
-          console.log(
-            "[adminService.getDirectoryUsers] Found users matching 'Lienau':",
-            lienauUsers,
-          );
-        } else {
-          console.log(
-            "[adminService.getDirectoryUsers] No users found matching 'Lienau'",
-          );
-          console.log(
-            "[adminService.getDirectoryUsers] Sample display names:",
-            data
-              .slice(0, 5)
-              .map((u) => u.display_name)
-              .filter(Boolean),
-          );
-        }
-      } else {
-        console.warn(
-          "[adminService.getDirectoryUsers] Query returned empty result despite count > 0",
-        );
       }
 
       return data || [];
     } catch (error) {
-      console.error(
-        "[adminService.getDirectoryUsers] Catch block error:",
-        error,
-      );
-      console.error("[adminService.getDirectoryUsers] Error details:", {
-        name: error?.name,
-        message: error?.message,
-        stack: error?.stack,
-      });
+      console.error("Error in getDirectoryUsers:", error);
       return [];
     }
   },
@@ -885,31 +687,18 @@ export const adminService = {
   // Usage Analytics Methods
   async getActiveUsers(): Promise<any[]> {
     try {
-      console.log(
-        "[adminService.getActiveUsers] Fetching currently active users...",
-      );
-
-      // First, cleanup stale sessions
+      // Cleanup stale sessions
       try {
         await supabase.rpc("cleanup_stale_sessions");
-        console.log("[adminService.getActiveUsers] Cleaned up stale sessions");
       } catch (cleanupError) {
-        console.warn(
-          "[adminService.getActiveUsers] Cleanup warning:",
-          cleanupError,
-        );
+        // Silently handle cleanup errors
       }
 
-      // Use a 3-minute window for active users (more lenient)
+      // Use a 3-minute window for active users
       const threeMinutesAgo = new Date();
       threeMinutesAgo.setMinutes(threeMinutesAgo.getMinutes() - 3);
 
-      console.log(
-        "[adminService.getActiveUsers] Using 3-minute activity window:",
-        threeMinutesAgo.toISOString(),
-      );
-
-      // Step 1: Query user_sessions without join to avoid foreign key relationship issues
+      // Query user_sessions
       const { data: sessionsData, error: sessionsError } = await supabase
         .from("user_sessions")
         .select(
@@ -919,62 +708,24 @@ export const adminService = {
         .gte("last_activity", threeMinutesAgo.toISOString())
         .order("last_activity", { ascending: false });
 
-      console.log("[adminService.getActiveUsers] Sessions query result:", {
-        sessionsData: sessionsData?.map((s) => ({
-          id: s.id,
-          user_id: s.user_id,
-          last_activity: s.last_activity,
-          is_active: s.is_active,
-        })),
-        sessionsError,
-        totalSessions: sessionsData?.length || 0,
-      });
-
-      if (sessionsError) {
-        console.error(
-          "[adminService.getActiveUsers] Sessions query error:",
-          sessionsError,
-        );
+      if (sessionsError || !sessionsData || sessionsData.length === 0) {
         return [];
       }
 
-      if (!sessionsData || sessionsData.length === 0) {
-        console.log("[adminService.getActiveUsers] No active sessions found");
-        return [];
-      }
-
-      // Step 2: Get unique user IDs from active sessions
+      // Get unique user IDs from active sessions
       const uniqueUserIds = [...new Set(sessionsData.map((s) => s.user_id))];
-      console.log(
-        "[adminService.getActiveUsers] Unique user IDs:",
-        uniqueUserIds,
-      );
 
-      // Step 3: Query profiles for these users
+      // Query profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select("id, email, full_name")
         .in("id", uniqueUserIds);
 
-      console.log("[adminService.getActiveUsers] Profiles query result:", {
-        profilesData: profilesData?.map((p) => ({
-          id: p.id,
-          email: p.email,
-          full_name: p.full_name,
-        })),
-        profilesError,
-        totalProfiles: profilesData?.length || 0,
-      });
-
       if (profilesError) {
-        console.error(
-          "[adminService.getActiveUsers] Profiles query error:",
-          profilesError,
-        );
         return [];
       }
 
-      // Step 4: Join the data in JavaScript and deduplicate by user_id
+      // Join the data and deduplicate by user_id
       const uniqueUsers = [];
       const seenUsers = new Set();
 
@@ -982,16 +733,14 @@ export const adminService = {
         if (!seenUsers.has(session.user_id)) {
           seenUsers.add(session.user_id);
 
-          // Find the corresponding profile
           const profile = profilesData?.find((p) => p.id === session.user_id);
-
           const sessionStart = new Date(session.session_start);
           const lastActivity = new Date(session.last_activity);
           const sessionDurationMinutes = Math.round(
             (lastActivity.getTime() - sessionStart.getTime()) / (1000 * 60),
           );
 
-          const userRecord = {
+          uniqueUsers.push({
             user_id: session.user_id,
             email: profile?.email || "Unknown",
             full_name: profile?.full_name || "Unknown User",
@@ -999,45 +748,20 @@ export const adminService = {
             last_activity: session.last_activity,
             session_duration_minutes: Math.max(sessionDurationMinutes, 0),
             session_id: session.id,
-          };
-
-          uniqueUsers.push(userRecord);
-
-          console.log("[adminService.getActiveUsers] Added active user:", {
-            user_id: userRecord.user_id,
-            email: userRecord.email,
-            last_activity: userRecord.last_activity,
-            session_id: userRecord.session_id,
           });
         }
       }
 
-      console.log("[adminService.getActiveUsers] Final result:", {
-        totalUniqueUsers: uniqueUsers.length,
-        users: uniqueUsers.map((u) => ({
-          user_id: u.user_id,
-          email: u.email,
-          last_activity: u.last_activity,
-        })),
-      });
-
       return uniqueUsers;
     } catch (error) {
-      console.error("[adminService.getActiveUsers] Catch error:", error);
+      console.error("Error in getActiveUsers:", error);
       return [];
     }
   },
 
   async getUserLoginStats(): Promise<any[]> {
     try {
-      console.log(
-        "[adminService.getUserLoginStats] Fetching user login statistics...",
-      );
-
-      // Try the new comprehensive function first
-      console.log(
-        "[adminService.getUserLoginStats] Trying get_comprehensive_user_stats function...",
-      );
+      // Try the comprehensive function first
       const { data: comprehensiveData, error: comprehensiveError } =
         await supabase.rpc("get_comprehensive_user_stats");
 
@@ -1046,68 +770,28 @@ export const adminService = {
         comprehensiveData &&
         comprehensiveData.length > 0
       ) {
-        console.log(
-          "[adminService.getUserLoginStats] Comprehensive function returned",
-          comprehensiveData.length,
-          "records (users with actual login activity)",
-        );
-        console.log(
-          "[adminService.getUserLoginStats] Sample comprehensive data:",
-          comprehensiveData[0],
-        );
         return comprehensiveData;
       }
 
-      // Try the fixed get_user_login_statistics function
-      console.log(
-        "[adminService.getUserLoginStats] Trying get_user_login_statistics function...",
-      );
+      // Try the standard function
       const { data: functionData, error: functionError } = await supabase.rpc(
         "get_user_login_statistics",
       );
 
       if (!functionError && functionData && functionData.length > 0) {
-        console.log(
-          "[adminService.getUserLoginStats] Function returned",
-          functionData.length,
-          "records (users with actual login activity)",
-        );
-        console.log(
-          "[adminService.getUserLoginStats] Sample data:",
-          functionData[0],
-        );
         return functionData;
       }
 
-      // Final fallback - only get users who have actually logged in
-      console.log(
-        "[adminService.getUserLoginStats] Functions failed, using filtered fallback approach...",
-      );
-      console.log("Comprehensive error:", comprehensiveError);
-      console.log("Function error:", functionError);
-
-      // Get only users with actual usage metrics (login activity)
+      // Fallback approach
       const { data: usageData, error: usageError } = await supabase
         .from("usage_metrics")
         .select("user_id, login_count, last_login, total_session_time_minutes")
-        .gt("login_count", 0); // Only users who have actually logged in
+        .gt("login_count", 0);
 
-      if (usageError) {
-        console.error(
-          "[adminService.getUserLoginStats] Cannot access usage_metrics table:",
-          usageError,
-        );
+      if (usageError || !usageData || usageData.length === 0) {
         return [];
       }
 
-      if (!usageData || usageData.length === 0) {
-        console.log(
-          "[adminService.getUserLoginStats] No users with login activity found",
-        );
-        return [];
-      }
-
-      // Get profile data for users with login activity
       const userIds = usageData.map((u) => u.user_id);
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
@@ -1115,14 +799,9 @@ export const adminService = {
         .in("id", userIds);
 
       if (profilesError) {
-        console.error(
-          "[adminService.getUserLoginStats] Error fetching profiles:",
-          profilesError,
-        );
         return [];
       }
 
-      // Combine the data - only users with actual login activity
       const combinedData = usageData
         .map((usage) => {
           const profile = profilesData?.find((p) => p.id === usage.user_id);
@@ -1138,9 +817,8 @@ export const adminService = {
             account_created: profile.updated_at,
           };
         })
-        .filter(Boolean) // Remove null entries
+        .filter(Boolean)
         .sort((a, b) => {
-          // Sort by last login date, most recent first
           if (!a.last_login && !b.last_login) return 0;
           if (!a.last_login) return 1;
           if (!b.last_login) return -1;
@@ -1149,22 +827,9 @@ export const adminService = {
           );
         });
 
-      console.log(
-        "[adminService.getUserLoginStats] Fallback processed",
-        combinedData.length,
-        "user records (only users with login activity)",
-      );
-
-      if (combinedData.length > 0) {
-        console.log(
-          "[adminService.getUserLoginStats] Sample fallback data:",
-          combinedData[0],
-        );
-      }
-
       return combinedData;
     } catch (error) {
-      console.error("[adminService.getUserLoginStats] Catch error:", error);
+      console.error("Error in getUserLoginStats:", error);
       return [];
     }
   },
@@ -1219,11 +884,80 @@ export const adminService = {
           (sum, user) => sum + (user.total_page_views || 0),
           0,
         ) || 0;
-      const totalProjectsFromMetrics =
-        userActivityData?.reduce(
-          (sum, user) => sum + (user.total_projects || 0),
-          0,
-        ) || 0;
+
+      // Get project creation count from activity logs
+      let totalProjectsFromMetrics = 0;
+      try {
+        console.log(
+          "[adminService.getUsageMetrics] 🔍 Querying total project creation count...",
+        );
+
+        const { count: projectCreationCount, error: countError } =
+          await supabase
+            .from("user_activity_logs")
+            .select("*", { count: "exact", head: true })
+            .eq("activity_type", "project_creation");
+
+        console.log(
+          "[adminService.getUsageMetrics] 🔍 Project creation count query result:",
+          {
+            projectCreationCount,
+            countError,
+          },
+        );
+
+        if (countError) {
+          console.error(
+            "[adminService.getUsageMetrics] ❌ Error in count query:",
+            countError,
+          );
+          throw countError;
+        }
+
+        totalProjectsFromMetrics = projectCreationCount || 0;
+        console.log(
+          "[adminService.getUsageMetrics] ✅ Project creation count from activity logs:",
+          totalProjectsFromMetrics,
+        );
+
+        // Additional debug: Get recent project creation entries
+        if (totalProjectsFromMetrics === 0) {
+          console.log(
+            "[adminService.getUsageMetrics] 🔍 Zero count detected, checking recent entries...",
+          );
+
+          const { data: recentEntries, error: recentError } = await supabase
+            .from("user_activity_logs")
+            .select("*")
+            .eq("activity_type", "project_creation")
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          console.log(
+            "[adminService.getUsageMetrics] 🔍 Recent project creation entries:",
+            {
+              recentEntries,
+              recentError,
+              count: recentEntries?.length || 0,
+            },
+          );
+        }
+      } catch (error) {
+        console.warn(
+          "[adminService.getUsageMetrics] ⚠️ Error getting project creation count:",
+          error,
+        );
+        // Fallback to user activity data if available
+        totalProjectsFromMetrics =
+          userActivityData?.reduce(
+            (sum, user) => sum + (user.total_projects || 0),
+            0,
+          ) || 0;
+        console.log(
+          "[adminService.getUsageMetrics] 📊 Using fallback count:",
+          totalProjectsFromMetrics,
+        );
+      }
 
       // Calculate average session time based on users with activity
       const usersWithActivity =
@@ -1281,13 +1015,46 @@ export const adminService = {
         });
       }
 
+      // Get project creation counts per user for top users calculation
+      console.log(
+        "[adminService.getUsageMetrics] 🔍 Querying project creation data...",
+      );
+      const { data: projectCreationData, error: projectCreationError } =
+        await supabase
+          .from("user_activity_logs")
+          .select("user_id, activity_data, created_at")
+          .eq("activity_type", "project_creation");
+
+      console.log(
+        "[adminService.getUsageMetrics] 🔍 Project creation query result:",
+        {
+          projectCreationData,
+          projectCreationError,
+          count: projectCreationData?.length || 0,
+        },
+      );
+
+      if (projectCreationError) {
+        console.warn(
+          "[adminService.getUsageMetrics] ⚠️ Error getting project creation data for top users:",
+          projectCreationError,
+        );
+      }
+
+      // Count projects per user
+      const projectCountsByUser = {};
+      projectCreationData?.forEach((log) => {
+        projectCountsByUser[log.user_id] =
+          (projectCountsByUser[log.user_id] || 0) + 1;
+      });
+
       // Convert user activity data to the expected format for top users
       const topUsers = (userActivityData || [])
         .map((user) => ({
           user_id: user.user_id,
           totalTime: user.total_session_time || 0,
           totalPageViews: user.total_page_views || 0,
-          totalProjects: user.total_projects || 0,
+          totalProjects: projectCountsByUser[user.user_id] || 0,
         }))
         .sort((a, b) => b.totalTime - a.totalTime)
         .slice(0, 5);
@@ -1558,29 +1325,287 @@ export const adminService = {
     pageUrl?: string,
   ): Promise<boolean> {
     try {
-      const { error } = await supabase.from("user_activity_logs").insert({
-        user_id: userId,
-        session_id: sessionId,
-        activity_type: activityType,
-        activity_data: activityData,
-        page_url: pageUrl,
+      console.log("[adminService.logUserActivity] Starting activity logging:", {
+        userId,
+        sessionId,
+        activityType,
+        activityData,
+        pageUrl,
+        timestamp: new Date().toISOString(),
       });
 
-      if (error) {
-        console.error("[adminService.logUserActivity] Error:", error);
+      // Enhanced logging for project creation specifically
+      if (activityType === "project_creation") {
+        console.log(
+          "[adminService.logUserActivity] 🎯 PROJECT CREATION TRACKING:",
+          {
+            userId,
+            sessionId,
+            activityType,
+            projectId: activityData?.project_id,
+            projectTitle: activityData?.project_title,
+            department: activityData?.department,
+            timestamp: new Date().toISOString(),
+          },
+        );
+      }
+
+      // Validate inputs
+      if (!userId) {
+        console.error("[adminService.logUserActivity] ❌ userId is required");
         return false;
       }
 
-      // Update daily metrics
-      await supabase.rpc("update_daily_usage_metrics", {
-        p_user_id: userId,
-        p_activity_type: activityType,
+      if (!activityType) {
+        console.error(
+          "[adminService.logUserActivity] ❌ activityType is required",
+        );
+        return false;
+      }
+
+      // Validate or generate session ID
+      let validSessionId = sessionId;
+      if (
+        !sessionId ||
+        sessionId === "system" ||
+        sessionId === "test-session"
+      ) {
+        validSessionId =
+          self.crypto?.randomUUID?.() ||
+          "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+            const r = (Math.random() * 16) | 0;
+            const v = c == "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+        console.log(
+          "[adminService.logUserActivity] Generated new session ID:",
+          validSessionId,
+          "(original was:",
+          sessionId,
+          ")",
+        );
+      }
+
+      // Validate UUID format
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(validSessionId)) {
+        validSessionId =
+          self.crypto?.randomUUID?.() ||
+          "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+            const r = (Math.random() * 16) | 0;
+            const v = c == "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+        console.log(
+          "[adminService.logUserActivity] Invalid UUID format, generated new session ID:",
+          validSessionId,
+        );
+      }
+
+      console.log(
+        "[adminService.logUserActivity] Inserting into user_activity_logs table...",
+      );
+      const { data: insertedData, error } = await supabase
+        .from("user_activity_logs")
+        .insert({
+          user_id: userId,
+          session_id: validSessionId,
+          activity_type: activityType,
+          activity_data: activityData,
+          page_url: pageUrl,
+        })
+        .select();
+
+      console.log("[adminService.logUserActivity] Insert result:", {
+        insertedData,
+        error,
+        success: !error && insertedData,
       });
+
+      if (error) {
+        console.error(
+          "[adminService.logUserActivity] ❌ Database insert error:",
+          {
+            error,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+          },
+        );
+        return false;
+      }
+
+      if (!insertedData || insertedData.length === 0) {
+        console.error(
+          "[adminService.logUserActivity] ❌ No data returned from insert",
+        );
+        return false;
+      }
+
+      console.log(
+        "[adminService.logUserActivity] ✅ Successfully inserted activity log:",
+        insertedData[0].id,
+      );
+
+      // Update daily metrics with improved error handling
+      try {
+        console.log(
+          "[adminService.logUserActivity] Updating daily usage metrics...",
+        );
+
+        // Use the improved function that returns a boolean
+        const { data: metricsResult, error: metricsError } = await supabase.rpc(
+          "update_daily_usage_metrics",
+          {
+            p_user_id: userId,
+            p_activity_type: activityType,
+          },
+        );
+
+        console.log("[adminService.logUserActivity] Metrics update result:", {
+          metricsResult,
+          metricsError,
+          success: metricsResult === true,
+        });
+
+        if (metricsError) {
+          console.error(
+            "[adminService.logUserActivity] ❌ Metrics update failed:",
+            {
+              error: metricsError,
+              message: metricsError.message,
+              details: metricsError.details,
+              hint: metricsError.hint,
+              code: metricsError.code,
+            },
+          );
+        } else if (metricsResult === true) {
+          console.log(
+            "[adminService.logUserActivity] ✅ Successfully updated daily metrics for:",
+            activityType,
+          );
+        } else {
+          console.warn(
+            "[adminService.logUserActivity] ⚠️ Metrics update returned false - check database function logs",
+          );
+        }
+      } catch (metricsError) {
+        console.error(
+          "[adminService.logUserActivity] ❌ Metrics update exception:",
+          {
+            error: metricsError,
+            message: metricsError.message,
+            stack: metricsError.stack,
+          },
+        );
+      }
+
+      // For project creation, also verify the tracking worked
+      if (activityType === "project_creation") {
+        try {
+          console.log(
+            "[adminService.logUserActivity] 🔍 Verifying project creation was tracked...",
+          );
+          const { data: verifyData, error: verifyError } = await supabase
+            .from("user_activity_logs")
+            .select("*")
+            .eq("activity_type", "project_creation")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(5);
+
+          console.log(
+            "[adminService.logUserActivity] 🔍 Recent project creation logs:",
+            {
+              verifyData,
+              verifyError,
+              count: verifyData?.length || 0,
+            },
+          );
+
+          // Also check usage metrics to see if project count was updated
+          const { data: metricsVerify, error: metricsVerifyError } =
+            await supabase
+              .from("usage_metrics")
+              .select("project_count, date")
+              .eq("user_id", userId)
+              .eq("date", new Date().toISOString().split("T")[0])
+              .single();
+
+          console.log(
+            "[adminService.logUserActivity] 🔍 Today's usage metrics:",
+            {
+              metricsVerify,
+              metricsVerifyError,
+              projectCount: metricsVerify?.project_count,
+            },
+          );
+        } catch (verifyError) {
+          console.warn(
+            "[adminService.logUserActivity] Verification query failed:",
+            verifyError,
+          );
+        }
+      }
 
       return true;
     } catch (error) {
-      console.error("[adminService.logUserActivity] Catch error:", error);
+      console.error("[adminService.logUserActivity] ❌ Catch error:", {
+        error,
+        message: error.message,
+        stack: error.stack,
+        userId,
+        activityType,
+      });
       return false;
+    }
+  },
+
+  async getCurrentUserActiveSession(userId: string): Promise<string | null> {
+    try {
+      console.log(
+        "[adminService.getCurrentUserActiveSession] Getting active session for user:",
+        userId,
+      );
+
+      const { data: activeSessions, error } = await supabase
+        .from("user_sessions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .order("last_activity", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error(
+          "[adminService.getCurrentUserActiveSession] Error getting active session:",
+          error,
+        );
+        return null;
+      }
+
+      if (!activeSessions || activeSessions.length === 0) {
+        console.log(
+          "[adminService.getCurrentUserActiveSession] No active session found for user:",
+          userId,
+        );
+        return null;
+      }
+
+      const sessionId = activeSessions[0].id;
+      console.log(
+        "[adminService.getCurrentUserActiveSession] Found active session:",
+        sessionId,
+      );
+      return sessionId;
+    } catch (error) {
+      console.error(
+        "[adminService.getCurrentUserActiveSession] Catch error:",
+        error,
+      );
+      return null;
     }
   },
 

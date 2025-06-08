@@ -769,6 +769,7 @@ export type Database = {
           login_count: number | null
           milestones_created: number | null
           page_views: number | null
+          project_count: number | null
           projects_created: number | null
           projects_updated: number | null
           total_session_time_minutes: number | null
@@ -783,6 +784,7 @@ export type Database = {
           login_count?: number | null
           milestones_created?: number | null
           page_views?: number | null
+          project_count?: number | null
           projects_created?: number | null
           projects_updated?: number | null
           total_session_time_minutes?: number | null
@@ -797,6 +799,7 @@ export type Database = {
           login_count?: number | null
           milestones_created?: number | null
           page_views?: number | null
+          project_count?: number | null
           projects_created?: number | null
           projects_updated?: number | null
           total_session_time_minutes?: number | null
@@ -914,6 +917,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      comprehensive_project_tracking_test: {
+        Args: { p_user_id?: string }
+        Returns: Json
+      }
       end_user_sessions: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -1001,6 +1008,15 @@ export type Database = {
       get_database_size: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      get_project_creation_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_projects_created: number
+          unique_project_creators: number
+          projects_created_last_7_days: number
+          projects_created_last_30_days: number
+        }[]
       }
       get_table_sizes: {
         Args: Record<PropertyKey, never>
@@ -1187,6 +1203,10 @@ export type Database = {
         Args: { "": unknown[] }
         Returns: number
       }
+      test_project_creation_tracking: {
+        Args: { p_user_id: string; p_test_project_id?: string }
+        Returns: Json
+      }
       text_to_bytea: {
         Args: { data: string }
         Returns: string
@@ -1201,7 +1221,7 @@ export type Database = {
       }
       update_daily_usage_metrics: {
         Args: { p_user_id: string; p_activity_type: string }
-        Returns: undefined
+        Returns: boolean
       }
       update_project_computed_status_color: {
         Args: { project_id: string }

@@ -37,6 +37,7 @@ import {
 import { adminService } from "@/lib/services/adminService";
 import { useToast } from "@/components/ui/use-toast";
 import { format, subDays } from "date-fns";
+import { supabase } from "@/lib/supabase";
 
 interface ActiveUser {
   user_id: string;
@@ -101,34 +102,18 @@ const UsageAnalytics = () => {
   const loadUsageData = async () => {
     try {
       setLoading(true);
-      console.log("[UsageAnalytics] Loading usage data...");
 
-      // Load all usage data in parallel
       const [activeUsersData, loginStatsData, metricsData] = await Promise.all([
         adminService.getActiveUsers(),
         adminService.getUserLoginStats(),
         adminService.getUsageMetrics(),
       ]);
 
-      console.log("[UsageAnalytics] Data loaded:", {
-        activeUsers: activeUsersData.length,
-        activeUsersData: activeUsersData, // Show all active users for debugging
-        loginStats: loginStatsData.length,
-        loginStatsData: loginStatsData.slice(0, 2), // Show first 2 records for debugging
-        metrics: metricsData,
-        metricsBreakdown: {
-          totalUsers: metricsData.totalUsers,
-          activeUsers: metricsData.activeUsers,
-          avgSessionTime: metricsData.avgSessionTime,
-          totalPageViews: metricsData.totalPageViews,
-        },
-      });
-
       setActiveUsers(activeUsersData);
       setUserLoginStats(loginStatsData);
       setUsageMetrics(metricsData);
     } catch (error) {
-      console.error("[UsageAnalytics] Error loading usage data:", error);
+      console.error("Error loading usage data:", error);
       toast({
         title: "Error",
         description: "Failed to load usage analytics data",
@@ -153,36 +138,19 @@ const UsageAnalytics = () => {
   useEffect(() => {
     loadUsageData();
 
-    // Set up auto-refresh every 5 seconds for active users to catch changes faster
+    // Set up auto-refresh every 30 seconds for active users
     const interval = setInterval(async () => {
       try {
-        console.log(
-          "[UsageAnalytics] Auto-refreshing active users at:",
-          new Date().toISOString(),
-        );
         const activeUsersData = await adminService.getActiveUsers();
-        console.log("[UsageAnalytics] Auto-refresh active users result:", {
-          count: activeUsersData.length,
-          timestamp: new Date().toISOString(),
-          users: activeUsersData.map((u) => ({
-            id: u.user_id,
-            email: u.email,
-            lastActivity: u.last_activity,
-            sessionDuration: u.session_duration_minutes,
-            sessionId: u.session_id,
-          })),
-        });
         setActiveUsers(activeUsersData);
-
-        // Also update the metrics to reflect current active user count
         setUsageMetrics((prev) => ({
           ...prev,
           activeUsers: activeUsersData.length,
         }));
       } catch (error) {
-        console.error("[UsageAnalytics] Auto-refresh error:", error);
+        // Silently handle auto-refresh errors
       }
-    }, 5000); // Reduced to 5 seconds for faster updates
+    }, 30000); // Increased to 30 seconds for better performance
 
     return () => clearInterval(interval);
   }, []);
@@ -246,28 +214,10 @@ const UsageAnalytics = () => {
           <Activity className="h-6 w-6" />
           Usage Analytics
           <span className="text-sm font-normal text-gray-500 ml-2">
-            (Auto-refresh: 5s)
+            (Auto-refresh: 30s)
           </span>
         </h2>
         <div className="flex items-center gap-2">
-          <Button
-            onClick={async () => {
-              console.log("[UsageAnalytics] Manual debug refresh triggered");
-              const debugData = await adminService.getActiveUsers();
-              console.log("[UsageAnalytics] Debug refresh result:", debugData);
-              setActiveUsers(debugData);
-              toast({
-                title: "Debug Refresh",
-                description: `Found ${debugData.length} active users. Check console for details.`,
-                className: "bg-blue-50 border-blue-200",
-              });
-            }}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Monitor className="h-4 w-4" />
-            Debug Active Users
-          </Button>
           <Button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -344,7 +294,11 @@ const UsageAnalytics = () => {
             <div className="text-3xl font-bold text-orange-800">
               {usageMetrics.totalProjects}
             </div>
-            <div className="text-sm text-orange-600">via usage tracking</div>
+            <div className="text-sm text-orange-600">
+              {usageMetrics.totalProjects === 0
+                ? "No projects tracked yet"
+                : "tracked via activity logs"}
+            </div>
           </CardContent>
         </Card>
       </div>

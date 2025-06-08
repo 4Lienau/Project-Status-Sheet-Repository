@@ -1043,7 +1043,7 @@ const AdminPage = () => {
 
                         <div className="flex items-center space-x-1">
                           {getPageNumbers().map((page, index) => (
-                            <React.Fragment key={index}>
+                            <div key={index}>
                               {page === "..." ? (
                                 <span className="px-2 py-1 text-sm text-muted-foreground">
                                   ...
@@ -1066,7 +1066,7 @@ const AdminPage = () => {
                                   {page}
                                 </Button>
                               )}
-                            </React.Fragment>
+                            </div>
                           ))}
                         </div>
 
