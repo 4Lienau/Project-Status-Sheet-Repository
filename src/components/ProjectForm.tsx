@@ -89,7 +89,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     handleCancelOverwrite,
     generateContent,
     handleToggleAnalysis,
-  } = useProjectForm(initialData, onSubmit, projectId);
+  } = useProjectForm(initialData, onSubmit, projectId, onBack);
 
   return (
     <TooltipProvider>

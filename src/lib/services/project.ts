@@ -1483,9 +1483,126 @@ export const projectService = {
   },
 
   async deleteProject(id: string): Promise<boolean> {
-    const { error } = await supabase.from("projects").delete().eq("id", id);
+    try {
+      console.log(
+        "[DELETE_PROJECT] Starting deletion process for project:",
+        id,
+      );
 
-    return !error;
+      // Validate project ID format
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id)) {
+        console.error("[DELETE_PROJECT] Invalid project ID format:", id);
+        return false;
+      }
+
+      // Check if project exists
+      const { data: project, error: projectCheckError } = await supabase
+        .from("projects")
+        .select("id, title")
+        .eq("id", id)
+        .single();
+
+      if (projectCheckError || !project) {
+        console.error(
+          "[DELETE_PROJECT] Project not found or error checking:",
+          projectCheckError,
+        );
+        return false;
+      }
+
+      console.log(
+        `[DELETE_PROJECT] Deleting project: "${project.title}" (${id})`,
+      );
+
+      // Delete all related records first (in order to avoid foreign key constraint violations)
+      const deleteOperations = [
+        {
+          table: "tasks",
+          operation: supabase.from("tasks").delete().eq("project_id", id),
+        },
+        {
+          table: "milestones",
+          operation: supabase.from("milestones").delete().eq("project_id", id),
+        },
+        {
+          table: "accomplishments",
+          operation: supabase
+            .from("accomplishments")
+            .delete()
+            .eq("project_id", id),
+        },
+        {
+          table: "next_period_activities",
+          operation: supabase
+            .from("next_period_activities")
+            .delete()
+            .eq("project_id", id),
+        },
+        {
+          table: "risks",
+          operation: supabase.from("risks").delete().eq("project_id", id),
+        },
+        {
+          table: "considerations",
+          operation: supabase
+            .from("considerations")
+            .delete()
+            .eq("project_id", id),
+        },
+        {
+          table: "changes",
+          operation: supabase.from("changes").delete().eq("project_id", id),
+        },
+        {
+          table: "project_summaries",
+          operation: supabase
+            .from("project_summaries")
+            .delete()
+            .eq("project_id", id),
+        },
+      ];
+
+      // Execute all delete operations for related records
+      for (const { table, operation } of deleteOperations) {
+        console.log(`[DELETE_PROJECT] Deleting ${table} for project ${id}`);
+        const { error } = await operation;
+        if (error) {
+          console.error(`[DELETE_PROJECT] Error deleting ${table}:`, error);
+          // Log the error but continue with other deletions
+          // Some tables might not have records, which is fine
+        } else {
+          console.log(`[DELETE_PROJECT] Successfully deleted ${table} records`);
+        }
+      }
+
+      // Finally, delete the project itself
+      console.log(`[DELETE_PROJECT] Deleting main project record`);
+      const { error: projectDeleteError } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", id);
+
+      if (projectDeleteError) {
+        console.error(
+          "[DELETE_PROJECT] Error deleting project:",
+          projectDeleteError,
+        );
+        return false;
+      }
+
+      console.log(
+        `[DELETE_PROJECT] Successfully deleted project: "${project.title}" (${id})`,
+      );
+      return true;
+    } catch (error) {
+      console.error(
+        "[DELETE_PROJECT] Unexpected error during project deletion:",
+        error,
+      );
+      return false;
+    }
   },
 
   async createProject(data: {

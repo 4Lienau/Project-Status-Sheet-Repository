@@ -41,6 +41,7 @@ export const useProjectForm = (
   initialData: any,
   onSubmit: (data: any) => Promise<boolean>,
   projectId: string,
+  onBack?: () => void,
 ) => {
   // Track if we're in the middle of adding milestones to prevent initialData from resetting the form
   const [isAddingMilestones, setIsAddingMilestones] = useState(false);
@@ -512,10 +513,37 @@ export const useProjectForm = (
           // The content should already be a JSON string from aiService.processMilestones
           const parsedMilestones = JSON.parse(content);
           if (Array.isArray(parsedMilestones) && parsedMilestones.length > 0) {
+            // Validate that mandatory milestones are present
+            const hasKickoff = parsedMilestones.some(
+              (m) =>
+                m.milestone && m.milestone.toLowerCase().includes("kickoff"),
+            );
+            const hasCloseout = parsedMilestones.some(
+              (m) =>
+                m.milestone &&
+                (m.milestone.toLowerCase().includes("closeout") ||
+                  m.milestone.toLowerCase().includes("closure")),
+            );
+
+            console.log("🎯 Generated milestones validation:", {
+              total: parsedMilestones.length,
+              hasKickoff,
+              hasCloseout,
+              milestones: parsedMilestones.map((m) => m.milestone),
+            });
+
             setSuggestedMilestones(parsedMilestones);
             setTimeout(() => {
               setShowSuggestedMilestones(true);
             }, 100);
+
+            // Show enhanced success message
+            toast({
+              title: "Milestones Generated Successfully",
+              description: `Generated ${parsedMilestones.length} milestones including Project Kickoff and Closeout. Review and select the ones you want to add.`,
+              className: "bg-green-50 border-green-200",
+              duration: 5000,
+            });
           } else {
             throw new Error("Invalid milestone data format");
           }
@@ -633,31 +661,87 @@ export const useProjectForm = (
           description: "No project ID found. Cannot delete project.",
           variant: "destructive",
         });
+        setShowDeleteDialog(false);
         return;
       }
+
+      console.log(
+        "[DELETE_PROJECT] Attempting to delete project:",
+        safeProjectId,
+      );
+
+      // Clear all state flags that might prevent navigation
+      console.log("[DELETE_PROJECT] Clearing state flags before deletion");
+      setHasChanges(false);
+      setHasUserInteracted(false);
+      setIsAddingMilestones(false);
+      setIsAutoSaving(false);
+
+      // Clear form attributes that might block navigation
+      const formElement = document.querySelector("form");
+      if (formElement) {
+        formElement.setAttribute("data-has-changes", "false");
+        formElement.setAttribute("data-user-interaction", "false");
+        formElement.setAttribute("data-just-saved", "true");
+        formElement.setAttribute("data-auto-saving", "false");
+        formElement.setAttribute("data-adding-milestones", "false");
+        formElement.removeAttribute("data-milestones-added-at");
+      }
+
       const success = await projectService.deleteProject(safeProjectId);
+      console.log("[DELETE_PROJECT] Delete result:", success);
+
       if (success) {
+        console.log(
+          "[DELETE_PROJECT] Project deleted successfully, preparing navigation",
+        );
+
+        // Close the dialog immediately
+        setShowDeleteDialog(false);
+
+        // Clear any pending navigation actions
+        setPendingNavigationAction(null);
+        setShowUnsavedChangesDialog(false);
+
+        // Show success toast
         toast({
           title: "Project Deleted",
           description: "The project has been successfully deleted.",
           className: "bg-green-50 border-green-200",
+          duration: 3000,
         });
-        navigate("/");
+
+        // CRITICAL FIX: Use the onBack callback to properly navigate back to the list
+        // This will reset the mode state in the parent component (home.tsx)
+        console.log("[DELETE_PROJECT] Using onBack callback to navigate");
+        if (onBack) {
+          // Small delay to ensure the toast is shown and dialog is closed
+          setTimeout(() => {
+            onBack();
+          }, 100);
+        } else {
+          // Fallback to React Router navigation if onBack is not available
+          console.log("[DELETE_PROJECT] Fallback to React Router navigation");
+          setTimeout(() => {
+            navigate("/", { replace: true });
+          }, 100);
+        }
       } else {
+        console.error("[DELETE_PROJECT] Delete operation returned false");
         toast({
           title: "Error",
           description: "Failed to delete the project.",
           variant: "destructive",
         });
+        setShowDeleteDialog(false);
       }
     } catch (error) {
-      console.error("Error deleting project:", error);
+      console.error("[DELETE_PROJECT] Error deleting project:", error);
       toast({
         title: "Error",
         description: "An unexpected error occurred while deleting the project.",
         variant: "destructive",
       });
-    } finally {
       setShowDeleteDialog(false);
     }
   };
@@ -683,20 +767,23 @@ export const useProjectForm = (
     }
 
     // Format the milestones properly to ensure they have all required fields
-    // and space them one week apart starting from today
+    // and space them one week apart starting from one week from today
     const today = new Date();
+    const oneWeekFromToday = new Date(today);
+    oneWeekFromToday.setDate(today.getDate() + 7); // Start first milestone one week from today
+
     const formattedMilestones = selectedMilestones.map((milestone, index) => {
-      // Create a new date for each milestone, starting with today
+      // Create a new date for each milestone, starting with one week from today
       // and adding 7 days for each subsequent milestone
-      const milestoneDate = new Date(today);
-      milestoneDate.setDate(today.getDate() + index * 7); // Add 0, 7, 14, 21, etc. days
+      const milestoneDate = new Date(oneWeekFromToday);
+      milestoneDate.setDate(oneWeekFromToday.getDate() + index * 7); // Add 0, 7, 14, 21, etc. days from one week from today
 
       return {
         date: milestoneDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
         milestone: milestone.milestone || "",
         owner: milestone.owner || "",
         completion: milestone.completion || 0,
-        status: milestone.status || "green",
+        status: "green", // ALWAYS set status to "green" (On Track) for all applied milestones
         tasks: milestone.tasks || [],
       };
     });
