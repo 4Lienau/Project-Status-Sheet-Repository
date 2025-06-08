@@ -531,65 +531,65 @@ const ProjectKPIsPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                       <div className="text-green-800 font-semibold mb-2">
-                        Substantial Time (&gt;60%)
+                        Substantial Time (&gt;70%)
                       </div>
                       <div className="text-sm text-green-700">
                         <div>
-                          • ≥10% completion = <strong>Green</strong>
+                          • ≥5% completion = <strong>Green</strong>
                         </div>
                         <div>
-                          • 5-9% completion = <strong>Yellow</strong>
+                          • 1-4% completion = <strong>Yellow</strong>
+                        </div>
+                        <div>
+                          • 0% completion = <strong>Red</strong>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-blue-800 font-semibold mb-2">
+                        Plenty of Time (&gt;40%)
+                      </div>
+                      <div className="text-sm text-blue-700">
+                        <div>
+                          • ≥15% completion = <strong>Green</strong>
+                        </div>
+                        <div>
+                          • 5-14% completion = <strong>Yellow</strong>
                         </div>
                         <div>
                           • &lt;5% completion = <strong>Red</strong>
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="text-blue-800 font-semibold mb-2">
-                        Plenty of Time (30-60%)
-                      </div>
-                      <div className="text-sm text-blue-700">
-                        <div>
-                          • ≥20% completion = <strong>Green</strong>
-                        </div>
-                        <div>
-                          • 10-19% completion = <strong>Yellow</strong>
-                        </div>
-                        <div>
-                          • &lt;10% completion = <strong>Red</strong>
-                        </div>
-                      </div>
-                    </div>
                     <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                       <div className="text-yellow-800 font-semibold mb-2">
-                        Moderate Time (15-30%)
+                        Moderate Time (&gt;20%)
                       </div>
                       <div className="text-sm text-yellow-700">
                         <div>
-                          • ≥40% completion = <strong>Green</strong>
+                          • ≥30% completion = <strong>Green</strong>
                         </div>
                         <div>
-                          • 25-39% completion = <strong>Yellow</strong>
+                          • 15-29% completion = <strong>Yellow</strong>
                         </div>
                         <div>
-                          • &lt;25% completion = <strong>Red</strong>
+                          • &lt;15% completion = <strong>Red</strong>
                         </div>
                       </div>
                     </div>
                     <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                       <div className="text-red-800 font-semibold mb-2">
-                        Little Time (&lt;15%)
+                        Little Time (1-20%)
                       </div>
                       <div className="text-sm text-red-700">
                         <div>
-                          • ≥80% completion = <strong>Green</strong>
+                          • ≥70% completion = <strong>Green</strong>
                         </div>
                         <div>
-                          • 60-79% completion = <strong>Yellow</strong>
+                          • 50-69% completion = <strong>Yellow</strong>
                         </div>
                         <div>
-                          • &lt;60% completion = <strong>Red</strong>
+                          • &lt;50% completion = <strong>Red</strong>
                         </div>
                       </div>
                     </div>
@@ -718,9 +718,9 @@ const ProjectKPIsPage = () => {
                       })}
                     </div>
                     <div className="mt-3 pt-2 border-t border-gray-200">
-                      <div className="text-xs text-gray-500">
-                        <strong>New Lenient Calculation:</strong> Projects with
-                        substantial time remaining (&gt;60%) need only ≥10%
+                      <div className="text-xs text-gray-500 mt-2">
+                        <strong>Time-Aware Calculation:</strong> Projects with
+                        substantial time remaining (&gt;70%) need only ≥5%
                         completion for Green status. Cancelled projects
                         excluded.
                       </div>
