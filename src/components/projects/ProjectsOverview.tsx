@@ -17,6 +17,12 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 import {
   Table,
@@ -42,6 +48,8 @@ import {
 import {
   projectService,
   calculateProjectHealthStatusColor,
+  calculateTimeRemainingPercentage,
+  getTimeRemainingTooltipText,
 } from "@/lib/services/project";
 import { FileSpreadsheet, ArrowLeft, ExternalLink } from "lucide-react";
 import { exportProjectsToExcel } from "@/lib/services/excelExport";
@@ -436,9 +444,19 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
         size: 100,
         cell: (info) => {
           const daysRemaining = info.getValue();
+          const project = info.row.original;
+
           if (daysRemaining === null || daysRemaining === undefined) {
             return <div className="text-center">—</div>;
           }
+
+          // Calculate time remaining percentage for tooltip
+          const timeRemainingPercentage =
+            calculateTimeRemainingPercentage(project);
+          const tooltipText =
+            timeRemainingPercentage && timeRemainingPercentage > 100
+              ? getTimeRemainingTooltipText(project, timeRemainingPercentage)
+              : null;
 
           // Color code based on days remaining
           let colorClass = "text-green-600";
@@ -448,15 +466,36 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
             colorClass = "text-yellow-600 font-medium";
           }
 
-          return (
+          const daysDisplay = (
             <div className="text-center">
               <span className={colorClass}>
                 {daysRemaining < 0
                   ? `${Math.abs(daysRemaining)} overdue`
                   : `${daysRemaining}d`}
               </span>
+              {timeRemainingPercentage && timeRemainingPercentage > 100 && (
+                <div className="text-xs text-orange-600 font-medium mt-1">
+                  {timeRemainingPercentage}% time left
+                </div>
+              )}
             </div>
           );
+
+          // Wrap with tooltip if percentage is over 100%
+          if (tooltipText) {
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help">{daysDisplay}</div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-sm">{tooltipText}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          return daysDisplay;
         },
       }),
       columnHelper.accessor("calculated_end_date", {
@@ -662,292 +701,294 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Projects
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            try {
-              setExporting(true);
-              await new Promise((resolve) => setTimeout(resolve, 100)); // Let UI update
-              const username =
-                profile.full_name || user?.email?.split("@")[0] || "user";
-              await exportProjectsToExcel(projects, username);
-              toast({
-                title: "Export Successful",
-                description:
-                  "The Excel file has been generated and downloaded.",
-                className: "bg-green-50 border-green-200",
-              });
-            } catch (error) {
-              toast({
-                title: "Export Failed",
-                description: "There was an error generating the Excel file.",
-                variant: "destructive",
-              });
-            } finally {
-              setExporting(false);
-            }
-          }}
-          disabled={projects.length === 0 || exporting}
-          className="flex items-center gap-2"
-        >
-          {exporting ? (
-            <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <FileSpreadsheet className="h-4 w-4" />
-          )}
-          {exporting ? "Generating..." : "Export to Excel"}
-        </Button>
-      </div>
-
-      <div className="w-full bg-white shadow-md rounded-lg">
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-blue-800">
-              Projects Overview Table
-            </h2>
-            <div className="flex items-center gap-4">
-              {/* Global Search */}
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search all columns..."
-                  value={globalFilter ?? ""}
-                  onChange={(event) =>
-                    setGlobalFilter(String(event.target.value))
-                  }
-                  className="pl-8 w-64"
-                />
-              </div>
-
-              {/* Column Visibility Toggle */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Columns
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  {table
-                    .getAllColumns()
-                    .filter((column) => column.getCanHide())
-                    .map((column) => {
-                      return (
-                        <DropdownMenuCheckboxItem
-                          key={column.id}
-                          className="capitalize"
-                          checked={column.getIsVisible()}
-                          onCheckedChange={(value) =>
-                            column.toggleVisibility(!!value)
-                          }
-                        >
-                          {column.id.replace("_", " ")}
-                        </DropdownMenuCheckboxItem>
-                      );
-                    })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <>
-              <div className="w-full overflow-x-auto border border-gray-200 rounded-lg">
-                <Table className="w-full" style={{ tableLayout: "fixed" }}>
-                  <TableHeader>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => {
-                          const canSort = header.column.getCanSort();
-                          const sortDirection = header.column.getIsSorted();
-
-                          return (
-                            <TableHead
-                              key={header.id}
-                              className={`font-bold text-xs whitespace-nowrap px-3 py-3 relative ${
-                                canSort
-                                  ? "cursor-pointer hover:bg-gray-50 active:bg-gray-100"
-                                  : ""
-                              }`}
-                              style={{
-                                width: header.getSize(),
-                                minWidth: header.column.columnDef.minSize,
-                                maxWidth: header.column.columnDef.maxSize,
-                              }}
-                              onClick={
-                                canSort
-                                  ? header.column.getToggleSortingHandler()
-                                  : undefined
-                              }
-                            >
-                              {header.isPlaceholder ? null : (
-                                <div className="flex items-center">
-                                  {flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext(),
-                                  )}
-                                  {canSort &&
-                                    renderSortIndicator(sortDirection)}
-                                </div>
-                              )}
-                              {/* Column Resize Handle */}
-                              {header.column.getCanResize() && (
-                                <div
-                                  onMouseDown={header.getResizeHandler()}
-                                  onTouchStart={header.getResizeHandler()}
-                                  className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none border-r border-gray-300 hover:border-blue-500 hover:border-r-2 ${
-                                    header.column.getIsResizing()
-                                      ? "border-blue-500 border-r-2"
-                                      : ""
-                                  }`}
-                                  style={{ zIndex: 10 }}
-                                />
-                              )}
-                            </TableHead>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {table.getRowModel().rows?.length ? (
-                      table.getRowModel().rows.map((row) => (
-                        <TableRow
-                          key={row.id}
-                          className="cursor-pointer hover:bg-gray-50"
-                          onClick={() => {
-                            navigate("/", {
-                              state: {
-                                projectId: row.original.id,
-                                mode: "preview",
-                              },
-                            });
-                          }}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <TableCell
-                              key={cell.id}
-                              className="text-xs px-3 py-2"
-                              style={{
-                                width: cell.column.getSize(),
-                                minWidth: cell.column.columnDef.minSize,
-                                maxWidth: cell.column.columnDef.maxSize,
-                              }}
-                            >
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext(),
-                              )}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell
-                          colSpan={columns.length}
-                          className="text-center py-8 text-gray-500"
-                        >
-                          No projects found matching the current filters.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Pagination Controls */}
-              <div className="flex items-center justify-between px-2 py-4">
-                <div className="flex items-center space-x-2">
-                  <p className="text-sm font-medium">Rows per page:</p>
-                  <select
-                    value={table.getState().pagination.pageSize}
-                    onChange={(e) => {
-                      table.setPageSize(Number(e.target.value));
-                    }}
-                    className="h-8 w-16 rounded border border-input bg-background px-2 text-sm"
-                  >
-                    {[10, 25, 50, 100].map((pageSize) => (
-                      <option key={pageSize} value={pageSize}>
-                        {pageSize}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center space-x-6 lg:space-x-8">
-                  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                    Page {table.getState().pagination.pageIndex + 1} of{" "}
-                    {table.getPageCount()}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() => table.setPageIndex(0)}
-                      disabled={!table.getCanPreviousPage()}
-                    >
-                      <span className="sr-only">Go to first page</span>
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => table.previousPage()}
-                      disabled={!table.getCanPreviousPage()}
-                    >
-                      <span className="sr-only">Go to previous page</span>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => table.nextPage()}
-                      disabled={!table.getCanNextPage()}
-                    >
-                      <span className="sr-only">Go to next page</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="hidden h-8 w-8 p-0 lg:flex"
-                      onClick={() =>
-                        table.setPageIndex(table.getPageCount() - 1)
-                      }
-                      disabled={!table.getCanNextPage()}
-                    >
-                      <span className="sr-only">Go to last page</span>
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  Showing {table.getRowModel().rows.length} of{" "}
-                  {table.getFilteredRowModel().rows.length} row(s).
-                </div>
-              </div>
-            </>
-          )}
+    <TooltipProvider>
+      <div className="w-full max-w-7xl mx-auto space-y-6">
+        <div className="flex justify-between items-center mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Projects
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                setExporting(true);
+                await new Promise((resolve) => setTimeout(resolve, 100)); // Let UI update
+                const username =
+                  profile.full_name || user?.email?.split("@")[0] || "user";
+                await exportProjectsToExcel(projects, username);
+                toast({
+                  title: "Export Successful",
+                  description:
+                    "The Excel file has been generated and downloaded.",
+                  className: "bg-green-50 border-green-200",
+                });
+              } catch (error) {
+                toast({
+                  title: "Export Failed",
+                  description: "There was an error generating the Excel file.",
+                  variant: "destructive",
+                });
+              } finally {
+                setExporting(false);
+              }
+            }}
+            disabled={projects.length === 0 || exporting}
+            className="flex items-center gap-2"
+          >
+            {exporting ? (
+              <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-4 w-4" />
+            )}
+            {exporting ? "Generating..." : "Export to Excel"}
+          </Button>
         </div>
+
+        <div className="w-full bg-white shadow-md rounded-lg">
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-blue-800">
+                Projects Overview Table
+              </h2>
+              <div className="flex items-center gap-4">
+                {/* Global Search */}
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search all columns..."
+                    value={globalFilter ?? ""}
+                    onChange={(event) =>
+                      setGlobalFilter(String(event.target.value))
+                    }
+                    className="pl-8 w-64"
+                  />
+                </div>
+
+                {/* Column Visibility Toggle */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Columns
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {table
+                      .getAllColumns()
+                      .filter((column) => column.getCanHide())
+                      .map((column) => {
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={column.id}
+                            className="capitalize"
+                            checked={column.getIsVisible()}
+                            onCheckedChange={(value) =>
+                              column.toggleVisibility(!!value)
+                            }
+                          >
+                            {column.id.replace("_", " ")}
+                          </DropdownMenuCheckboxItem>
+                        );
+                      })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="w-full overflow-x-auto border border-gray-200 rounded-lg">
+                  <Table className="w-full" style={{ tableLayout: "fixed" }}>
+                    <TableHeader>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => {
+                            const canSort = header.column.getCanSort();
+                            const sortDirection = header.column.getIsSorted();
+
+                            return (
+                              <TableHead
+                                key={header.id}
+                                className={`font-bold text-xs whitespace-nowrap px-3 py-3 relative ${
+                                  canSort
+                                    ? "cursor-pointer hover:bg-gray-50 active:bg-gray-100"
+                                    : ""
+                                }`}
+                                style={{
+                                  width: header.getSize(),
+                                  minWidth: header.column.columnDef.minSize,
+                                  maxWidth: header.column.columnDef.maxSize,
+                                }}
+                                onClick={
+                                  canSort
+                                    ? header.column.getToggleSortingHandler()
+                                    : undefined
+                                }
+                              >
+                                {header.isPlaceholder ? null : (
+                                  <div className="flex items-center">
+                                    {flexRender(
+                                      header.column.columnDef.header,
+                                      header.getContext(),
+                                    )}
+                                    {canSort &&
+                                      renderSortIndicator(sortDirection)}
+                                  </div>
+                                )}
+                                {/* Column Resize Handle */}
+                                {header.column.getCanResize() && (
+                                  <div
+                                    onMouseDown={header.getResizeHandler()}
+                                    onTouchStart={header.getResizeHandler()}
+                                    className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none border-r border-gray-300 hover:border-blue-500 hover:border-r-2 ${
+                                      header.column.getIsResizing()
+                                        ? "border-blue-500 border-r-2"
+                                        : ""
+                                    }`}
+                                    style={{ zIndex: 10 }}
+                                  />
+                                )}
+                              </TableHead>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableHeader>
+                    <TableBody>
+                      {table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow
+                            key={row.id}
+                            className="cursor-pointer hover:bg-gray-50"
+                            onClick={() => {
+                              navigate("/", {
+                                state: {
+                                  projectId: row.original.id,
+                                  mode: "preview",
+                                },
+                              });
+                            }}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell
+                                key={cell.id}
+                                className="text-xs px-3 py-2"
+                                style={{
+                                  width: cell.column.getSize(),
+                                  minWidth: cell.column.columnDef.minSize,
+                                  maxWidth: cell.column.columnDef.maxSize,
+                                }}
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length}
+                            className="text-center py-8 text-gray-500"
+                          >
+                            No projects found matching the current filters.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center justify-between px-2 py-4">
+                  <div className="flex items-center space-x-2">
+                    <p className="text-sm font-medium">Rows per page:</p>
+                    <select
+                      value={table.getState().pagination.pageSize}
+                      onChange={(e) => {
+                        table.setPageSize(Number(e.target.value));
+                      }}
+                      className="h-8 w-16 rounded border border-input bg-background px-2 text-sm"
+                    >
+                      {[10, 25, 50, 100].map((pageSize) => (
+                        <option key={pageSize} value={pageSize}>
+                          {pageSize}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center space-x-6 lg:space-x-8">
+                    <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                      Page {table.getState().pagination.pageIndex + 1} of{" "}
+                      {table.getPageCount()}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        className="hidden h-8 w-8 p-0 lg:flex"
+                        onClick={() => table.setPageIndex(0)}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <span className="sr-only">Go to first page</span>
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <span className="sr-only">Go to previous page</span>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <span className="sr-only">Go to next page</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="hidden h-8 w-8 p-0 lg:flex"
+                        onClick={() =>
+                          table.setPageIndex(table.getPageCount() - 1)
+                        }
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <span className="sr-only">Go to last page</span>
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-muted-foreground">
+                    Showing {table.getRowModel().rows.length} of{" "}
+                    {table.getFilteredRowModel().rows.length} row(s).
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        <Toaster />
       </div>
-      <Toaster />
-    </div>
+    </TooltipProvider>
   );
 };
 

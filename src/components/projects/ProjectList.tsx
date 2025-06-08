@@ -23,6 +23,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Plus, FileSpreadsheet, Loader2 } from "lucide-react";
@@ -35,6 +36,8 @@ import {
   projectService,
   calculateWeightedCompletion,
   calculateProjectHealthStatusColor,
+  calculateTimeRemainingPercentage,
+  getTimeRemainingTooltipText,
 } from "@/lib/services/project";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -324,215 +327,252 @@ const ProjectList = ({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold text-white">Projects</h2>
-          <span className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white border border-white/30">
-            {totalProjectCount > 0 ? (
-              <>
-                {filteredProjects.length} of {totalProjectCount} (
-                {Math.round(
-                  (filteredProjects.length / totalProjectCount) * 100,
-                )}
-                %)
-              </>
-            ) : (
-              <>
-                {filteredProjects.length}{" "}
-                {filteredProjects.length === 1 ? "project" : "projects"}
-              </>
-            )}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
-          <Card
-            key={project.id}
-            onClick={() => onSelectProject(project)}
-            className="group p-6 pb-6 cursor-pointer bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
-            style={{
-              borderRadius: "1rem",
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="relative">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-semibold">
-                  {project.title.replace(/<[^>]*>/g, "")}
-                </h3>
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${
-                    {
-                      active:
-                        "bg-green-100 text-green-800 border border-green-200",
-                      on_hold:
-                        "bg-yellow-100 text-yellow-800 border border-yellow-200",
-                      completed:
-                        "bg-blue-100 text-blue-800 border border-blue-200",
-                      cancelled:
-                        "bg-gray-100 text-gray-800 border border-gray-200",
-                      draft:
-                        "bg-yellow-100 text-yellow-800 border border-yellow-200",
-                    }[project.status || "active"]
-                  }`}
-                >
-                  {project.status?.replace("_", " ").charAt(0).toUpperCase() +
-                    project.status?.slice(1).replace("_", " ") || "Active"}
-                </span>
-              </div>
-              {project.description && (
-                <p className="text-sm text-blue-800 mb-3 line-clamp-2">
-                  {project.description.replace(/<[^>]*>/g, "")}
-                </p>
-              )}
-
-              {/* Budget Information */}
-              {project.budget_total !== null &&
-                project.budget_total !== undefined && (
-                  <div className="space-y-1 mb-3">
-                    <p className="text-sm text-blue-800 font-medium">
-                      Total Budget:{" "}
-                      {new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      }).format(project.budget_total)}
-                    </p>
-                  </div>
-                )}
-
-              <p className="text-sm text-blue-800 mb-4">
-                Project Manager: {project.project_manager}
-              </p>
-              {(project.department || project.project_id) && (
-                <div className="space-y-2">
-                  {project.department && (
-                    <p className="text-xs text-blue-600">
-                      Department: {project.department}
-                    </p>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-semibold text-white">Projects</h2>
+            <span className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white border border-white/30">
+              {totalProjectCount > 0 ? (
+                <>
+                  {filteredProjects.length} of {totalProjectCount} (
+                  {Math.round(
+                    (filteredProjects.length / totalProjectCount) * 100,
                   )}
-                  {project.project_id && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                        ID: {project.project_id}
-                      </span>
+                  %)
+                </>
+              ) : (
+                <>
+                  {filteredProjects.length}{" "}
+                  {filteredProjects.length === 1 ? "project" : "projects"}
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => (
+            <Card
+              key={project.id}
+              onClick={() => onSelectProject(project)}
+              className="group p-6 pb-6 cursor-pointer bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+              style={{
+                borderRadius: "1rem",
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-semibold">
+                    {project.title.replace(/<[^>]*>/g, "")}
+                  </h3>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${
+                      {
+                        active:
+                          "bg-green-100 text-green-800 border border-green-200",
+                        on_hold:
+                          "bg-yellow-100 text-yellow-800 border border-yellow-200",
+                        completed:
+                          "bg-blue-100 text-blue-800 border border-blue-200",
+                        cancelled:
+                          "bg-gray-100 text-gray-800 border border-gray-200",
+                        draft:
+                          "bg-yellow-100 text-yellow-800 border border-yellow-200",
+                      }[project.status || "active"]
+                    }`}
+                  >
+                    {project.status?.replace("_", " ").charAt(0).toUpperCase() +
+                      project.status?.slice(1).replace("_", " ") || "Active"}
+                  </span>
+                </div>
+                {project.description && (
+                  <p className="text-sm text-blue-800 mb-3 line-clamp-2">
+                    {project.description.replace(/<[^>]*>/g, "")}
+                  </p>
+                )}
+
+                {/* Budget Information */}
+                {project.budget_total !== null &&
+                  project.budget_total !== undefined && (
+                    <div className="space-y-1 mb-3">
+                      <p className="text-sm text-blue-800 font-medium">
+                        Total Budget:{" "}
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }).format(project.budget_total)}
+                      </p>
                     </div>
                   )}
-                  <div className="border-t border-gray-200 pt-2 w-3/4">
-                    <p className="text-[11px] text-gray-500">
-                      Updated{" "}
-                      {project.updated_at
-                        ? (() => {
-                            const updatedDate = new Date(project.updated_at);
-                            const now = new Date();
 
-                            // Set both dates to midnight for accurate day comparison
-                            const updatedDay = new Date(
-                              updatedDate.getFullYear(),
-                              updatedDate.getMonth(),
-                              updatedDate.getDate(),
-                            );
-                            const today = new Date(
-                              now.getFullYear(),
-                              now.getMonth(),
-                              now.getDate(),
-                            );
+                <p className="text-sm text-blue-800 mb-4">
+                  Project Manager: {project.project_manager}
+                </p>
+                {(project.department || project.project_id) && (
+                  <div className="space-y-2">
+                    {project.department && (
+                      <p className="text-xs text-blue-600">
+                        Department: {project.department}
+                      </p>
+                    )}
+                    {project.project_id && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                          ID: {project.project_id}
+                        </span>
+                      </div>
+                    )}
+                    <div className="border-t border-gray-200 pt-2 w-3/4">
+                      <p className="text-[11px] text-gray-500">
+                        Updated{" "}
+                        {project.updated_at
+                          ? (() => {
+                              const updatedDate = new Date(project.updated_at);
+                              const now = new Date();
 
-                            return updatedDay.getTime() === today.getTime()
-                              ? "today"
-                              : formatDistanceToNow(updatedDate, {
-                                  addSuffix: true,
-                                });
-                          })()
-                        : "recently"}
-                    </p>
+                              // Set both dates to midnight for accurate day comparison
+                              const updatedDay = new Date(
+                                updatedDate.getFullYear(),
+                                updatedDate.getMonth(),
+                                updatedDate.getDate(),
+                              );
+                              const today = new Date(
+                                now.getFullYear(),
+                                now.getMonth(),
+                                now.getDate(),
+                              );
+
+                              return updatedDay.getTime() === today.getTime()
+                                ? "today"
+                                : formatDistanceToNow(updatedDate, {
+                                    addSuffix: true,
+                                  });
+                            })()
+                          : "recently"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Health Indicator */}
-              {(() => {
-                // Calculate overall health percentage
-                const overallCompletion =
-                  project.health_calculation_type === "manual"
-                    ? project.manual_health_percentage
-                    : calculateWeightedCompletion(project.milestones);
+                {/* Health Indicator */}
+                {(() => {
+                  // Calculate overall health percentage
+                  const overallCompletion =
+                    project.health_calculation_type === "manual"
+                      ? project.manual_health_percentage
+                      : calculateWeightedCompletion(project.milestones);
 
-                // Get the standardized health status color
-                const healthStatusColor = getProjectStatusHealthColor(project);
+                  // Calculate time remaining percentage for tooltip
+                  const timeRemainingPercentage =
+                    calculateTimeRemainingPercentage(project);
+                  const tooltipText =
+                    timeRemainingPercentage && timeRemainingPercentage > 100
+                      ? getTimeRemainingTooltipText(
+                          project,
+                          timeRemainingPercentage,
+                        )
+                      : null;
 
-                // Determine background color based on health status color and project status
-                let bgColor = "bg-green-500";
-                if (project.status === "completed") {
-                  bgColor = "bg-blue-500"; // Blue for completed projects
-                } else if (project.status === "cancelled") {
-                  bgColor = "bg-gray-500"; // Gray for cancelled projects
-                } else if (
-                  project.health_calculation_type === "manual" &&
-                  project.manual_status_color
-                ) {
-                  // Use the manual color if specified
-                  bgColor = `bg-${project.manual_status_color}-500`;
-                } else {
-                  // Use the computed health status color
-                  switch (healthStatusColor) {
-                    case "green":
-                      bgColor = "bg-green-500";
-                      break;
-                    case "yellow":
-                      bgColor = "bg-yellow-500";
-                      break;
-                    case "red":
-                      bgColor = "bg-red-500";
-                      break;
-                    default:
-                      bgColor = "bg-green-500";
+                  // Get the standardized health status color
+                  const healthStatusColor =
+                    getProjectStatusHealthColor(project);
+
+                  // Determine background color based on health status color and project status
+                  let bgColor = "bg-green-500";
+                  if (project.status === "completed") {
+                    bgColor = "bg-blue-500"; // Blue for completed projects
+                  } else if (project.status === "cancelled") {
+                    bgColor = "bg-gray-500"; // Gray for cancelled projects
+                  } else if (
+                    project.health_calculation_type === "manual" &&
+                    project.manual_status_color
+                  ) {
+                    // Use the manual color if specified
+                    bgColor = `bg-${project.manual_status_color}-500`;
+                  } else {
+                    // Use the computed health status color
+                    switch (healthStatusColor) {
+                      case "green":
+                        bgColor = "bg-green-500";
+                        break;
+                      case "yellow":
+                        bgColor = "bg-yellow-500";
+                        break;
+                      case "red":
+                        bgColor = "bg-red-500";
+                        break;
+                      default:
+                        bgColor = "bg-green-500";
+                    }
                   }
-                }
 
-                // Determine status text
-                let statusText = "In Progress";
-                if (project.status === "completed")
-                  statusText = "Project Complete";
-                else if (project.status === "on_hold")
-                  statusText = "Project on Hold";
-                else if (project.status === "cancelled")
-                  statusText = "Project Cancelled";
-                else if (project.status === "draft")
-                  statusText = "Project Draft";
+                  // Determine status text
+                  let statusText = "In Progress";
+                  if (project.status === "completed")
+                    statusText = "Project Complete";
+                  else if (project.status === "on_hold")
+                    statusText = "Project on Hold";
+                  else if (project.status === "cancelled")
+                    statusText = "Project Cancelled";
+                  else if (project.status === "draft")
+                    statusText = "Project Draft";
 
-                return (
-                  <div className="absolute bottom-0 right-0 flex items-center">
-                    <div className="flex items-start">
-                      <div
-                        className={`w-16 h-10 flex items-center justify-center text-white text-lg font-bold ${bgColor} rounded-full shadow-md border border-gray-700`}
-                      >
-                        {overallCompletion}%
+                  const healthIndicator = (
+                    <div className="absolute bottom-0 right-0 flex items-center">
+                      <div className="flex items-start">
+                        <div
+                          className={`w-16 h-10 flex items-center justify-center text-white text-lg font-bold ${bgColor} rounded-full shadow-md border border-gray-700`}
+                        >
+                          {overallCompletion}%
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </Card>
-        ))}
+                  );
 
-        {filteredProjects.length === 0 && (
-          <div className="col-span-full text-center py-8 text-blue-800">
-            {loading
-              ? "Loading projects..."
-              : allProjects.length === 0
-                ? "No projects yet. Use the Options menu to create one."
-                : "No projects match the current filters. Try changing your filter criteria."}
-          </div>
-        )}
+                  // Show additional time remaining info with tooltip if over 100%
+                  return (
+                    <>
+                      {healthIndicator}
+                      {timeRemainingPercentage &&
+                        timeRemainingPercentage > 100 &&
+                        tooltipText && (
+                          <div className="absolute bottom-12 right-0 flex items-center">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="bg-orange-100 text-orange-800 border border-orange-200 px-2 py-1 rounded-full text-xs font-medium cursor-help">
+                                  {timeRemainingPercentage}% time remaining
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p className="text-sm">{tooltipText}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
+                    </>
+                  );
+                })()}
+              </div>
+            </Card>
+          ))}
+
+          {filteredProjects.length === 0 && (
+            <div className="col-span-full text-center py-8 text-blue-800">
+              {loading
+                ? "Loading projects..."
+                : allProjects.length === 0
+                  ? "No projects yet. Use the Options menu to create one."
+                  : "No projects match the current filters. Try changing your filter criteria."}
+            </div>
+          )}
+        </div>
+        <Toaster />
       </div>
-      <Toaster />
-    </div>
+    </TooltipProvider>
   );
 };
 

@@ -120,7 +120,7 @@ export const calculateProjectDuration = (milestones: Milestone[]) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
 
-  // Calculate total days
+  // Calculate total days (project duration from start to end)
   const totalDays = Math.ceil(
     (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
   );
@@ -138,32 +138,53 @@ export const calculateProjectDuration = (milestones: Milestone[]) => {
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Calculate remaining days
-  let totalDaysRemaining = null;
-  let workingDaysRemaining = null;
-
-  // Always calculate remaining days (can be negative for overdue projects)
-  totalDaysRemaining = Math.ceil(
+  // CRITICAL FIX: Calculate remaining days from end date
+  // This is the source of the >100% issue!
+  let totalDaysRemaining = Math.ceil(
     (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
 
-  // Calculate working days remaining (can be negative for overdue projects)
-  workingDaysRemaining = 0;
-  const startCalcDate = new Date(Math.min(today.getTime(), endDate.getTime()));
-  const endCalcDate = new Date(Math.max(today.getTime(), endDate.getTime()));
-  const calcDate = new Date(startCalcDate);
+  console.log(`[DURATION_CALC] Project duration calculation:`, {
+    startDate: startDate.toDateString(),
+    endDate: endDate.toDateString(),
+    today: today.toDateString(),
+    totalDays, // Duration from start to end
+    totalDaysRemaining, // Days from today to end
+    ratio: totalDaysRemaining / totalDays,
+    percentageIfUsedDirectly: Math.round(
+      (totalDaysRemaining / totalDays) * 100,
+    ),
+    issue:
+      totalDaysRemaining > totalDays
+        ? "WILL CAUSE >100% if used directly"
+        : "Normal",
+  });
 
-  while (calcDate <= endCalcDate) {
-    const dayOfWeek = calcDate.getDay();
-    // 0 = Sunday, 6 = Saturday
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      workingDaysRemaining++;
+  // Calculate working days remaining
+  let workingDaysRemaining = 0;
+  const calcStartDate = new Date(today);
+  const calcEndDate = new Date(endDate);
+
+  if (calcEndDate >= calcStartDate) {
+    // Project end is in the future - count working days from today to end
+    const tempDate = new Date(calcStartDate);
+    while (tempDate <= calcEndDate) {
+      const dayOfWeek = tempDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDaysRemaining++;
+      }
+      tempDate.setDate(tempDate.getDate() + 1);
     }
-    calcDate.setDate(calcDate.getDate() + 1);
-  }
-
-  // If project is overdue, make working days remaining negative
-  if (endDate < today) {
+  } else {
+    // Project is overdue - count working days from end to today (negative)
+    const tempDate = new Date(calcEndDate);
+    while (tempDate <= calcStartDate) {
+      const dayOfWeek = tempDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDaysRemaining++;
+      }
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
     workingDaysRemaining = -workingDaysRemaining;
   }
 
@@ -177,8 +198,9 @@ export const calculateProjectDuration = (milestones: Milestone[]) => {
   };
 };
 
-// Calculate time remaining as a percentage of total project duration
-const calculateTimeRemainingPercentage = (
+// EXPORTED helper function to ensure consistent time remaining percentage calculations
+// This should be used everywhere time remaining percentages are displayed
+export const calculateTimeRemainingPercentage = (
   project: ProjectWithRelations | Project,
 ): number | null => {
   const projectWithRelations = project as ProjectWithRelations;
@@ -195,14 +217,144 @@ const calculateTimeRemainingPercentage = (
   const totalDays = projectWithRelations.total_days;
   const remainingDays = projectWithRelations.total_days_remaining;
 
+  console.log(`[TIME_CALC] Input data:`, {
+    totalDays,
+    remainingDays,
+    calculated_start_date: projectWithRelations.calculated_start_date,
+    calculated_end_date: projectWithRelations.calculated_end_date,
+  });
+
   // If project is overdue, return 0%
   if (remainingDays < 0) {
+    console.log(`[TIME_CALC] Project is overdue, returning 0%`);
     return 0;
   }
 
-  // Calculate percentage of time remaining
-  const timeRemainingPercentage = Math.round((remainingDays / totalDays) * 100);
-  return Math.max(0, Math.min(100, timeRemainingPercentage));
+  // CRITICAL FIX: Always cap at 100% regardless of project type
+  // This is the fundamental issue - we should NEVER show >100% time remaining
+  const rawPercentage = Math.round((remainingDays / totalDays) * 100);
+  const cappedPercentage = Math.max(0, Math.min(100, rawPercentage));
+
+  console.log(`[TIME_CALC] Time remaining calculation:`, {
+    totalDays,
+    remainingDays,
+    rawPercentage,
+    cappedPercentage,
+    willReturn: cappedPercentage,
+  });
+
+  // Additional check for future projects - but still cap at 100%
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startDate = projectWithRelations.calculated_start_date
+    ? new Date(projectWithRelations.calculated_start_date)
+    : null;
+
+  if (startDate && startDate > today) {
+    console.log(
+      `[TIME_CALC] Future project detected: start=${startDate.toDateString()}, today=${today.toDateString()}, but still capping at 100%`,
+    );
+    // Even for future projects, never exceed 100%
+    return Math.min(100, cappedPercentage);
+  }
+
+  return cappedPercentage;
+};
+
+// Helper function to get a human-readable time remaining description
+export const getTimeRemainingDescription = (
+  project: ProjectWithRelations | Project,
+): string => {
+  const projectWithRelations = project as ProjectWithRelations;
+
+  if (
+    !projectWithRelations.total_days ||
+    projectWithRelations.total_days_remaining === null ||
+    projectWithRelations.total_days_remaining === undefined
+  ) {
+    return "No timeline data";
+  }
+
+  const totalDays = projectWithRelations.total_days;
+  const remainingDays = projectWithRelations.total_days_remaining;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const startDate = projectWithRelations.calculated_start_date
+    ? new Date(projectWithRelations.calculated_start_date)
+    : null;
+  const endDate = projectWithRelations.calculated_end_date
+    ? new Date(projectWithRelations.calculated_end_date)
+    : null;
+
+  // If project is overdue
+  if (remainingDays < 0) {
+    const overdueDays = Math.abs(remainingDays);
+    return `${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue`;
+  }
+
+  // If project starts in the future
+  if (startDate && startDate > today) {
+    const daysUntilStart = Math.ceil(
+      (startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    return `Starts in ${daysUntilStart} day${daysUntilStart === 1 ? "" : "s"} (${remainingDays} days total until completion)`;
+  }
+
+  // For active projects, show remaining days and percentage of total duration
+  // CRITICAL FIX: Use the standardized function to ensure consistency
+  const timeRemainingPercentage = calculateTimeRemainingPercentage(project);
+  const cappedPercentage =
+    timeRemainingPercentage !== null ? timeRemainingPercentage : 0;
+
+  console.log(`[TIME_DESC] Time remaining description calculation:`, {
+    totalDays,
+    remainingDays,
+    timeRemainingPercentage,
+    cappedPercentage,
+  });
+
+  if (cappedPercentage === 100) {
+    return `${remainingDays} day${remainingDays === 1 ? "" : "s"} remaining (full duration)`;
+  } else {
+    return `${remainingDays} day${remainingDays === 1 ? "" : "s"} remaining (${cappedPercentage}% of duration)`;
+  }
+};
+
+// Helper function to generate tooltip text for time remaining percentages over 100%
+export const getTimeRemainingTooltipText = (
+  project: ProjectWithRelations | Project,
+  percentage: number,
+): string | null => {
+  const projectWithRelations = project as ProjectWithRelations;
+
+  // Only show tooltip for percentages over 100%
+  if (percentage <= 100) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startDate = projectWithRelations.calculated_start_date
+    ? new Date(projectWithRelations.calculated_start_date)
+    : null;
+  const endDate = projectWithRelations.calculated_end_date
+    ? new Date(projectWithRelations.calculated_end_date)
+    : null;
+
+  // Check if project starts in the future
+  if (startDate && startDate > today) {
+    const daysUntilStart = Math.ceil(
+      (startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    const totalDays = projectWithRelations.total_days || 0;
+    const remainingDays = projectWithRelations.total_days_remaining || 0;
+
+    return `This project shows ${percentage}% time remaining because it hasn't started yet. The project starts in ${daysUntilStart} day${daysUntilStart === 1 ? "" : "s"}, so the time from today to completion (${remainingDays} days) is longer than the actual project duration (${totalDays} days).`;
+  }
+
+  // Fallback explanation for other cases where percentage exceeds 100%
+  return `This percentage exceeds 100% due to how time remaining is calculated. This can happen when the time from today to project completion is longer than the original project duration.`;
 };
 
 // Standardized function to calculate project health status color with time awareness
@@ -278,8 +430,37 @@ export const calculateProjectHealthStatusColor = (
       return color;
     }
 
-    // Time-aware health calculation with more lenient thresholds
+    // FIXED: Improved time-aware health calculation
     let color: "red" | "yellow" | "green" = "green";
+
+    // Check if project starts in the future
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = (project as ProjectWithRelations).calculated_start_date
+      ? new Date((project as ProjectWithRelations).calculated_start_date!)
+      : null;
+
+    const projectStartsInFuture = startDate && startDate > today;
+
+    // FIXED: Special handling for future projects
+    if (projectStartsInFuture) {
+      // Projects that haven't started yet should generally be green
+      // unless there are obvious issues with milestone setup
+      if (weightedCompletion > 50) {
+        // If milestones are already significantly complete before project starts,
+        // this might indicate data issues, but still lean positive
+        color = "yellow";
+        console.log(
+          `[HEALTH_CALC] Future project with high completion: ${color} (completion: ${weightedCompletion}%, starts in future)`,
+        );
+      } else {
+        color = "green";
+        console.log(
+          `[HEALTH_CALC] Future project: ${color} (completion: ${weightedCompletion}%, starts in future)`,
+        );
+      }
+      return color;
+    }
 
     // If project is overdue (0% time remaining), be strict with milestone requirements
     if (timeRemainingPercentage === 0) {
@@ -292,11 +473,13 @@ export const calculateProjectHealthStatusColor = (
       return color;
     }
 
-    // If substantial time remaining (>60% of total duration), be very lenient
-    if (timeRemainingPercentage > 60) {
-      if (weightedCompletion >= 10)
+    // FIXED: More intuitive thresholds - projects with more time should be healthier
+    // If substantial time remaining (>70% of total duration), be very lenient
+    if (timeRemainingPercentage > 70) {
+      if (weightedCompletion >= 5)
         color = "green"; // Very low threshold for green when substantial time remains
-      else if (weightedCompletion >= 5) color = "yellow";
+      else if (weightedCompletion >= 0)
+        color = "yellow"; // Even 0% completion can be yellow with lots of time
       else color = "red";
       console.log(
         `[HEALTH_CALC] Substantial time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
@@ -304,11 +487,11 @@ export const calculateProjectHealthStatusColor = (
       return color;
     }
 
-    // If plenty of time remaining (30-60% of total duration), be more lenient
-    if (timeRemainingPercentage > 30) {
-      if (weightedCompletion >= 20)
+    // If plenty of time remaining (40-70% of total duration), be more lenient
+    if (timeRemainingPercentage > 40) {
+      if (weightedCompletion >= 15)
         color = "green"; // Lower threshold for green when plenty of time
-      else if (weightedCompletion >= 10) color = "yellow";
+      else if (weightedCompletion >= 5) color = "yellow";
       else color = "red";
       console.log(
         `[HEALTH_CALC] Plenty of time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
@@ -316,10 +499,10 @@ export const calculateProjectHealthStatusColor = (
       return color;
     }
 
-    // If moderate time remaining (15-30% of total duration), use balanced approach
-    if (timeRemainingPercentage > 15) {
-      if (weightedCompletion >= 40) color = "green";
-      else if (weightedCompletion >= 25) color = "yellow";
+    // If moderate time remaining (20-40% of total duration), use balanced approach
+    if (timeRemainingPercentage > 20) {
+      if (weightedCompletion >= 30) color = "green";
+      else if (weightedCompletion >= 15) color = "yellow";
       else color = "red";
       console.log(
         `[HEALTH_CALC] Moderate time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
@@ -327,9 +510,9 @@ export const calculateProjectHealthStatusColor = (
       return color;
     }
 
-    // If little time remaining (1-15% of total duration), be stricter
-    if (weightedCompletion >= 80) color = "green";
-    else if (weightedCompletion >= 60) color = "yellow";
+    // If little time remaining (1-20% of total duration), be stricter
+    if (weightedCompletion >= 70) color = "green";
+    else if (weightedCompletion >= 50) color = "yellow";
     else color = "red";
 
     console.log(

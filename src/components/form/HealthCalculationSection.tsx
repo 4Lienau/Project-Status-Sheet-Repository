@@ -21,6 +21,8 @@ import {
   calculateProjectHealthStatusColor,
   calculateWeightedCompletion,
   updateProjectComputedStatusColor,
+  calculateTimeRemainingPercentage,
+  getTimeRemainingTooltipText,
 } from "@/lib/services/project";
 
 interface HealthCalculationSectionProps {
@@ -125,7 +127,12 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
         "No milestones defined - defaulting to GREEN (On Track) for active projects.";
     }
 
-    return { color: calculatedColor, percentage, reasoning };
+    return {
+      color: calculatedColor,
+      percentage,
+      reasoning,
+      timeRemainingPercentage,
+    };
   }, [formData]);
 
   // Function to refresh computed status color in database
@@ -274,9 +281,37 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
               {currentHealthStatus.percentage}%)
             </Badge>
           </div>
-          <p className="text-xs text-gray-600 leading-relaxed">
-            {currentHealthStatus.reasoning}
-          </p>
+          {(() => {
+            // Check if we need to show a tooltip for time remaining percentage over 100%
+            const timeRemainingPercentage =
+              currentHealthStatus.timeRemainingPercentage;
+            const tooltipText =
+              timeRemainingPercentage && timeRemainingPercentage > 100
+                ? getTimeRemainingTooltipText(formData, timeRemainingPercentage)
+                : null;
+
+            const reasoningElement = (
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {currentHealthStatus.reasoning}
+              </p>
+            );
+
+            // If we have tooltip text, wrap the reasoning with a tooltip
+            if (tooltipText) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="cursor-help">{reasoningElement}</div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-sm">{tooltipText}</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return reasoningElement;
+          })()}
         </div>
         <Select
           value={formData.health_calculation_type}
