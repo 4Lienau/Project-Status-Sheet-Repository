@@ -32,6 +32,7 @@ export const exportProjectsToExcel = async (
     { header: "Actuals", key: "budget_actuals", width: 15 },
     { header: "Forecast", key: "budget_forecast", width: 15 },
     { header: "Budget Variance", key: "variance", width: 15 },
+    { header: "Budget Remaining", key: "budget_remaining", width: 15 },
     { header: "Charter Link", key: "charter_link", width: 30 },
     { header: "Sponsors", key: "sponsors", width: 20 },
     { header: "Business Leads", key: "business_leads", width: 20 },
@@ -90,6 +91,7 @@ export const exportProjectsToExcel = async (
       budget_actuals: project.budget_actuals,
       budget_forecast: project.budget_forecast,
       variance: project.budget_total - project.budget_forecast,
+      budget_remaining: project.budget_total - (project.budget_actuals || 0),
       charter_link: project.charter_link,
       sponsors: stripHtmlTags(project.sponsors || ""),
       business_leads: stripHtmlTags(project.business_leads || ""),
@@ -121,8 +123,8 @@ export const exportProjectsToExcel = async (
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      // Format budget columns (8, 9, 10, 11)
-      if (colNumber >= 8 && colNumber <= 11) {
+      // Format budget columns (8, 9, 10, 11, 12)
+      if (colNumber >= 8 && colNumber <= 12) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
@@ -149,23 +151,23 @@ export const exportProjectsToExcel = async (
         cell.font = { bold: true };
       }
 
-      // Format duration columns (16, 17, 18, 19) - center align numbers
-      if (colNumber >= 16 && colNumber <= 19) {
+      // Format duration columns (17, 18, 19, 20) - center align numbers
+      if (colNumber >= 17 && colNumber <= 20) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      // Format date columns (20, 21, 22, 23)
-      if (colNumber >= 20 && colNumber <= 23) {
+      // Format date columns (21, 22, 23, 24)
+      if (colNumber >= 21 && colNumber <= 24) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Center milestone and risk counts
-      if (colNumber === 24 || colNumber === 25) {
+      if (colNumber === 25 || colNumber === 26) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Make charter link clickable
-      if (colNumber === 12 && cell.value) {
+      if (colNumber === 13 && cell.value) {
         const url = cell.value.toString();
         cell.value = { text: url, hyperlink: url };
         cell.font = { color: { argb: "FF0000FF" }, underline: true };
@@ -317,6 +319,17 @@ export const exportProjectsToExcel = async (
               ? "Yellow (At Risk)"
               : "Red (Critical)";
 
+      const overallCompletion = project.milestones?.length
+        ? Math.round(
+            project.milestones.reduce((acc, m) => acc + m.completion, 0) /
+              project.milestones.length,
+          )
+        : 0;
+
+      const budgetVariance = project.budget_total - project.budget_forecast;
+      const budgetRemaining =
+        project.budget_total - (project.budget_actuals || 0);
+
       return [
         project.project_id || "",
         stripHtmlTags(project.title),
@@ -324,16 +337,12 @@ export const exportProjectsToExcel = async (
         stripHtmlTags(project.value_statement || ""),
         (project.status || "active").toUpperCase(),
         healthStatusText,
-        project.milestones?.length
-          ? Math.round(
-              project.milestones.reduce((acc, m) => acc + m.completion, 0) /
-                project.milestones.length,
-            )
-          : 0,
+        overallCompletion,
         project.budget_total,
         project.budget_actuals,
         project.budget_forecast,
-        project.budget_total - project.budget_forecast,
+        budgetVariance,
+        budgetRemaining,
         project.charter_link,
         stripHtmlTags(project.sponsors || ""),
         stripHtmlTags(project.business_leads || ""),
@@ -487,6 +496,7 @@ export const exportProjectsToExcel = async (
     { header: "Variance", key: "variance", width: 20 },
     { header: "% Budget Used", key: "budget_used", width: 15 },
     { header: "% Budget Forecast", key: "budget_forecast_pct", width: 15 },
+    { header: "Budget Remaining", key: "budget_remaining", width: 20 },
   ];
 
   budgetSheet.columns = budgetColumns;
@@ -511,6 +521,7 @@ export const exportProjectsToExcel = async (
       variance: variance,
       budget_used: budgetUsed,
       budget_forecast_pct: budgetForecast,
+      budget_remaining: project.budget_total - (project.budget_actuals || 0),
     });
 
     row.eachCell((cell, colNumber) => {
@@ -522,8 +533,8 @@ export const exportProjectsToExcel = async (
         cell.font = { bold: true };
       }
 
-      // Format currency columns
-      if (colNumber >= 4 && colNumber <= 7) {
+      // Format currency columns (including budget remaining)
+      if ((colNumber >= 4 && colNumber <= 7) || colNumber === 10) {
         cell.numFmt = '"$"#,##0.00';
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
@@ -641,6 +652,7 @@ export const exportProjectsToExcel = async (
         variance,
         budgetUsed,
         budgetForecast,
+        project.budget_total - (project.budget_actuals || 0),
       ];
     }),
   });

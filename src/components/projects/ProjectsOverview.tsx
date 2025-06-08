@@ -336,6 +336,33 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
         size: 100,
         cell: (info) => formatCurrency(info.getValue()),
       }),
+      columnHelper.accessor(
+        (row) => (row.budget_total || 0) - (row.budget_actuals || 0),
+        {
+          id: "budget_remaining",
+          header: "Budget Remaining",
+          size: 140,
+          enableSorting: true,
+          sortingFn: (rowA, rowB) => {
+            const a =
+              (rowA.original.budget_total || 0) -
+              (rowA.original.budget_actuals || 0);
+            const b =
+              (rowB.original.budget_total || 0) -
+              (rowB.original.budget_actuals || 0);
+            return a - b;
+          },
+          cell: (info) => {
+            const remaining = info.getValue();
+            const isNegative = remaining < 0;
+            return (
+              <span className={isNegative ? "text-red-600 font-semibold" : ""}>
+                {formatCurrency(remaining)}
+              </span>
+            );
+          },
+        },
+      ),
       columnHelper.accessor("budget_forecast", {
         id: "budget_forecast",
         header: "Forecast",

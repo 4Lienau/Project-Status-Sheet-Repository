@@ -389,18 +389,20 @@ const ProjectList = ({
                 </p>
               )}
 
-              {/* Total Budget */}
+              {/* Budget Information */}
               {project.budget_total !== null &&
                 project.budget_total !== undefined && (
-                  <p className="text-sm text-blue-800 mb-3 font-medium">
-                    Total Budget:{" "}
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(project.budget_total)}
-                  </p>
+                  <div className="space-y-1 mb-3">
+                    <p className="text-sm text-blue-800 font-medium">
+                      Total Budget:{" "}
+                      {new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      }).format(project.budget_total)}
+                    </p>
+                  </div>
                 )}
 
               <p className="text-sm text-blue-800 mb-4">

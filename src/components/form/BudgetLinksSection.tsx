@@ -46,24 +46,60 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="max-w-xs">
-                    Enter the total approved budget for this project as a
-                    numerical value (without currency symbols).
+                    Enter the total approved budget for this project. Use
+                    numbers only (e.g., 50000).
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <Input
-              id="budget_total"
-              value={formData.budget.total}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  budget: { ...prev.budget, total: e.target.value },
-                }))
-              }
-              placeholder="Enter total budget"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
+            <div className="relative max-w-xs">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-700 font-semibold z-10">
+                $
+              </span>
+              <Input
+                id="budget_total"
+                value={(() => {
+                  // If the field is focused or contains non-numeric characters, show raw value
+                  const rawValue = formData.budget.total?.toString() || "";
+                  const cleanValue = rawValue.replace(/[,$\s]/g, "");
+                  const numValue = parseFloat(cleanValue);
+
+                  // If it's a valid number and not currently being edited, format it
+                  if (
+                    !isNaN(numValue) &&
+                    numValue > 0 &&
+                    !rawValue.includes("$") &&
+                    !rawValue.includes(",")
+                  ) {
+                    return numValue.toLocaleString("en-US", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    });
+                  }
+
+                  return rawValue;
+                })()}
+                onChange={(e) => {
+                  // Allow user to type freely, store the raw input temporarily
+                  const rawValue = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    budget: { ...prev.budget, total: rawValue },
+                  }));
+                }}
+                onBlur={(e) => {
+                  // Clean and parse the value on blur
+                  const cleanValue = e.target.value.replace(/[,$\s]/g, "");
+                  const numValue = parseFloat(cleanValue) || 0;
+                  setFormData((prev) => ({
+                    ...prev,
+                    budget: { ...prev.budget, total: numValue.toString() },
+                  }));
+                }}
+                placeholder="0.00"
+                className="bg-white border-gray-300 pl-8"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -75,24 +111,60 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="max-w-xs">
-                    Enter the actual amount spent on the project to date as a
-                    numerical value.
+                    Enter the actual amount spent on the project to date. Use
+                    numbers only (e.g., 25000).
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <Input
-              id="budget_actuals"
-              value={formData.budget.actuals}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  budget: { ...prev.budget, actuals: e.target.value },
-                }))
-              }
-              placeholder="Enter actuals"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
+            <div className="relative max-w-xs">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-700 font-semibold z-10">
+                $
+              </span>
+              <Input
+                id="budget_actuals"
+                value={(() => {
+                  // If the field is focused or contains non-numeric characters, show raw value
+                  const rawValue = formData.budget.actuals?.toString() || "";
+                  const cleanValue = rawValue.replace(/[,$\s]/g, "");
+                  const numValue = parseFloat(cleanValue);
+
+                  // If it's a valid number and not currently being edited, format it
+                  if (
+                    !isNaN(numValue) &&
+                    numValue > 0 &&
+                    !rawValue.includes("$") &&
+                    !rawValue.includes(",")
+                  ) {
+                    return numValue.toLocaleString("en-US", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    });
+                  }
+
+                  return rawValue;
+                })()}
+                onChange={(e) => {
+                  // Allow user to type freely, store the raw input temporarily
+                  const rawValue = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    budget: { ...prev.budget, actuals: rawValue },
+                  }));
+                }}
+                onBlur={(e) => {
+                  // Clean and parse the value on blur
+                  const cleanValue = e.target.value.replace(/[,$\s]/g, "");
+                  const numValue = parseFloat(cleanValue) || 0;
+                  setFormData((prev) => ({
+                    ...prev,
+                    budget: { ...prev.budget, actuals: numValue.toString() },
+                  }));
+                }}
+                placeholder="0.00"
+                className="bg-white border-gray-300 pl-8"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -104,24 +176,104 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="max-w-xs">
-                    Enter the forecasted remaining spend for the project as a
-                    numerical value.
+                    Enter the total forecasted spend for the project. Use
+                    numbers only (e.g., 48000).
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <Input
-              id="budget_forecast"
-              value={formData.budget.forecast}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  budget: { ...prev.budget, forecast: e.target.value },
-                }))
-              }
-              placeholder="Enter forecast"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
+            <div className="relative max-w-xs">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-700 font-semibold z-10">
+                $
+              </span>
+              <Input
+                id="budget_forecast"
+                value={(() => {
+                  // If the field is focused or contains non-numeric characters, show raw value
+                  const rawValue = formData.budget.forecast?.toString() || "";
+                  const cleanValue = rawValue.replace(/[,$\s]/g, "");
+                  const numValue = parseFloat(cleanValue);
+
+                  // If it's a valid number and not currently being edited, format it
+                  if (
+                    !isNaN(numValue) &&
+                    numValue > 0 &&
+                    !rawValue.includes("$") &&
+                    !rawValue.includes(",")
+                  ) {
+                    return numValue.toLocaleString("en-US", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    });
+                  }
+
+                  return rawValue;
+                })()}
+                onChange={(e) => {
+                  // Allow user to type freely, store the raw input temporarily
+                  const rawValue = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    budget: { ...prev.budget, forecast: rawValue },
+                  }));
+                }}
+                onBlur={(e) => {
+                  // Clean and parse the value on blur
+                  const cleanValue = e.target.value.replace(/[,$\s]/g, "");
+                  const numValue = parseFloat(cleanValue) || 0;
+                  setFormData((prev) => ({
+                    ...prev,
+                    budget: { ...prev.budget, forecast: numValue.toString() },
+                  }));
+                }}
+                placeholder="0.00"
+                className="bg-white border-gray-300 pl-8"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <Label htmlFor="budget_remaining">Budget Remaining</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">
+                    Calculated automatically as Total Budget minus Actuals. This
+                    shows how much budget is still available.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="max-w-xs">
+              <Input
+                id="budget_remaining"
+                value={(() => {
+                  // Ensure we're working with clean numeric values
+                  const totalStr = formData.budget.total?.toString() || "0";
+                  const actualsStr = formData.budget.actuals?.toString() || "0";
+
+                  // Remove any existing formatting before parsing
+                  const total = parseFloat(totalStr.replace(/[,$]/g, "")) || 0;
+                  const actuals =
+                    parseFloat(actualsStr.replace(/[,$]/g, "")) || 0;
+
+                  const remaining = total - actuals;
+
+                  // Format as currency
+                  return remaining.toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  });
+                })()}
+                readOnly
+                className="bg-gray-100 border-gray-300 text-gray-700 font-medium"
+              />
+            </div>
           </div>
         </div>
 
