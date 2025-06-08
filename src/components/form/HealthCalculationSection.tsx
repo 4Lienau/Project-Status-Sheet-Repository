@@ -282,35 +282,35 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
             </Badge>
           </div>
           {(() => {
-            // Check if we need to show a tooltip for time remaining percentage over 100%
+            // Check if we need to show explanation for time remaining percentage over 100%
             const timeRemainingPercentage =
               currentHealthStatus.timeRemainingPercentage;
-            const tooltipText =
+            const explanationText =
               timeRemainingPercentage && timeRemainingPercentage > 100
                 ? getTimeRemainingTooltipText(formData, timeRemainingPercentage)
                 : null;
 
-            const reasoningElement = (
-              <p className="text-xs text-gray-600 leading-relaxed">
-                {currentHealthStatus.reasoning}
-              </p>
+            // Add asterisk to reasoning if percentage is over 100%
+            const reasoningWithAsterisk = explanationText
+              ? currentHealthStatus.reasoning.replace(
+                  new RegExp(`${timeRemainingPercentage}% time remaining`),
+                  `${timeRemainingPercentage}% time remaining*`,
+                )
+              : currentHealthStatus.reasoning;
+
+            return (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  {reasoningWithAsterisk}
+                </p>
+                {explanationText && (
+                  <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-md p-2 leading-relaxed">
+                    <span className="font-medium">* </span>
+                    {explanationText}
+                  </p>
+                )}
+              </div>
             );
-
-            // If we have tooltip text, wrap the reasoning with a tooltip
-            if (tooltipText) {
-              return (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="cursor-help">{reasoningElement}</div>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="text-sm">{tooltipText}</p>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            }
-
-            return reasoningElement;
           })()}
         </div>
         <Select
