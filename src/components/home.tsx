@@ -19,7 +19,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "./layout/Layout";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import WelcomePage from "./welcome/WelcomePage";
 import ProjectList from "./projects/ProjectList";
 import ProjectsOverview from "./projects/ProjectsOverview";
@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Plus, Calendar } from "lucide-react";
 import { exportProjectsToExcel } from "@/lib/services/excelExport";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 // Helper functions for localStorage persistence
 const getStorageKey = (userId: string, filterType: string) =>
@@ -96,14 +97,27 @@ const loadFilterFromStorage = (
   }
 };
 
-const Home = () => {
+interface HomeProps {
+  mode?: "list" | "form" | "preview" | "overview";
+}
+
+const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { user, loading } = useAuth();
+
+  // Determine mode from props (for URL-based routing) or default to list
   const [mode, setMode] = useState<"list" | "form" | "preview" | "overview">(
-    "list",
+    propMode || "list",
   );
+
+  // Update mode when prop changes (for URL-based navigation)
+  useEffect(() => {
+    if (propMode) {
+      setMode(propMode);
+    }
+  }, [propMode]);
   const [projectData, setProjectData] = useState(null);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -256,10 +270,34 @@ const Home = () => {
   }, [user]);
 
   const handleSelectProject = async (project: Project) => {
-    const fullProject = await projectService.getProject(project.id);
-    if (fullProject) {
-      setProjectData(fullProject);
-      setMode("preview");
+    // Navigate to project view page instead of using local state
+    navigate(`/project/${project.id}`);
+  };
+
+  const handleCreateNew = () => {
+    // Navigate to new project page instead of using local state
+    navigate("/project/new");
+  };
+
+  const handleViewOverview = () => {
+    // Navigate to overview page instead of using local state
+    navigate("/overview");
+  };
+
+  // Get breadcrumb items based on current mode
+  const getBreadcrumbItems = () => {
+    switch (mode) {
+      case "form":
+        return [{ label: "New Project", current: true }];
+      case "overview":
+        return [{ label: "Projects Overview", current: true }];
+      case "preview":
+        if (projectData) {
+          return [{ label: projectData.title || "Project", current: true }];
+        }
+        return [];
+      default:
+        return [];
     }
   };
 
@@ -312,6 +350,13 @@ const Home = () => {
         </div>
 
         <div className="max-w-7xl mx-auto space-y-6 relative z-10">
+          {/* Breadcrumb Navigation */}
+          {mode !== "list" && (
+            <div className="mb-6">
+              <Breadcrumb items={getBreadcrumbItems()} />
+            </div>
+          )}
+
           {mode === "list" && (
             <div className="space-y-6">
               {/* Header with logo */}
@@ -579,7 +624,7 @@ const Home = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem
-                          onClick={() => setMode("form")}
+                          onClick={handleCreateNew}
                           className="flex items-center gap-2 cursor-pointer"
                         >
                           <Plus className="h-4 w-4" />
@@ -658,7 +703,7 @@ const Home = () => {
                           Export to Excel
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => setMode("overview")}
+                          onClick={handleViewOverview}
                           className="flex items-center gap-2 cursor-pointer"
                         >
                           <FileSpreadsheet className="h-4 w-4" />
@@ -678,7 +723,7 @@ const Home = () => {
               </div>
               <ProjectList
                 onSelectProject={handleSelectProject}
-                onCreateNew={() => setMode("form")}
+                onCreateNew={handleCreateNew}
                 filterManager={selectedManagers}
                 filterStatus={selectedStatus}
                 filterDepartment={selectedDepartment}
@@ -698,14 +743,14 @@ const Home = () => {
                 </h2>
                 <Button
                   variant="outline"
-                  onClick={() => setMode("list")}
+                  onClick={() => navigate("/")}
                   className="text-white border-white/30 hover:bg-white/10 hover:text-white"
                 >
                   Cancel
                 </Button>
               </div>
               <ProjectForm
-                onBack={() => setMode("list")}
+                onBack={() => navigate("/")}
                 onSubmit={async (data) => {
                   if (!data.title.trim()) {
                     toast({
@@ -807,8 +852,8 @@ const Home = () => {
                         description: "Project created successfully",
                         className: "bg-green-50 border-green-200",
                       });
-                      setProjectData(project);
-                      setMode("preview");
+                      // Navigate to the new project's edit page
+                      navigate(`/project/${project.id}/edit`);
                     }
                   } catch (error) {
                     console.error("Error creating project:", error);
@@ -824,18 +869,9 @@ const Home = () => {
             </div>
           )}
 
-          {mode === "preview" && projectData && (
-            <ProjectDashboard
-              project={projectData}
-              onBack={() => setMode("list")}
-              initialEditMode={true}
-              id={projectData.id}
-            />
-          )}
-
           {mode === "overview" && (
             <ProjectsOverview
-              onBack={() => setMode("list")}
+              onBack={() => navigate("/")}
               filterManager={selectedManagers}
               filterStatus={selectedStatus}
               filterDepartment={selectedDepartment}

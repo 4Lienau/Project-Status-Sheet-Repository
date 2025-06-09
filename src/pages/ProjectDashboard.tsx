@@ -26,9 +26,11 @@ import { projectService } from "@/lib/services/project";
 import { projectVersionsService } from "@/lib/services/projectVersions";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import ProjectForm from "@/components/ProjectForm";
 import StatusSheet from "@/components/StatusSheet";
 import { useToast } from "@/components/ui/use-toast";
+import Layout from "@/components/layout/Layout";
 import {
   compareVersions,
   type VersionChanges,
@@ -696,6 +698,30 @@ const ProjectDashboard = ({
     }
   };
 
+  // Get breadcrumb items based on current state
+  const getBreadcrumbItems = () => {
+    const items = [];
+
+    if (project?.title) {
+      items.push({
+        label:
+          project.title.replace(/<[^>]*>/g, "").substring(0, 50) +
+          (project.title.length > 50 ? "..." : ""),
+        href: `/project/${project.id}`,
+        current: !isEditing,
+      });
+
+      if (isEditing) {
+        items.push({
+          label: "Edit",
+          current: true,
+        });
+      }
+    }
+
+    return items;
+  };
+
   // Function to check for unsaved changes
   const checkUnsavedChanges = (callback: () => void) => {
     if (isEditing) {
@@ -755,396 +781,367 @@ const ProjectDashboard = ({
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              if (isEditing) {
-                // Check for unsaved changes before navigating back
-                checkUnsavedChanges(handleBack);
-              } else {
-                handleBack();
-              }
-            }}
-            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Projects
-          </Button>
-
-          {/* Version Navigation - Only show in Status Sheet view */}
-          {!isEditing && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreviousVersion}
-                disabled={
-                  (currentVersionIndex === -1 && versions.length === 0) ||
-                  currentVersionIndex >= versions.length - 1 ||
-                  isLoadingVersion
-                }
-                className="flex items-center gap-1 text-white hover:text-white border-white/30 hover:bg-white/20 bg-white/10"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="text-white font-medium">
-                  Older ({versions.length} versions)
-                </span>
-              </Button>
-
-              <div className="text-sm px-3 py-2 text-white font-medium bg-white/10 rounded border border-white/30">
-                {isLoadingVersion ? (
-                  <span className="text-white">Loading...</span>
-                ) : currentVersionIndex === -1 ? (
-                  <div className="text-center">
-                    <div className="text-white font-bold">Current Version</div>
-                    <div className="text-xs text-white/90 mt-1">
-                      Latest saved version
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <div className="text-white font-bold">
-                      Version {versions.length - currentVersionIndex} of{" "}
-                      {versions.length}
-                    </div>
-                    <div className="text-xs text-white/90">
-                      (Database Version #
-                      {versions[currentVersionIndex]?.version_number || "N/A"})
-                    </div>
-                    {versions[currentVersionIndex]?.created_at && (
-                      <div className="text-xs text-white/90 mt-1">
-                        Saved:{" "}
-                        {new Date(
-                          versions[currentVersionIndex].created_at,
-                        ).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextVersion}
-                disabled={currentVersionIndex === -1 || isLoadingVersion}
-                className="flex items-center gap-1 text-white hover:text-white border-white/30 hover:bg-white/20 bg-white/10"
-              >
-                <span className="text-white font-medium">Newer</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+    <Layout>
+      <div className="container mx-auto py-6 space-y-6">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-4">
+          <Breadcrumb items={getBreadcrumbItems()} />
         </div>
 
-        <Button
-          onClick={async () => {
-            if (isEditing) {
-              // Check for unsaved changes before switching to Status Sheet view
-              const formElement = document.querySelector("form");
-              const formHasChanges =
-                formElement?.getAttribute("data-has-changes") === "true";
-              const formHasInteraction =
-                formElement?.getAttribute("data-user-interaction") === "true";
-              const isAddingMilestones =
-                formElement?.getAttribute("data-adding-milestones") === "true";
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (isEditing) {
+                  // Check for unsaved changes before navigating back
+                  checkUnsavedChanges(handleBack);
+                } else {
+                  handleBack();
+                }
+              }}
+              className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Projects
+            </Button>
 
-              if (formHasChanges && formHasInteraction) {
-                // Show confirmation dialog
-                const confirmLeave = window.confirm(
-                  "You have unsaved changes. Are you sure you want to leave without saving?",
-                );
-                if (confirmLeave) {
-                  // Fetch fresh data before switching view
-                  setLoading(true);
-                  try {
-                    const projectId = id || (project && project.id);
-                    if (projectId) {
-                      const freshData =
-                        await projectService.getProject(projectId);
-                      if (freshData) {
-                        setProject(freshData);
-                      }
-                    }
-                  } catch (error) {
-                    console.error("Error fetching fresh project data:", error);
-                    toast({
-                      title: "Error",
-                      description: "Failed to load latest project data",
-                      variant: "destructive",
-                    });
-                  } finally {
-                    setLoading(false);
+            {/* Version Navigation - Only show in Status Sheet view */}
+            {!isEditing && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviousVersion}
+                  disabled={
+                    (currentVersionIndex === -1 && versions.length === 0) ||
+                    currentVersionIndex >= versions.length - 1 ||
+                    isLoadingVersion
                   }
-                  setIsEditing(false);
+                  className="flex items-center gap-1 text-white hover:text-white border-white/30 hover:bg-white/20 bg-white/10"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="text-white font-medium">
+                    Older ({versions.length} versions)
+                  </span>
+                </Button>
+
+                <div className="text-sm px-3 py-2 text-white font-medium bg-white/10 rounded border border-white/30">
+                  {isLoadingVersion ? (
+                    <span className="text-white">Loading...</span>
+                  ) : currentVersionIndex === -1 ? (
+                    <div className="text-center">
+                      <div className="text-white font-bold">
+                        Current Version
+                      </div>
+                      <div className="text-xs text-white/90 mt-1">
+                        Latest saved version
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-white font-bold">
+                        Version {versions.length - currentVersionIndex} of{" "}
+                        {versions.length}
+                      </div>
+                      <div className="text-xs text-white/90">
+                        (Database Version #
+                        {versions[currentVersionIndex]?.version_number || "N/A"}
+                        )
+                      </div>
+                      {versions[currentVersionIndex]?.created_at && (
+                        <div className="text-xs text-white/90 mt-1">
+                          Saved:{" "}
+                          {new Date(
+                            versions[currentVersionIndex].created_at,
+                          ).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextVersion}
+                  disabled={currentVersionIndex === -1 || isLoadingVersion}
+                  className="flex items-center gap-1 text-white hover:text-white border-white/30 hover:bg-white/20 bg-white/10"
+                >
+                  <span className="text-white font-medium">Newer</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <Button
+            onClick={async () => {
+              if (isEditing) {
+                // Check for unsaved changes before switching to Status Sheet view
+                const formElement = document.querySelector("form");
+                const formHasChanges =
+                  formElement?.getAttribute("data-has-changes") === "true";
+                const formHasInteraction =
+                  formElement?.getAttribute("data-user-interaction") === "true";
+                const isAddingMilestones =
+                  formElement?.getAttribute("data-adding-milestones") ===
+                  "true";
+
+                if (formHasChanges && formHasInteraction) {
+                  // Show confirmation dialog
+                  const confirmLeave = window.confirm(
+                    "You have unsaved changes. Are you sure you want to leave without saving?",
+                  );
+                  if (confirmLeave) {
+                    // Navigate to view mode
+                    navigate(`/project/${id}/view`);
+                  }
+                } else {
+                  // Navigate to view mode
+                  navigate(`/project/${id}/view`);
                 }
               } else {
-                // Don't fetch fresh data if we're in the middle of adding milestones
-                if (isAddingMilestones) {
-                  console.log("Skipping data reload while adding milestones");
-                  setIsEditing(false);
-                  return;
-                }
+                // Navigate to edit mode
+                navigate(`/project/${id}`);
+              }
+            }}
+            variant="outline"
+          >
+            {isEditing ? "View Status Sheet" : "Edit Project"}
+          </Button>
+        </div>
 
-                // Fetch fresh data before switching view
+        {isEditing ? (
+          <ProjectForm
+            initialData={formattedData}
+            projectId={project?.id || id || ""}
+            onBack={handleBack}
+            setIsDragging={setIsDragging}
+            onSubmit={async (data) => {
+              try {
                 setLoading(true);
-                try {
-                  const projectId = id || (project && project.id);
-                  if (projectId) {
-                    const freshData =
-                      await projectService.getProject(projectId);
-                    if (freshData) {
-                      setProject(freshData);
-                    }
-                  }
-                } catch (error) {
-                  console.error("Error fetching fresh project data:", error);
+                console.log("Submitting project update with data:", data);
+                const projectId = id || (project && project.id);
+                console.log("Project ID for update:", projectId);
+
+                if (!projectId) {
+                  console.error("No project ID available for update");
                   toast({
                     title: "Error",
-                    description: "Failed to load latest project data",
+                    description: "No project ID available for update",
                     variant: "destructive",
                   });
-                } finally {
                   setLoading(false);
+                  return false;
                 }
-                setIsEditing(false);
-              }
-            } else {
-              setIsEditing(true);
-            }
-          }}
-          variant="outline"
-        >
-          {isEditing ? "View Status Sheet" : "Edit Project"}
-        </Button>
-      </div>
 
-      {isEditing ? (
-        <ProjectForm
-          initialData={formattedData}
-          projectId={project?.id || id || ""}
-          onBack={handleBack}
-          setIsDragging={setIsDragging}
-          onSubmit={async (data) => {
-            try {
-              setLoading(true);
-              console.log("Submitting project update with data:", data);
-              const projectId = id || (project && project.id);
-              console.log("Project ID for update:", projectId);
+                // First update the project
+                console.log(
+                  "ProjectDashboard: Updating project with milestones:",
+                  JSON.stringify(data.milestones),
+                );
 
-              if (!projectId) {
-                console.error("No project ID available for update");
+                // Ensure milestones are properly formatted and not empty
+                const formattedMilestones = data.milestones
+                  .filter((m) => m.milestone.trim() !== "")
+                  .map((m) => ({
+                    date: m.date,
+                    milestone: m.milestone,
+                    owner: m.owner,
+                    completion: m.completion,
+                    status: m.status,
+                    weight: m.weight || 3,
+                    tasks:
+                      m.tasks?.map((t) => ({
+                        description: t.description,
+                        assignee: t.assignee || m.owner,
+                        date: t.date || m.date,
+                        completion: t.completion || 0,
+                      })) || [],
+                  }));
+
+                console.log(
+                  "ProjectDashboard: Formatted milestones for update:",
+                  JSON.stringify(formattedMilestones),
+                );
+
+                const updatedProject = await projectService.updateProject(
+                  projectId,
+                  {
+                    projectId: data.projectId, // Add the missing projectId field
+                    title: data.title,
+                    description: data.description || null,
+                    valueStatement: data.valueStatement || null,
+                    project_analysis:
+                      data.projectAnalysis !== undefined
+                        ? data.projectAnalysis
+                        : null,
+                    status: data.status || "active",
+                    health_calculation_type:
+                      data.health_calculation_type || "automatic",
+                    manual_health_percentage:
+                      data.health_calculation_type === "manual"
+                        ? data.manual_health_percentage
+                        : null,
+                    manual_status_color: data.manual_status_color || "green",
+                    budget_total:
+                      data.budget.total.trim() === ""
+                        ? 0
+                        : parseFloat(
+                            data.budget.total.replace(/[^0-9.-]+/g, ""),
+                          ),
+                    budget_actuals:
+                      data.budget.actuals.trim() === ""
+                        ? 0
+                        : parseFloat(
+                            data.budget.actuals.replace(/[^0-9.-]+/g, ""),
+                          ),
+                    budget_forecast:
+                      data.budget.forecast.trim() === ""
+                        ? 0
+                        : parseFloat(
+                            data.budget.forecast.replace(/[^0-9.-]+/g, ""),
+                          ),
+                    // truncateActivities removed - now using localStorage
+                    charter_link: data.charterLink,
+                    sponsors: data.sponsors,
+                    business_leads: data.businessLeads,
+                    project_manager: data.projectManager,
+                    department: data.department,
+                    milestones: formattedMilestones,
+                    accomplishments: data.accomplishments || [],
+                    next_period_activities:
+                      data.nextPeriodActivities?.map((a) => ({
+                        description: a.description || "",
+                        date: a.date || new Date().toISOString().split("T")[0],
+                        completion: a.completion || 0,
+                        assignee: a.assignee || "",
+                      })) || [],
+                    risks:
+                      data.risks?.map((r) => ({
+                        description: r.description || "",
+                        impact: r.impact || "",
+                      })) || [],
+                    considerations:
+                      data.considerations?.map((c) => ({ description: c })) ||
+                      [],
+                    changes:
+                      data.changes?.map((c) => ({
+                        change: c.change || "",
+                        impact: c.impact || "",
+                        disposition: c.disposition || "",
+                      })) || [],
+                  },
+                );
+
+                if (updatedProject) {
+                  console.log(
+                    "ProjectDashboard: Project updated successfully",
+                    updatedProject,
+                  );
+                  console.log(
+                    "ProjectDashboard: Updated milestones:",
+                    JSON.stringify(updatedProject.milestones),
+                  );
+
+                  // Set the project state with the updated data
+                  setProject(updatedProject);
+
+                  toast({
+                    title: "Success",
+                    description: "Project updated successfully",
+                  });
+                  return true;
+                } else {
+                  toast({
+                    title: "Error",
+                    description: "Failed to update project",
+                    variant: "destructive",
+                  });
+                  return false;
+                }
+              } catch (error) {
+                console.error("Error updating project:", error);
                 toast({
                   title: "Error",
-                  description: "No project ID available for update",
+                  description: "Failed to update project: " + error.message,
                   variant: "destructive",
                 });
+                return false;
+              } finally {
                 setLoading(false);
-                return false;
               }
-
-              // First update the project
-              console.log(
-                "ProjectDashboard: Updating project with milestones:",
-                JSON.stringify(data.milestones),
-              );
-
-              // Ensure milestones are properly formatted and not empty
-              const formattedMilestones = data.milestones
-                .filter((m) => m.milestone.trim() !== "")
-                .map((m) => ({
-                  date: m.date,
-                  milestone: m.milestone,
-                  owner: m.owner,
-                  completion: m.completion,
-                  status: m.status,
-                  weight: m.weight || 3,
-                  tasks:
-                    m.tasks?.map((t) => ({
-                      description: t.description,
-                      assignee: t.assignee || m.owner,
-                      date: t.date || m.date,
-                      completion: t.completion || 0,
-                    })) || [],
-                }));
-
-              console.log(
-                "ProjectDashboard: Formatted milestones for update:",
-                JSON.stringify(formattedMilestones),
-              );
-
-              const updatedProject = await projectService.updateProject(
-                projectId,
-                {
-                  projectId: data.projectId, // Add the missing projectId field
-                  title: data.title,
-                  description: data.description || null,
-                  valueStatement: data.valueStatement || null,
-                  project_analysis:
-                    data.projectAnalysis !== undefined
-                      ? data.projectAnalysis
-                      : null,
-                  status: data.status || "active",
-                  health_calculation_type:
-                    data.health_calculation_type || "automatic",
-                  manual_health_percentage:
-                    data.health_calculation_type === "manual"
-                      ? data.manual_health_percentage
-                      : null,
-                  manual_status_color: data.manual_status_color || "green",
-                  budget_total:
-                    data.budget.total.trim() === ""
-                      ? 0
-                      : parseFloat(data.budget.total.replace(/[^0-9.-]+/g, "")),
-                  budget_actuals:
-                    data.budget.actuals.trim() === ""
-                      ? 0
-                      : parseFloat(
-                          data.budget.actuals.replace(/[^0-9.-]+/g, ""),
-                        ),
-                  budget_forecast:
-                    data.budget.forecast.trim() === ""
-                      ? 0
-                      : parseFloat(
-                          data.budget.forecast.replace(/[^0-9.-]+/g, ""),
-                        ),
-                  // truncateActivities removed - now using localStorage
-                  charter_link: data.charterLink,
-                  sponsors: data.sponsors,
-                  business_leads: data.businessLeads,
-                  project_manager: data.projectManager,
-                  department: data.department,
-                  milestones: formattedMilestones,
-                  accomplishments: data.accomplishments || [],
-                  next_period_activities:
-                    data.nextPeriodActivities?.map((a) => ({
-                      description: a.description || "",
-                      date: a.date || new Date().toISOString().split("T")[0],
-                      completion: a.completion || 0,
-                      assignee: a.assignee || "",
-                    })) || [],
-                  risks:
-                    data.risks?.map((r) => ({
-                      description: r.description || "",
-                      impact: r.impact || "",
-                    })) || [],
-                  considerations:
-                    data.considerations?.map((c) => ({ description: c })) || [],
-                  changes:
-                    data.changes?.map((c) => ({
-                      change: c.change || "",
-                      impact: c.impact || "",
-                      disposition: c.disposition || "",
-                    })) || [],
-                },
-              );
-
-              if (updatedProject) {
-                console.log(
-                  "ProjectDashboard: Project updated successfully",
-                  updatedProject,
-                );
-                console.log(
-                  "ProjectDashboard: Updated milestones:",
-                  JSON.stringify(updatedProject.milestones),
-                );
-
-                // Set the project state with the updated data
-                setProject(updatedProject);
-
-                toast({
-                  title: "Success",
-                  description: "Project updated successfully",
-                });
-                return true;
-              } else {
-                toast({
-                  title: "Error",
-                  description: "Failed to update project",
-                  variant: "destructive",
-                });
-                return false;
-              }
-            } catch (error) {
-              console.error("Error updating project:", error);
-              toast({
-                title: "Error",
-                description: "Failed to update project: " + error.message,
-                variant: "destructive",
-              });
-              return false;
-            } finally {
-              setLoading(false);
+            }}
+          />
+        ) : (
+          <StatusSheet
+            data={{
+              title: project.title || "Untitled Project",
+              description: project.description || "",
+              status: project.status || "active",
+              health_calculation_type:
+                project.health_calculation_type || "automatic",
+              manual_health_percentage: project.manual_health_percentage || 0,
+              manual_status_color: project.manual_status_color || "green",
+              computed_status_color: project.computed_status_color,
+              budget: {
+                total:
+                  typeof project.budget_total === "number"
+                    ? project.budget_total.toLocaleString()
+                    : "0",
+                actuals:
+                  typeof project.budget_actuals === "number"
+                    ? project.budget_actuals.toLocaleString()
+                    : "0",
+                forecast:
+                  typeof project.budget_forecast === "number"
+                    ? project.budget_forecast.toLocaleString()
+                    : "0",
+              },
+              charterLink: project.charter_link || "",
+              sponsors: project.sponsors || "",
+              businessLeads: project.business_leads || "",
+              projectManager: project.project_manager || "",
+              milestones: Array.isArray(project.milestones)
+                ? project.milestones
+                : [],
+              accomplishments: Array.isArray(project.accomplishments)
+                ? project.accomplishments.map((a) =>
+                    typeof a === "string" ? a : a.description,
+                  )
+                : [],
+              nextPeriodActivities: Array.isArray(
+                project.next_period_activities,
+              )
+                ? project.next_period_activities
+                : [],
+              risks: Array.isArray(project.risks) ? project.risks : [],
+              considerations: Array.isArray(project.considerations)
+                ? project.considerations.map((c) =>
+                    typeof c === "string" ? c : c.description,
+                  )
+                : [],
+              changes: Array.isArray(project.changes) ? project.changes : [],
+              projectAnalysis: formattedData?.projectAnalysis || "",
+              summaryCreatedAt: formattedData?.summaryCreatedAt,
+              summaryIsStale: formattedData?.summaryIsStale,
+            }}
+            versionChanges={versionChanges}
+            showChangeIndicators={
+              currentVersionIndex !== -1 &&
+              Object.keys(versionChanges).length > 0
             }
-          }}
-        />
-      ) : (
-        <StatusSheet
-          data={{
-            title: project.title || "Untitled Project",
-            description: project.description || "",
-            status: project.status || "active",
-            health_calculation_type:
-              project.health_calculation_type || "automatic",
-            manual_health_percentage: project.manual_health_percentage || 0,
-            manual_status_color: project.manual_status_color || "green",
-            computed_status_color: project.computed_status_color,
-            budget: {
-              total:
-                typeof project.budget_total === "number"
-                  ? project.budget_total.toLocaleString()
-                  : "0",
-              actuals:
-                typeof project.budget_actuals === "number"
-                  ? project.budget_actuals.toLocaleString()
-                  : "0",
-              forecast:
-                typeof project.budget_forecast === "number"
-                  ? project.budget_forecast.toLocaleString()
-                  : "0",
-            },
-            charterLink: project.charter_link || "",
-            sponsors: project.sponsors || "",
-            businessLeads: project.business_leads || "",
-            projectManager: project.project_manager || "",
-            milestones: Array.isArray(project.milestones)
-              ? project.milestones
-              : [],
-            accomplishments: Array.isArray(project.accomplishments)
-              ? project.accomplishments.map((a) =>
-                  typeof a === "string" ? a : a.description,
-                )
-              : [],
-            nextPeriodActivities: Array.isArray(project.next_period_activities)
-              ? project.next_period_activities
-              : [],
-            risks: Array.isArray(project.risks) ? project.risks : [],
-            considerations: Array.isArray(project.considerations)
-              ? project.considerations.map((c) =>
-                  typeof c === "string" ? c : c.description,
-                )
-              : [],
-            changes: Array.isArray(project.changes) ? project.changes : [],
-            projectAnalysis: formattedData?.projectAnalysis || "",
-            summaryCreatedAt: formattedData?.summaryCreatedAt,
-            summaryIsStale: formattedData?.summaryIsStale,
-          }}
-          versionChanges={versionChanges}
-          showChangeIndicators={
-            currentVersionIndex !== -1 && Object.keys(versionChanges).length > 0
-          }
-        />
-      )}
-    </div>
+          />
+        )}
+      </div>
+    </Layout>
   );
 };
 

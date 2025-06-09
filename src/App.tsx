@@ -181,10 +181,34 @@ function App() {
           }
         />
         <Route
+          path="/project/new"
+          element={
+            <ProtectedRoute>
+              <Home mode="form" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/project/:id"
           element={
             <ProtectedRoute>
-              <ProjectDashboard />
+              <ProjectDashboard initialEditMode={true} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:id/view"
+          element={
+            <ProtectedRoute>
+              <ProjectDashboard initialEditMode={false} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/overview"
+          element={
+            <ProtectedRoute>
+              <Home mode="overview" />
             </ProtectedRoute>
           }
         />
