@@ -33,7 +33,6 @@ import {
   DeleteConfirmationDialog,
 } from "@/components/form/DialogComponents";
 import { SuggestedMilestones } from "@/components/SuggestedMilestones";
-import GanttChartDialog from "@/components/dashboard/GanttChartDialog";
 
 // Import custom hook for form state management
 import { useProjectForm } from "@/components/form/useProjectForm";
@@ -138,8 +137,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             isAnalysisExpanded={isAnalysisExpanded}
             setIsAnalysisExpanded={handleToggleAnalysis}
             isAnalysisLoading={isAnalysisLoading}
-            showGanttChart={showGanttChart}
-            setShowGanttChart={setShowGanttChart}
             handleShowDeleteDialog={handleShowDeleteDialog}
           />
 
@@ -248,12 +245,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             onOpenChange={setShowDeleteDialog}
             onConfirm={handleConfirmDelete}
             onCancel={handleCancelDelete}
-          />
-
-          <GanttChartDialog
-            open={showGanttChart}
-            onOpenChange={setShowGanttChart}
-            milestones={formData.milestones}
           />
 
           <SuggestedMilestones

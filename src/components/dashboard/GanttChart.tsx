@@ -27,14 +27,8 @@ import {
   addMonths,
 } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Gantt,
-  Task,
-  ViewMode,
-  StylingOption,
-  DisplayOption,
-} from "gantt-task-react";
-import "gantt-task-react/dist/index.css";
+import GSTC from "gantt-schedule-timeline-calendar";
+import "gantt-schedule-timeline-calendar/dist/style.css";
 
 // Custom CSS to override the today line color
 import { useEffect } from "react";
@@ -53,43 +47,28 @@ interface GanttChartProps {
   projectTitle: string;
 }
 
-// Create a style element to inject custom CSS
-const createTodayLineStyle = () => {
-  const styleEl = document.createElement("style");
-  styleEl.id = "gantt-today-line-style";
-  styleEl.innerHTML = `
-    .today-line {
-      stroke: #2563eb !important;
-      stroke-width: 2px !important;
-    }
-  `;
-  return styleEl;
+// Helper function to strip HTML tags from text
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
 };
 
 const GanttChart: React.FC<GanttChartProps> = ({
   milestones,
   projectTitle,
 }) => {
-  const [view, setView] = useState<ViewMode>(ViewMode.Month);
+  const [view, setView] = useState<string>("month");
 
-  // Inject custom CSS for today line when component mounts
-  useEffect(() => {
-    // Check if style already exists
-    if (!document.getElementById("gantt-today-line-style")) {
-      document.head.appendChild(createTodayLineStyle());
-    }
-
-    // Cleanup when component unmounts
-    return () => {
-      const styleEl = document.getElementById("gantt-today-line-style");
-      if (styleEl) {
-        styleEl.remove();
-      }
-    };
-  }, []);
-
-  // Convert milestones to tasks format required by gantt-task-react
-  const tasks: Task[] = milestones.map((milestone, index) => {
+  // Convert milestones to format required by gantt-schedule-timeline-calendar
+  const ganttItems = milestones.map((milestone, index) => {
     const date = new Date(milestone.date);
     const endDate = new Date(date);
     endDate.setDate(endDate.getDate() + 1); // Make it a 1-day task
@@ -101,91 +80,98 @@ const GanttChart: React.FC<GanttChartProps> = ({
       red: "#ef4444", // richer red
     }[milestone.status];
 
-    // Determine background color based on status
-    const barBackgroundColor = {
-      green: "rgba(34, 197, 94, 0.15)", // light green background
-      yellow: "rgba(234, 179, 8, 0.15)", // light yellow background
-      red: "rgba(239, 68, 68, 0.15)", // light red background
-    }[milestone.status];
-
     return {
       id: milestone.id || `milestone-${index}`,
-      name: milestone.milestone,
-      start: date,
-      end: endDate,
-      progress: milestone.completion / 100,
-      type: "task",
-      isDisabled: false,
-      styles: {
-        progressColor: statusColor,
-        progressSelectedColor: statusColor,
-        backgroundColor: barBackgroundColor,
-        backgroundSelectedColor: barBackgroundColor,
+      label: stripHtmlTags(milestone.milestone),
+      time: {
+        start: date.getTime(),
+        end: endDate.getTime(),
       },
-      fontSize: "14px",
-      fontFamily: "Inter, sans-serif",
-      project: projectTitle,
-      dependencies: [],
-      hideChildren: false,
-      displayOrder: index,
+      style: {
+        backgroundColor: statusColor,
+        color: "#ffffff",
+        fontWeight: "600",
+        borderRadius: "8px",
+      },
+      progress: milestone.completion,
+      milestone: milestone, // Store full milestone data for tooltip
     };
   });
 
   // Find date range for the chart
   const today = new Date();
-  let startDate = today;
-  let endDate = addMonths(today, 3); // Default 3 months ahead
+  let timelineStart = today;
+  let timelineEnd = addMonths(today, 3); // Default 3 months ahead
 
   if (milestones.length > 0) {
     // Sort dates to find earliest and latest
     const dates = milestones
       .map((m) => new Date(m.date))
       .sort((a, b) => a.getTime() - b.getTime());
-    startDate = dates[0];
-    endDate = dates[dates.length - 1];
+    timelineStart = dates[0];
+    timelineEnd = dates[dates.length - 1];
 
     // Add buffer before and after
-    startDate = addDays(startDate, -15);
-    endDate = addDays(endDate, 15);
+    timelineStart = addDays(timelineStart, -15);
+    timelineEnd = addDays(timelineEnd, 15);
   }
 
-  // Custom styling options
-  const ganttStyles: StylingOption = {
-    headerHeight: 60,
-    rowHeight: 50,
-    barCornerRadius: 5,
-    barFill: 80,
-    fontFamily: "Inter, sans-serif",
-    fontSize: "14px",
-    arrowColor: "#64748b",
-    arrowIndent: 10,
-    todayColor: "#2563eb", // Solid blue color for today line
-    tableRowPadding: 12,
-    // Additional styling
-    headerFontSize: "15px",
-    headerFontWeight: "bold",
-    tableCellPadding: 12,
-    progressBarBackgroundColor: "#e5e7eb", // Light gray background
-    progressBarCornerRadius: 3,
-    projectBackgroundColor: "rgba(241, 245, 249, 0.6)", // Very light blue-gray
-    projectProgressBarFill: 80,
-    projectProgressBarBackgroundColor: "#e5e7eb",
-    rtl: false,
-  };
+  // Create tooltip content for milestones
+  const createTooltipContent = (item: any) => {
+    const milestone = item.milestone as Milestone;
+    if (!milestone) return "";
 
-  // Display options
-  const displayOptions: DisplayOption = {
-    viewMode: view,
-    viewDate: today,
-    preStepsCount: 1,
-    locale: "en-US",
-    rtl: false,
-    // Enable today line
-    showToday: true,
+    const statusColor = {
+      green: "#22c55e",
+      yellow: "#eab308",
+      red: "#ef4444",
+    }[milestone.status];
+
+    return `
+      <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm">
+        <div class="space-y-3">
+          <div>
+            <h3 class="font-semibold text-gray-900 text-sm leading-tight">
+              ${stripHtmlTags(milestone.milestone)}
+            </h3>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-600">Status:</span>
+            <span class="px-2 py-1 text-xs rounded ${
+              milestone.status === "green"
+                ? "bg-green-100 text-green-800"
+                : milestone.status === "yellow"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-red-100 text-red-800"
+            }">${milestone.status}</span>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-600">Progress:</span>
+            <div class="flex-1 bg-gray-200 rounded-full h-2">
+              <div class="h-2 rounded-full" style="width: ${milestone.completion}%; background-color: ${statusColor}"></div>
+            </div>
+            <span class="text-xs font-medium">${milestone.completion}%</span>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span class="text-gray-600">Date:</span>
+              <div class="font-medium">${format(new Date(milestone.date), "MMM dd, yyyy")}</div>
+            </div>
+            <div>
+              <span class="text-gray-600">Owner:</span>
+              <div class="font-medium">${milestone.owner}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   };
 
   // Handle view mode change
-  const handleViewModeChange = (viewMode: ViewMode) => {
+  const handleViewModeChange = (viewMode: string) => {
     setView(viewMode);
   };
 
@@ -198,26 +184,26 @@ const GanttChart: React.FC<GanttChartProps> = ({
           </CardTitle>
           <div className="flex gap-2">
             <button
-              onClick={() => handleViewModeChange(ViewMode.Day)}
-              className={`px-3 py-1 text-sm rounded-md ${view === ViewMode.Day ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+              onClick={() => handleViewModeChange("day")}
+              className={`px-3 py-1 text-sm rounded-md ${view === "day" ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
             >
               Day
             </button>
             <button
-              onClick={() => handleViewModeChange(ViewMode.Week)}
-              className={`px-3 py-1 text-sm rounded-md ${view === ViewMode.Week ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+              onClick={() => handleViewModeChange("week")}
+              className={`px-3 py-1 text-sm rounded-md ${view === "week" ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
             >
               Week
             </button>
             <button
-              onClick={() => handleViewModeChange(ViewMode.Month)}
-              className={`px-3 py-1 text-sm rounded-md ${view === ViewMode.Month ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+              onClick={() => handleViewModeChange("month")}
+              className={`px-3 py-1 text-sm rounded-md ${view === "month" ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
             >
               Month
             </button>
             <button
-              onClick={() => handleViewModeChange(ViewMode.Year)}
-              className={`px-3 py-1 text-sm rounded-md ${view === ViewMode.Year ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+              onClick={() => handleViewModeChange("year")}
+              className={`px-3 py-1 text-sm rounded-md ${view === "year" ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
             >
               Year
             </button>
@@ -225,22 +211,22 @@ const GanttChart: React.FC<GanttChartProps> = ({
               onClick={() => {
                 // Find the appropriate view mode based on date range
                 const dateRange =
-                  tasks.length > 0
+                  ganttItems.length > 0
                     ? Math.abs(
-                        (tasks[tasks.length - 1].end.getTime() -
-                          tasks[0].start.getTime()) /
+                        (ganttItems[ganttItems.length - 1].time.end -
+                          ganttItems[0].time.start) /
                           (1000 * 60 * 60 * 24),
                       )
                     : 0;
 
                 if (dateRange <= 14) {
-                  setView(ViewMode.Day);
+                  setView("day");
                 } else if (dateRange <= 90) {
-                  setView(ViewMode.Week);
+                  setView("week");
                 } else if (dateRange <= 365) {
-                  setView(ViewMode.Month);
+                  setView("month");
                 } else {
-                  setView(ViewMode.Year);
+                  setView("year");
                 }
               }}
               className="px-3 py-1 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 shadow-md transition-all duration-200 hover:-translate-y-0.5"
@@ -252,77 +238,153 @@ const GanttChart: React.FC<GanttChartProps> = ({
       </CardHeader>
       <CardContent>
         <div className="h-[650px] w-full overflow-auto">
-          {tasks.length > 0 ? (
-            <Gantt
-              tasks={tasks}
-              viewMode={view}
-              listCellWidth="" // Auto width
-              columnWidth={60}
-              ganttHeight={600}
-              TooltipContent={({ task }) => {
-                const milestone = milestones.find(
-                  (m) =>
-                    m.id === task.id ||
-                    `milestone-${task.displayOrder}` === task.id,
-                );
-                const statusColor = {
-                  green: "#22c55e",
-                  yellow: "#eab308",
-                  red: "#ef4444",
-                }[milestone?.status || "green"];
-
-                return (
-                  <div className="bg-white p-4 border border-gray-200 shadow-lg rounded-md min-w-[250px]">
-                    <div
-                      className="border-l-4 pl-2 mb-2"
-                      style={{ borderColor: statusColor }}
-                    >
-                      <p className="font-bold text-lg">{task.name}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="flex justify-between">
-                        <span className="text-gray-500">Date:</span>
-                        <span className="font-medium">
-                          {format(task.start, "MMM d, yyyy")}
-                        </span>
-                      </p>
-                      <p className="flex justify-between">
-                        <span className="text-gray-500">Completion:</span>
-                        <span className="font-medium">
-                          {Math.round(task.progress * 100)}%
-                        </span>
-                      </p>
-                      <p className="flex justify-between">
-                        <span className="text-gray-500">Owner:</span>
-                        <span className="font-medium">
-                          {milestone?.owner || ""}
-                        </span>
-                      </p>
-                      <p className="flex justify-between">
-                        <span className="text-gray-500">Status:</span>
-                        <span className="font-medium flex items-center gap-1">
-                          <span
-                            className="inline-block w-3 h-3 rounded-full"
-                            style={{ backgroundColor: statusColor }}
-                          ></span>
-                          <span className="capitalize">
-                            {milestone?.status || ""}
-                          </span>
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                );
-              }}
-              onDateChange={() => {}} // Read-only, no changes allowed
-              onProgressChange={() => {}} // Read-only, no changes allowed
-              onDoubleClick={() => {}} // No action on double click
-              onTaskDelete={() => {}} // No deletion allowed
-              onTaskClick={() => {}} // No action on click
-              onExpanderClick={() => {}} // No action on expander click
-              stylingOption={ganttStyles}
-              displayOption={displayOptions}
-            />
+          {ganttItems.length > 0 ? (
+            <div className="w-full" style={{ minHeight: "600px" }}>
+              <style>{`
+                .gantt-schedule-timeline-calendar {
+                  --gstc-primary-color: #3B82F6;
+                  --gstc-secondary-color: #E5E7EB;
+                  --gstc-background-color: #FFFFFF;
+                  --gstc-text-color: #000000;
+                  --gstc-border-color: #D1D5DB;
+                  font-family: Inter, system-ui, sans-serif;
+                }
+                
+                .gantt-schedule-timeline-calendar .gstc-item {
+                  border-radius: 8px !important;
+                  font-weight: 600 !important;
+                  color: #ffffff !important;
+                }
+                
+                .gantt-schedule-timeline-calendar .gstc-tooltip {
+                  max-width: 320px !important;
+                  z-index: 9999 !important;
+                }
+              `}</style>
+              <GSTC
+                config={{
+                  height: 600,
+                  list: {
+                    rows: ganttItems.reduce((acc, item) => {
+                      acc[item.id] = {
+                        id: item.id,
+                        label: item.label,
+                      };
+                      return acc;
+                    }, {}),
+                    columns: {
+                      data: {
+                        id: {
+                          id: "id",
+                          data: "id",
+                          width: 0,
+                          header: {
+                            content: "",
+                          },
+                        },
+                        label: {
+                          id: "label",
+                          data: "label",
+                          width: 200,
+                          header: {
+                            content: "Milestone",
+                          },
+                        },
+                      },
+                    },
+                  },
+                  chart: {
+                    time: {
+                      from: timelineStart.getTime(),
+                      to: timelineEnd.getTime(),
+                      zoom:
+                        view === "month"
+                          ? 21
+                          : view === "week"
+                            ? 22
+                            : view === "day"
+                              ? 23
+                              : 20,
+                    },
+                    items: ganttItems.reduce((acc, item) => {
+                      acc[item.id] = {
+                        ...item,
+                        rowId: item.id,
+                      };
+                      return acc;
+                    }, {}),
+                  },
+                  plugins: {
+                    ItemHold: {
+                      enabled: false,
+                    },
+                    ItemMovement: {
+                      enabled: false,
+                    },
+                    ItemResizing: {
+                      enabled: false,
+                    },
+                    Selection: {
+                      enabled: false,
+                    },
+                    Tooltip: {
+                      enabled: true,
+                      html: (item: any) => createTooltipContent(item),
+                    },
+                  },
+                  locale: {
+                    name: "en",
+                    weekdays: [
+                      "Sunday",
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday",
+                      "Saturday",
+                    ],
+                    weekdaysShort: [
+                      "Sun",
+                      "Mon",
+                      "Tue",
+                      "Wed",
+                      "Thu",
+                      "Fri",
+                      "Sat",
+                    ],
+                    weekdaysMin: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+                    months: [
+                      "January",
+                      "February",
+                      "March",
+                      "April",
+                      "May",
+                      "June",
+                      "July",
+                      "August",
+                      "September",
+                      "October",
+                      "November",
+                      "December",
+                    ],
+                    monthsShort: [
+                      "Jan",
+                      "Feb",
+                      "Mar",
+                      "Apr",
+                      "May",
+                      "Jun",
+                      "Jul",
+                      "Aug",
+                      "Sep",
+                      "Oct",
+                      "Nov",
+                      "Dec",
+                    ],
+                  },
+                }}
+              />
+            </div>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
               No milestones available to display. Add milestones to see the

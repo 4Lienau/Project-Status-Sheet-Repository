@@ -66,7 +66,7 @@
     "embla-carousel-react": "^8.1.5",
     "exceljs": "^4.4.0",
     "framer-motion": "^11.18.0",
-    "gantt-task-react": "^0.3.9",
+    "gantt-schedule-timeline-calendar": "^3.40.7",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.394.0",
     "openai": "^4.85.3",

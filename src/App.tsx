@@ -32,6 +32,7 @@ import AuthCallback from "./pages/AuthCallback";
 import LoginPage from "./pages/LoginPage";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import ProjectKPIsPage from "./pages/ProjectKPIsPage";
+import ProjectsRoadmap from "./pages/ProjectsRoadmap";
 import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
 import { useSessionTracking } from "./lib/hooks/useSessionTracking";
@@ -69,6 +70,7 @@ const SessionTracker = () => {
       "/project": "project_management",
       "/profile": "profile_management",
       "/kpis": "kpi_dashboard",
+      "/roadmap": "projects_roadmap",
     };
 
     const feature = Object.keys(routeFeatures).find((route) =>
@@ -84,7 +86,7 @@ const SessionTracker = () => {
 };
 
 // Protected route component that redirects to login if not authenticated
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, ...props }) => {
   const { user, loading } = useAuth();
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
   const location = useLocation();
@@ -98,10 +100,16 @@ const ProtectedRoute = ({ children }) => {
 
   const authStatus = checkAuthStatus(user, loading, initialCheckComplete);
 
+  // Only filter out specific problematic props
+  const { key, testID, tempoelementid, ...safeProps } = props;
+
   // Show loading state while checking authentication
   if (authStatus === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div
+        className="flex items-center justify-center min-h-screen"
+        {...safeProps}
+      >
         <div className="text-center">
           <h2 className="text-lg font-semibold">Loading...</h2>
           <p className="text-muted-foreground">
@@ -132,7 +140,9 @@ function App() {
     location.pathname.startsWith("/auth") ||
     location.pathname.startsWith("/status-sheet") ||
     location.pathname.startsWith("/project") ||
-    location.pathname.startsWith("/profile");
+    location.pathname.startsWith("/profile") ||
+    location.pathname.startsWith("/kpis") ||
+    location.pathname.startsWith("/roadmap");
 
   // Only handle Tempo routes if we're NOT on a main application route
   if (import.meta.env.VITE_TEMPO === "true" && !isMainAppRoute) {
@@ -191,6 +201,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ProjectKPIsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/roadmap"
+          element={
+            <ProtectedRoute>
+              <ProjectsRoadmap />
             </ProtectedRoute>
           }
         />

@@ -93,7 +93,7 @@ export const useProjectForm = (
   );
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showGanttChart, setShowGanttChart] = useState(false);
+
   const [pendingGenerationType, setPendingGenerationType] = useState<
     "description" | "value" | null
   >(null);
@@ -833,10 +833,6 @@ export const useProjectForm = (
     setPendingGenerationType(null);
   };
 
-  const handleToggleGanttChart = () => {
-    setShowGanttChart(!showGanttChart);
-  };
-
   const handleToggleAnalysis = () => {
     setIsAnalysisExpanded(!isAnalysisExpanded);
   };
@@ -866,8 +862,7 @@ export const useProjectForm = (
     setShowOverwriteDialog,
     showDeleteDialog,
     setShowDeleteDialog,
-    showGanttChart,
-    setShowGanttChart,
+
     pendingGenerationType,
     setPendingGenerationType,
     isGeneratingAnalysis,
@@ -883,7 +878,7 @@ export const useProjectForm = (
     handleCancelMilestones,
     handleConfirmOverwrite,
     handleCancelOverwrite,
-    handleToggleGanttChart,
+
     handleToggleAnalysis,
     handleUserInteraction,
     generateContent,

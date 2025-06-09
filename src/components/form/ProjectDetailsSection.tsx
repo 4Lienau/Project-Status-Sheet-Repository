@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Wand2,
   Info,
-  BarChart2,
   Trash2,
   ChevronDown,
   ChevronRight,
@@ -33,8 +32,6 @@ interface ProjectDetailsSectionProps {
   isAnalysisExpanded: boolean;
   setIsAnalysisExpanded: (expanded: boolean) => void;
   isAnalysisLoading: boolean;
-  showGanttChart: boolean;
-  setShowGanttChart: (show: boolean) => void;
   handleShowDeleteDialog: () => void;
 }
 
@@ -46,8 +43,6 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
   isAnalysisExpanded,
   setIsAnalysisExpanded,
   isAnalysisLoading,
-  showGanttChart,
-  setShowGanttChart,
   handleShowDeleteDialog,
 }) => {
   // Function to safely toggle the analysis section
@@ -170,15 +165,6 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
               >
                 <Trash2 className="h-4 w-4" />
                 Delete Project
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setShowGanttChart(true)}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <BarChart2 className="h-4 w-4" />
-                View Gantt Chart
               </Button>
             </div>
           </div>

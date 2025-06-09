@@ -60,7 +60,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Plus } from "lucide-react";
+import { MoreVertical, Plus, Calendar } from "lucide-react";
 import { exportProjectsToExcel } from "@/lib/services/excelExport";
 
 // Helper functions for localStorage persistence

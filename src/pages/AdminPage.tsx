@@ -59,6 +59,7 @@ import {
   Building,
   Brain,
   Zap,
+  Calendar,
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
@@ -565,6 +566,15 @@ const AdminPage = () => {
             <h1 className="text-3xl font-bold text-white drop-shadow-lg">
               Admin Dashboard
             </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => navigate("/roadmap")}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl font-medium"
+            >
+              <Calendar className="h-4 w-4" />
+              Projects Roadmap
+            </Button>
           </div>
         </div>
 

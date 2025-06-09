@@ -4,11 +4,18 @@ import Footer from "./Footer";
 
 interface LayoutProps {
   children: ReactNode;
+  [key: string]: any; // Allow additional props from Tempo
 }
 
-const Layout = ({ children }: LayoutProps) => {
+const Layout = ({ children, ...props }: LayoutProps) => {
+  // Only filter out specific problematic props, keep everything else
+  const { key, testID, tempoelementid, ...safeProps } = props;
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 relative overflow-hidden">
+    <div
+      className="min-h-screen flex flex-col bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 relative overflow-hidden"
+      style={{ backgroundColor: "#1e3a8a" }}
+      {...safeProps}
+    >
       {/* Background decorative elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-transparent to-indigo-900/20"></div>
       <div className="absolute top-0 left-0 w-full h-full">
