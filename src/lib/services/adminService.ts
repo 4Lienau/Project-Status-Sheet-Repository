@@ -687,11 +687,20 @@ export const adminService = {
   // Usage Analytics Methods
   async getActiveUsers(): Promise<any[]> {
     try {
-      // Cleanup stale sessions
+      // Cleanup stale sessions more aggressively
       try {
-        await supabase.rpc("cleanup_stale_sessions");
+        const { data: cleanupResult } = await supabase.rpc(
+          "cleanup_stale_sessions",
+        );
+        console.log(
+          "[adminService.getActiveUsers] Cleaned up stale sessions:",
+          cleanupResult,
+        );
       } catch (cleanupError) {
-        // Silently handle cleanup errors
+        console.warn(
+          "[adminService.getActiveUsers] Session cleanup warning:",
+          cleanupError,
+        );
       }
 
       // Use a 3-minute window for active users
@@ -959,22 +968,94 @@ export const adminService = {
         );
       }
 
-      // Calculate average session time based on users with activity
-      const usersWithActivity =
-        userActivityData?.filter((user) => user.total_session_time > 0) || [];
-
-      // Calculate weighted average session time (total time / total sessions)
+      // Calculate average session time using improved database function
       let avgSessionTime = 0;
-      if (usersWithActivity.length > 0) {
-        const totalSessions = usersWithActivity.reduce(
-          (sum, user) => sum + (user.login_count || 1),
-          0,
+
+      console.log(
+        "[adminService.getUsageMetrics] Calculating average session time:",
+        {
+          totalSessionTime,
+          userActivityDataLength: userActivityData?.length || 0,
+        },
+      );
+
+      // First cleanup inactive sessions
+      try {
+        await supabase.rpc("cleanup_inactive_sessions");
+      } catch (cleanupError) {
+        console.warn(
+          "[adminService.getUsageMetrics] Session cleanup warning:",
+          cleanupError,
         );
-        avgSessionTime =
-          totalSessions > 0
-            ? Math.round(totalSessionTime / totalSessions)
-            : Math.round(totalSessionTime / usersWithActivity.length);
       }
+
+      // Use the new session statistics function
+      try {
+        const { data: sessionStats, error: statsError } = await supabase.rpc(
+          "get_session_statistics",
+        );
+
+        console.log("[adminService.getUsageMetrics] Session statistics:", {
+          sessionStats,
+          statsError,
+        });
+
+        if (!statsError && sessionStats && sessionStats.length > 0) {
+          const stats = sessionStats[0];
+          avgSessionTime = Number(stats.avg_session_minutes) || 0;
+
+          console.log(
+            "[adminService.getUsageMetrics] Using database function result:",
+            {
+              avgSessionTime,
+              totalSessions: stats.total_sessions,
+              totalSessionMinutes: stats.total_session_minutes,
+              activeSessions: stats.active_sessions,
+            },
+          );
+        }
+      } catch (statsError) {
+        console.warn(
+          "[adminService.getUsageMetrics] Error getting session statistics:",
+          statsError,
+        );
+      }
+
+      // Fallback calculation if database function fails
+      if (
+        avgSessionTime === 0 &&
+        userActivityData &&
+        userActivityData.length > 0
+      ) {
+        const usersWithActivity = userActivityData.filter(
+          (user) => user.total_session_time > 0,
+        );
+
+        if (usersWithActivity.length > 0) {
+          const totalSessions = usersWithActivity.reduce(
+            (sum, user) => sum + Math.max(user.login_count || 1, 1),
+            0,
+          );
+
+          if (totalSessions > 0 && totalSessionTime > 0) {
+            avgSessionTime = Math.round(totalSessionTime / totalSessions);
+            console.log(
+              "[adminService.getUsageMetrics] Fallback calculation:",
+              {
+                avgSessionTime,
+                totalSessionTime,
+                totalSessions,
+                usersWithActivity: usersWithActivity.length,
+              },
+            );
+          }
+        }
+      }
+
+      console.log(
+        "[adminService.getUsageMetrics] Final average session time:",
+        avgSessionTime,
+      );
 
       // Get daily active users for the last 7 days
       const sevenDaysAgo = new Date();

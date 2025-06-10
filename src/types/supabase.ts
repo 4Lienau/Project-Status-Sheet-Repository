@@ -911,11 +911,11 @@ export type Database = {
       }
       cleanup_inactive_sessions: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
+        Returns: number
       }
       cleanup_stale_sessions: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
+        Returns: number
       }
       comprehensive_project_tracking_test: {
         Args: { p_user_id?: string }
@@ -1018,6 +1018,15 @@ export type Database = {
           projects_created_last_30_days: number
         }[]
       }
+      get_session_statistics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_sessions: number
+          avg_session_minutes: number
+          total_session_minutes: number
+          active_sessions: number
+        }[]
+      }
       get_table_sizes: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1052,6 +1061,7 @@ export type Database = {
           total_projects: number
           login_count: number
           last_login: string
+          account_created: string
         }[]
       }
       get_user_login_statistics: {

@@ -299,11 +299,38 @@ export const useSessionTracking = () => {
         activityTimeoutRef.current = null;
       }
 
-      // Log session end
+      // Log session end with duration calculation
       if (user) {
-        await logActivity("session_end", {
-          url: window.location.href,
-        });
+        // Get session start time to calculate duration
+        try {
+          const { data: sessionData, error: sessionError } = await supabase
+            .from("user_sessions")
+            .select("session_start")
+            .eq("id", sessionIdRef.current)
+            .single();
+
+          let sessionDuration = 0;
+          if (!sessionError && sessionData) {
+            const startTime = new Date(sessionData.session_start);
+            const endTime = new Date();
+            sessionDuration = Math.round(
+              (endTime.getTime() - startTime.getTime()) / (1000 * 60),
+            );
+          }
+
+          await logActivity("session_end", {
+            url: window.location.href,
+            session_duration_minutes: sessionDuration,
+          });
+        } catch (durationError) {
+          console.warn(
+            "[useSessionTracking] Could not calculate session duration:",
+            durationError,
+          );
+          await logActivity("session_end", {
+            url: window.location.href,
+          });
+        }
 
         // End all sessions for this user to ensure cleanup
         await adminService.endAllUserSessions(user.id);
