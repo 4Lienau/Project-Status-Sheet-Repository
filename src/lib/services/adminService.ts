@@ -1057,14 +1057,14 @@ export const adminService = {
         avgSessionTime,
       );
 
-      // Get daily active users for the last 7 days
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      // Get daily active users for the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const { data: dailyData, error: dailyError } = await supabase
         .from("usage_metrics")
         .select("date, user_id")
-        .gte("date", sevenDaysAgo.toISOString().split("T")[0])
+        .gte("date", thirtyDaysAgo.toISOString().split("T")[0])
         .order("date", { ascending: true });
 
       if (dailyError) {
@@ -1764,6 +1764,171 @@ export const adminService = {
         uniqueAIUsers: 0,
         adoptionRate: 0,
         mostPopularFeature: "None",
+      };
+    }
+  },
+
+  async debugDatabaseAccess(): Promise<{
+    success: boolean;
+    message: string;
+    details: any;
+  }> {
+    try {
+      console.log(
+        "[adminService.debugDatabaseAccess] Starting database access diagnostics...",
+      );
+
+      const diagnostics = {
+        timestamp: new Date().toISOString(),
+        tests: [],
+        summary: { total: 0, passed: 0, failed: 0 },
+      };
+
+      // Test 1: Basic connection
+      try {
+        const { data: connectionTest, error: connectionError } = await supabase
+          .from("profiles")
+          .select("count", { count: "exact", head: true });
+
+        diagnostics.tests.push({
+          name: "Database Connection",
+          status: connectionError ? "FAILED" : "PASSED",
+          details: connectionError || "Connection successful",
+        });
+        diagnostics.summary.total++;
+        if (!connectionError) diagnostics.summary.passed++;
+        else diagnostics.summary.failed++;
+      } catch (error) {
+        diagnostics.tests.push({
+          name: "Database Connection",
+          status: "FAILED",
+          details: error.message,
+        });
+        diagnostics.summary.total++;
+        diagnostics.summary.failed++;
+      }
+
+      // Test 2: Profiles table access
+      try {
+        const { data: profilesTest, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, email")
+          .limit(1);
+
+        diagnostics.tests.push({
+          name: "Profiles Table Access",
+          status: profilesError ? "FAILED" : "PASSED",
+          details: profilesError || "Table accessible",
+        });
+        diagnostics.summary.total++;
+        if (!profilesError) diagnostics.summary.passed++;
+        else diagnostics.summary.failed++;
+      } catch (error) {
+        diagnostics.tests.push({
+          name: "Profiles Table Access",
+          status: "FAILED",
+          details: error.message,
+        });
+        diagnostics.summary.total++;
+        diagnostics.summary.failed++;
+      }
+
+      // Test 3: User sessions table access
+      try {
+        const { data: sessionsTest, error: sessionsError } = await supabase
+          .from("user_sessions")
+          .select("id")
+          .limit(1);
+
+        diagnostics.tests.push({
+          name: "User Sessions Table Access",
+          status: sessionsError ? "FAILED" : "PASSED",
+          details: sessionsError || "Table accessible",
+        });
+        diagnostics.summary.total++;
+        if (!sessionsError) diagnostics.summary.passed++;
+        else diagnostics.summary.failed++;
+      } catch (error) {
+        diagnostics.tests.push({
+          name: "User Sessions Table Access",
+          status: "FAILED",
+          details: error.message,
+        });
+        diagnostics.summary.total++;
+        diagnostics.summary.failed++;
+      }
+
+      // Test 4: Usage metrics table access
+      try {
+        const { data: metricsTest, error: metricsError } = await supabase
+          .from("usage_metrics")
+          .select("id")
+          .limit(1);
+
+        diagnostics.tests.push({
+          name: "Usage Metrics Table Access",
+          status: metricsError ? "FAILED" : "PASSED",
+          details: metricsError || "Table accessible",
+        });
+        diagnostics.summary.total++;
+        if (!metricsError) diagnostics.summary.passed++;
+        else diagnostics.summary.failed++;
+      } catch (error) {
+        diagnostics.tests.push({
+          name: "Usage Metrics Table Access",
+          status: "FAILED",
+          details: error.message,
+        });
+        diagnostics.summary.total++;
+        diagnostics.summary.failed++;
+      }
+
+      // Test 5: Database functions access
+      try {
+        const { data: functionTest, error: functionError } = await supabase.rpc(
+          "get_session_statistics",
+        );
+
+        diagnostics.tests.push({
+          name: "Database Functions Access",
+          status: functionError ? "FAILED" : "PASSED",
+          details: functionError || "Functions accessible",
+        });
+        diagnostics.summary.total++;
+        if (!functionError) diagnostics.summary.passed++;
+        else diagnostics.summary.failed++;
+      } catch (error) {
+        diagnostics.tests.push({
+          name: "Database Functions Access",
+          status: "FAILED",
+          details: error.message,
+        });
+        diagnostics.summary.total++;
+        diagnostics.summary.failed++;
+      }
+
+      const success = diagnostics.summary.failed === 0;
+      const message = success
+        ? `All ${diagnostics.summary.total} database access tests passed`
+        : `${diagnostics.summary.failed}/${diagnostics.summary.total} database access tests failed`;
+
+      console.log("[adminService.debugDatabaseAccess] Diagnostics completed:", {
+        success,
+        message,
+        summary: diagnostics.summary,
+      });
+
+      return {
+        success,
+        message,
+        details: diagnostics,
+      };
+    } catch (error) {
+      console.error("[adminService.debugDatabaseAccess] Catch error:", error);
+      return {
+        success: false,
+        message: `Database diagnostics failed: ${error.message}`,
+        details: { error: error.message },
       };
     }
   },

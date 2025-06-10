@@ -177,10 +177,11 @@ const UsageAnalytics = () => {
     return `${Math.floor(diffMinutes / 1440)}d ago`;
   };
 
-  // Prepare daily active users chart data
+  // Prepare daily active users chart data with better formatting for 30 days
   const dailyChartData = usageMetrics.dailyActiveUsers.map((item) => ({
     ...item,
     formattedDate: format(new Date(item.date), "MMM dd"),
+    fullDate: format(new Date(item.date), "MMM dd, yyyy"),
   }));
 
   if (loading) {
@@ -306,29 +307,105 @@ const UsageAnalytics = () => {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Daily Active Users Chart */}
-        <Card>
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Daily Active Users (Last 7 Days)
+            <CardTitle className="flex items-center gap-2 text-blue-800">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              Daily Active Users (Last 30 Days)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={dailyChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="formattedDate" />
-                <YAxis />
-                <Tooltip />
+            <ResponsiveContainer width="100%" height={350}>
+              <LineChart
+                data={dailyChartData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+              >
+                <defs>
+                  <linearGradient
+                    id="colorActiveUsers"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#E5E7EB"
+                  strokeOpacity={0.5}
+                />
+                <XAxis
+                  dataKey="formattedDate"
+                  tick={{ fontSize: 12, fill: "#6B7280" }}
+                  tickLine={{ stroke: "#9CA3AF" }}
+                  axisLine={{ stroke: "#D1D5DB" }}
+                  interval={Math.floor(dailyChartData.length / 8)} // Show ~8 labels max
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: "#6B7280" }}
+                  tickLine={{ stroke: "#9CA3AF" }}
+                  axisLine={{ stroke: "#D1D5DB" }}
+                  label={{
+                    value: "Active Users",
+                    angle: -90,
+                    position: "insideLeft",
+                    style: {
+                      textAnchor: "middle",
+                      fill: "#6B7280",
+                      fontSize: "12px",
+                    },
+                  }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#FFFFFF",
+                    border: "1px solid #E5E7EB",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                    fontSize: "14px",
+                  }}
+                  labelStyle={{ color: "#374151", fontWeight: "600" }}
+                  formatter={(value, name) => [
+                    `${value} users`,
+                    "Active Users",
+                  ]}
+                  labelFormatter={(label) => {
+                    const item = dailyChartData.find(
+                      (d) => d.formattedDate === label,
+                    );
+                    return item ? item.fullDate : label;
+                  }}
+                />
                 <Line
                   type="monotone"
                   dataKey="activeUsers"
                   stroke="#3B82F6"
-                  strokeWidth={2}
-                  dot={{ fill: "#3B82F6" }}
+                  strokeWidth={3}
+                  dot={{
+                    fill: "#3B82F6",
+                    strokeWidth: 2,
+                    stroke: "#FFFFFF",
+                    r: 4,
+                  }}
+                  activeDot={{
+                    r: 6,
+                    fill: "#1D4ED8",
+                    stroke: "#FFFFFF",
+                    strokeWidth: 2,
+                  }}
+                  fill="url(#colorActiveUsers)"
                 />
               </LineChart>
             </ResponsiveContainer>
+            <div className="mt-4 text-sm text-gray-600 text-center">
+              Hover over data points for detailed information
+            </div>
           </CardContent>
         </Card>
 

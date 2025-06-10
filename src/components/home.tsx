@@ -118,6 +118,8 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
       setMode(propMode);
     }
   }, [propMode]);
+
+  // Note: Removed automatic mode reset to prevent interference with overview mode
   const [projectData, setProjectData] = useState(null);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -280,8 +282,13 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   };
 
   const handleViewOverview = () => {
-    // Navigate to overview page instead of using local state
-    navigate("/overview");
+    // Set mode to overview to show the ProjectsOverview component
+    setMode("overview");
+  };
+
+  const handleBackToProjects = () => {
+    // Explicitly set mode back to list when returning from overview
+    setMode("list");
   };
 
   // Get breadcrumb items based on current mode
@@ -349,7 +356,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
           />
         </div>
 
-        <div className="max-w-7xl mx-auto space-y-6 relative z-10">
+        <div
+          className={`${mode === "overview" ? "w-full" : "max-w-7xl mx-auto"} space-y-6 relative z-10`}
+        >
           {/* Breadcrumb Navigation */}
           {mode !== "list" && (
             <div className="mb-6">
@@ -870,13 +879,15 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
           )}
 
           {mode === "overview" && (
-            <ProjectsOverview
-              onBack={() => navigate("/")}
-              filterManager={selectedManagers}
-              filterStatus={selectedStatus}
-              filterDepartment={selectedDepartment}
-              filterStatusHealth={selectedStatusHealth}
-            />
+            <div className="w-full">
+              <ProjectsOverview
+                onBack={handleBackToProjects}
+                filterManager={selectedManagers}
+                filterStatus={selectedStatus}
+                filterDepartment={selectedDepartment}
+                filterStatusHealth={selectedStatusHealth}
+              />
+            </div>
           )}
         </div>
       </div>
