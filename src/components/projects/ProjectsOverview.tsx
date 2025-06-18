@@ -51,6 +51,7 @@ import {
   calculateTimeRemainingPercentage,
   getTimeRemainingTooltipText,
 } from "@/lib/services/project";
+import { formatDistanceToNow } from "date-fns";
 import { FileSpreadsheet, ArrowLeft, ExternalLink } from "lucide-react";
 import { exportProjectsToExcel } from "@/lib/services/excelExport";
 import { useToast } from "@/components/ui/use-toast";
@@ -122,6 +123,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     working_days_remaining: true,
     calculated_end_date: false, // Hide end date by default
     total_days: false, // Hide duration by default
+    last_updated: true, // Show last updated by default
   });
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -565,6 +567,40 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
             return <div className="text-center">—</div>;
           }
           return <div className="text-center">{totalDays}d</div>;
+        },
+      }),
+      columnHelper.accessor("updated_at", {
+        id: "last_updated",
+        header: "Last Updated",
+        size: 120,
+        minSize: 110,
+        maxSize: 150,
+        enableResizing: true,
+        enableSorting: true,
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original.updated_at;
+          const b = rowB.original.updated_at;
+          if (!a && !b) return 0;
+          if (!a) return 1;
+          if (!b) return -1;
+          return new Date(b).getTime() - new Date(a).getTime();
+        },
+        cell: (info) => {
+          const updatedAt = info.getValue();
+          if (!updatedAt) {
+            return <div className="text-center text-gray-500">—</div>;
+          }
+
+          try {
+            const timeAgo = formatDistanceToNow(new Date(updatedAt), {
+              addSuffix: true,
+            });
+            return (
+              <div className="text-center text-sm text-gray-600">{timeAgo}</div>
+            );
+          } catch (error) {
+            return <div className="text-center text-gray-500">—</div>;
+          }
         },
       }),
     ],
