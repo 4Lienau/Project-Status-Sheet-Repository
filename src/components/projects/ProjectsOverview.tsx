@@ -763,6 +763,31 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     debugTable: false,
   });
 
+  // Function to get proper display name for column in dropdown menu
+  const getColumnDisplayName = (columnId: string) => {
+    const columnDisplayNames = {
+      project_id: "Project ID",
+      title: "Project",
+      department: "Department", 
+      status: "Status",
+      project_manager: "Project Manager",
+      health_status: "Health Status",
+      completion: "Completion",
+      budget_total: "Budget",
+      budget_actuals: "Actuals",
+      budget_remaining: "Budget Remaining",
+      budget_forecast: "Forecast",
+      budget_status: "Budget Status",
+      milestones: "Milestones",
+      working_days_remaining: "Days Left",
+      calculated_end_date: "End Date",
+      total_days: "Duration",
+      last_updated: "Last Updated"
+    };
+    
+    return columnDisplayNames[columnId] || columnId.replace(/_/g, " ");
+  };
+
   // Render sort indicator for column headers
   const renderSortIndicator = (isSorted: false | "asc" | "desc") => {
     if (!isSorted) {
@@ -778,8 +803,8 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   return (
     <TooltipProvider>
       <div className="w-full space-y-6 px-4">
-        {/* Add horizontal margins to reduce table width */}
-        <div className="mx-12">
+        {/* Remove horizontal margins to allow full width */}
+        <div className="w-full">
           <div className="flex justify-between items-center mb-4">
             <Button
               variant="ghost"
@@ -864,11 +889,15 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                               key={column.id}
                               className="capitalize"
                               checked={column.getIsVisible()}
-                              onCheckedChange={(value) =>
-                                column.toggleVisibility(!!value)
-                              }
+                              onCheckedChange={(value) => {
+                                column.toggleVisibility(!!value);
+                              }}
+                              onSelect={(event) => {
+                                // Prevent the dropdown from closing when clicking on checkbox items
+                                event.preventDefault();
+                              }}
                             >
-                              {column.id.replace("_", " ")}
+                              {getColumnDisplayName(column.id)}
                             </DropdownMenuCheckboxItem>
                           );
                         })}
@@ -883,11 +912,15 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                 </div>
               ) : (
                 <>
+                  {/* Enhanced table container with proper horizontal scrolling */}
                   <div className="w-full border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-[75vh]">
                       <Table
-                        className="w-full min-w-max"
-                        style={{ tableLayout: "fixed" }}
+                        className="w-full"
+                        style={{ 
+                          tableLayout: "auto", // Changed from "fixed" to "auto" to allow dynamic sizing
+                          minWidth: "100%" // Ensure table takes at least full width
+                        }}
                       >
                         <TableHeader>
                           {table.getHeaderGroups().map((headerGroup) => (
@@ -907,7 +940,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                                     }`}
                                     style={{
                                       width: header.getSize(),
-                                      minWidth: header.column.columnDef.minSize,
+                                      minWidth: header.column.columnDef.minSize || header.getSize(),
                                       maxWidth: header.column.columnDef.maxSize,
                                     }}
                                     onClick={
@@ -963,10 +996,10 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                                 {row.getVisibleCells().map((cell) => (
                                   <TableCell
                                     key={cell.id}
-                                    className="text-xs px-3 py-2"
+                                    className="text-xs px-3 py-2 whitespace-nowrap"
                                     style={{
                                       width: cell.column.getSize(),
-                                      minWidth: cell.column.columnDef.minSize,
+                                      minWidth: cell.column.columnDef.minSize || cell.column.getSize(),
                                       maxWidth: cell.column.columnDef.maxSize,
                                     }}
                                   >
