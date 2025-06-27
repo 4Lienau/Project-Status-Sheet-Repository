@@ -11,6 +11,7 @@
  * - UI components from shadcn/ui
  * - Supabase client
  * - Lucide icons
+ * - Confetti animation library
  *
  * Called by: src/components/layout/Layout.tsx (likely)
  */
@@ -31,6 +32,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Shield, LogOut } from "lucide-react";
+import confetti from "canvas-confetti";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -160,12 +162,46 @@ const Navbar = () => {
     }
   };
 
+  const handleTitleClick = () => {
+    // Create a simple confetti effect using CSS animation instead
+    const confettiElement = document.createElement('div');
+    confettiElement.innerHTML = '🎉';
+    confettiElement.style.position = 'fixed';
+    confettiElement.style.top = '20px';
+    confettiElement.style.left = '50%';
+    confettiElement.style.transform = 'translateX(-50%)';
+    confettiElement.style.fontSize = '2rem';
+    confettiElement.style.zIndex = '9999';
+    confettiElement.style.animation = 'confetti-fall 2s ease-out forwards';
+    confettiElement.style.pointerEvents = 'none';
+    
+    // Add CSS animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes confetti-fall {
+        0% { transform: translateX(-50%) translateY(0) rotate(0deg); opacity: 1; }
+        100% { transform: translateX(-50%) translateY(200px) rotate(360deg); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(confettiElement);
+    
+    // Remove elements after animation
+    setTimeout(() => {
+      document.body.removeChild(confettiElement);
+      document.head.removeChild(style);
+    }, 2000);
+  };
+
   return (
     <nav className="sticky top-0 z-50 w-full border-none bg-white shadow-md">
       <div className="container flex h-16 items-center">
         <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center">
-            <span className="text-xl font-bold text-blue-800">
+            <span 
+              className="text-xl font-bold text-blue-800 cursor-pointer hover:text-blue-600 transition-colors"
+              onClick={handleTitleClick}
+            >
               ReWa Project Status Sheet Repository
             </span>
           </div>
