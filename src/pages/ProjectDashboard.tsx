@@ -154,6 +154,42 @@ const ProjectDashboard = ({
           lowest: versionsData[versionsData.length - 1]?.version_number,
         });
 
+        // INVESTIGATION: Check if we're missing versions based on version number gaps
+        if (versionsData.length > 0) {
+          const versionNumbers = versionsData
+            .map((v) => v.version_number)
+            .sort((a, b) => a - b);
+          const minVersion = versionNumbers[0];
+          const maxVersion = versionNumbers[versionNumbers.length - 1];
+          const expectedCount = maxVersion - minVersion + 1;
+
+          console.log(`[DEBUG] PROJECT DASHBOARD VERSION ANALYSIS:`);
+          console.log(
+            `[DEBUG] - Version numbers found: [${versionNumbers.join(", ")}]`,
+          );
+          console.log(`[DEBUG] - Range: ${minVersion} to ${maxVersion}`);
+          console.log(`[DEBUG] - Expected versions in range: ${expectedCount}`);
+          console.log(
+            `[DEBUG] - Actual versions received: ${versionsData.length}`,
+          );
+
+          if (expectedCount > versionsData.length) {
+            const missingCount = expectedCount - versionsData.length;
+            console.warn(
+              `[DEBUG] ⚠️  MISSING ${missingCount} VERSIONS: This explains why you can't see all versions!`,
+            );
+            console.warn(
+              `[DEBUG] The database appears to be missing versions 1-${minVersion - 1}`,
+            );
+            console.warn(`[DEBUG] This could be due to:`);
+            console.warn(`[DEBUG] 1. A data cleanup/retention policy`);
+            console.warn(
+              `[DEBUG] 2. Database migration that didn't preserve all versions`,
+            );
+            console.warn(`[DEBUG] 3. Manual deletion of older versions`);
+          }
+        }
+
         if (mounted) {
           setVersions(versionsData);
           setCurrentVersionIndex(-1);
@@ -822,7 +858,7 @@ const ProjectDashboard = ({
                 >
                   <ChevronLeft className="h-4 w-4" />
                   <span className="text-white font-medium">
-                    Older ({versions.length} versions)
+                    Older ({versions.length} saved changes)
                   </span>
                 </Button>
 
@@ -835,18 +871,25 @@ const ProjectDashboard = ({
                         Current Version
                       </div>
                       <div className="text-xs text-white/90 mt-1">
-                        Latest saved version
+                        Latest changes
                       </div>
+                      {versions.length > 0 && (
+                        <div className="text-xs text-white/90 mt-1">
+                          ({versions.length} saved changes available)
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center">
                       <div className="text-white font-bold">
-                        Version {versions.length - currentVersionIndex} of{" "}
+                        Change {versions.length - currentVersionIndex} of{" "}
                         {versions.length}
                       </div>
                       <div className="text-xs text-white/90">
-                        (Database Version #
+                        (Save #
                         {versions[currentVersionIndex]?.version_number || "N/A"}
+                        {versions.length > 0 &&
+                          ` of ${Math.max(...versions.map((v) => v.version_number))} total saves`}
                         )
                       </div>
                       {versions[currentVersionIndex]?.created_at && (

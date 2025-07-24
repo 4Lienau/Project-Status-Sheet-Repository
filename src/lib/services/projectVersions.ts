@@ -37,24 +37,7 @@ export const projectVersionsService = {
     const nextVersionNumber =
       versions && versions.length > 0 ? versions[0].version_number + 1 : 1;
 
-    console.log(
-      "[VERSION_DEBUG] Creating version",
-      nextVersionNumber,
-      "for project",
-      projectId,
-    );
-    console.log(
-      "[VERSION_DEBUG] Current total versions for this project:",
-      versions?.length || 0,
-    );
-
     // Insert new version
-    console.log("Inserting new version with data:", {
-      project_id: projectId,
-      version_number: nextVersionNumber,
-      data_sample: { ...data, milestones: data.milestones?.length || 0 },
-    });
-
     const { data: newVersion, error } = await supabase
       .from("project_versions")
       .insert({
@@ -67,104 +50,30 @@ export const projectVersionsService = {
       .single();
 
     if (error) {
-      console.error("[VERSION_DEBUG] Error creating new version:", error);
+      console.error("Failed to create project version:", error);
       return null;
     }
-
-    // Keep all versions - no deletion of older versions
-    // This allows users to access complete version history
-    console.log(
-      "[VERSION_DEBUG] Successfully created version",
-      newVersion?.version_number,
-      "with ID:",
-      newVersion?.id,
-    );
 
     return newVersion;
   },
 
   async getVersions(projectId: string): Promise<ProjectVersion[]> {
     if (!projectId) {
-      console.warn("[DEBUG] No project ID provided to getVersions");
       return [];
     }
 
-    console.log("[DEBUG] Fetching versions for project:", projectId);
+    const { data, error } = await supabase
+      .from("project_versions")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("version_number", { ascending: false });
 
-    try {
-      // First check if project exists
-      const { data: project, error: projectError } = await supabase
-        .from("projects")
-        .select("id")
-        .eq("id", projectId)
-        .single();
-
-      if (projectError || !project) {
-        console.error("[DEBUG] Project not found or error:", projectError);
-        return [];
-      }
-
-      // Fetch ALL versions - no limit applied
-      const { data, error } = await supabase
-        .from("project_versions")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
-
-      console.log(`[DEBUG] Raw query returned ${data?.length || 0} versions`);
-
-      if (error) {
-        console.error("[DEBUG] Error fetching versions:", error);
-        return [];
-      }
-
-      if (!data || data.length === 0) {
-        console.log("[DEBUG] No versions found for project:", projectId);
-        return [];
-      }
-
-      console.log(
-        `[DEBUG] Found ${data.length} versions for project ${projectId}`,
-      );
-      console.log("[DEBUG] Version data sample:", data[0]);
-
-      // Validate version data
-      const validVersions = data.filter((version) => {
-        if (!version.data || typeof version.data !== "object") {
-          console.warn(
-            `[DEBUG] Invalid version data for version ${version.version_number}`,
-          );
-          return false;
-        }
-
-        // Additional validation for required fields
-        const requiredFields = ["title", "status", "milestones"];
-        const missingFields = requiredFields.filter(
-          (field) => !(field in version.data),
-        );
-
-        if (missingFields.length > 0) {
-          console.warn(
-            `[DEBUG] Version ${version.version_number} missing required fields:`,
-            missingFields,
-          );
-          return false;
-        }
-
-        return true;
-      });
-
-      if (validVersions.length !== data.length) {
-        console.warn(
-          `[DEBUG] Filtered out ${data.length - validVersions.length} invalid versions`,
-        );
-      }
-
-      return validVersions;
-    } catch (error) {
-      console.error("[DEBUG] Unexpected error in getVersions:", error);
+    if (error) {
+      console.error("Error fetching versions:", error);
       return [];
     }
+
+    return data || [];
   },
 
   async getVersion(versionId: string): Promise<ProjectVersion | null> {

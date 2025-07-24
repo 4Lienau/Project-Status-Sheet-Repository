@@ -26,6 +26,7 @@ import { projectService } from "@/lib/services/project";
 import { projectVersionsService } from "@/lib/services/projectVersions";
 import { useToast } from "@/components/ui/use-toast";
 import html2canvas from "html2canvas";
+import { supabase } from "@/lib/supabase";
 
 /**
  * StatusSheetView component
@@ -128,6 +129,29 @@ const StatusSheetView = () => {
 
       try {
         console.log("[DEBUG] Loading versions for project ID:", id);
+
+        // DEBUGGING: Let's also run a direct query to see if there's a service layer issue
+        const { data: directQueryData, error: directQueryError } =
+          await supabase
+            .from("project_versions")
+            .select("*")
+            .eq("project_id", id)
+            .order("version_number", { ascending: false });
+
+        console.log(
+          `[DEBUG] DIRECT QUERY: Found ${directQueryData?.length || 0} versions`,
+        );
+        console.log(
+          `[DEBUG] DIRECT QUERY DATA:`,
+          directQueryData?.map((v) => ({
+            id: v.id,
+            version_number: v.version_number,
+          })),
+        );
+        if (directQueryError) {
+          console.error(`[DEBUG] DIRECT QUERY ERROR:`, directQueryError);
+        }
+
         const versionsData = await projectVersionsService.getVersions(id);
 
         if (!mounted) {
@@ -135,18 +159,46 @@ const StatusSheetView = () => {
           return;
         }
 
-        console.log("[DEBUG] Loaded versions:", versionsData.length);
         console.log(
-          "[DEBUG] Version data:",
-          versionsData.map((v) => ({
-            id: v.id,
-            number: v.version_number,
-            created: v.created_at,
-          })),
+          `[DEBUG] Successfully loaded ${versionsData.length} versions from database`,
         );
 
+        // Analyze version data for missing versions
+        if (versionsData.length > 0) {
+          const versionNumbers = versionsData
+            .map((v) => v.version_number)
+            .sort((a, b) => a - b);
+          const minVersion = Math.min(...versionNumbers);
+          const maxVersion = Math.max(...versionNumbers);
+          const missingFromStart = minVersion - 1;
+
+          console.log(
+            `[DEBUG] STATUS SHEET VIEW - Available versions: ${versionNumbers.join(", ")}`,
+          );
+          console.log(
+            `[DEBUG] STATUS SHEET VIEW - Range: ${minVersion} to ${maxVersion}`,
+          );
+
+          if (missingFromStart > 0) {
+            console.warn(
+              `[DEBUG] ⚠️  ${missingFromStart} versions (1-${minVersion - 1}) are missing from database`,
+            );
+            console.warn(
+              `[DEBUG] This may be due to data retention policies or database migration`,
+            );
+          }
+        }
+
+        // CRITICAL: Set ALL versions without any filtering or limiting
         setVersions(versionsData);
         setCurrentVersionIndex(-1);
+
+        console.log(
+          `[DEBUG] STATE UPDATE: Set ${versionsData.length} versions in component state`,
+        );
+        console.log(
+          `[DEBUG] UI DISPLAY CHECK: Will show "Version X of ${versionNumbers.length > 0 ? Math.max(...versionNumbers) : 0}" in UI`,
+        );
       } catch (error) {
         console.error("[DEBUG] Error loading project versions:", error);
         if (mounted) {
@@ -167,24 +219,34 @@ const StatusSheetView = () => {
   }, [id, project, toast]);
 
   const loadVersion = async (versionIndex) => {
-    console.log("Loading version index:", versionIndex);
-    console.log("Available versions:", versions.length);
+    console.log("[VERSION_LOAD] Loading version index:", versionIndex);
+    console.log("[VERSION_LOAD] Available versions:", versions.length);
+    console.log(
+      "[VERSION_LOAD] All version numbers:",
+      versions.map((v) => v.version_number),
+    );
 
     if (versionIndex === -1) {
       // Load current version
       setIsLoadingVersion(true);
       try {
-        console.log("Loading current version for project ID:", id);
+        console.log(
+          "[VERSION_LOAD] Loading current version for project ID:",
+          id,
+        );
         const projectData = await projectService.getProject(id);
         if (projectData) {
-          console.log("Successfully loaded current version");
+          console.log("[VERSION_LOAD] Successfully loaded current version");
           setProject(projectData);
           setCurrentVersionIndex(-1);
         } else {
-          console.error("Failed to load current project data");
+          console.error("[VERSION_LOAD] Failed to load current project data");
         }
       } catch (error) {
-        console.error("Error loading current project version:", error);
+        console.error(
+          "[VERSION_LOAD] Error loading current project version:",
+          error,
+        );
         toast({
           title: "Error",
           description: "Failed to load current project version",
@@ -193,15 +255,29 @@ const StatusSheetView = () => {
       } finally {
         setIsLoadingVersion(false);
       }
-    } else if (versions[versionIndex]) {
-      // Load specific version
+    } else if (
+      versionIndex >= 0 &&
+      versionIndex < versions.length &&
+      versions[versionIndex]
+    ) {
+      // Load specific version - ensure we can access ANY version in the array
       setIsLoadingVersion(true);
       try {
-        console.log("Loading version:", versions[versionIndex].version_number);
-        setProject(versions[versionIndex].data);
+        const targetVersion = versions[versionIndex];
+        console.log(
+          `[VERSION_LOAD] Loading version ${targetVersion.version_number} at index ${versionIndex}`,
+        );
+        console.log(
+          `[VERSION_LOAD] Version created at:`,
+          targetVersion.created_at,
+        );
+        setProject(targetVersion.data);
         setCurrentVersionIndex(versionIndex);
+        console.log(
+          `[VERSION_LOAD] Successfully loaded version ${targetVersion.version_number}`,
+        );
       } catch (error) {
-        console.error("Error loading project version:", error);
+        console.error("[VERSION_LOAD] Error loading project version:", error);
         toast({
           title: "Error",
           description: "Failed to load project version",
@@ -211,42 +287,60 @@ const StatusSheetView = () => {
         setIsLoadingVersion(false);
       }
     } else {
-      console.error("Invalid version index:", versionIndex);
+      console.error(
+        `[VERSION_LOAD] Invalid version index: ${versionIndex}. Valid range: 0 to ${versions.length - 1}`,
+      );
+      toast({
+        title: "Error",
+        description: "Invalid version selected",
+        variant: "destructive",
+      });
     }
   };
 
   const handlePreviousVersion = () => {
-    console.log("Handling previous version");
-    console.log("Current version index:", currentVersionIndex);
-    console.log("Versions length:", versions.length);
+    console.log("[VERSION_NAV] Handling previous version");
+    console.log("[VERSION_NAV] Current version index:", currentVersionIndex);
+    console.log("[VERSION_NAV] Total versions available:", versions.length);
+    console.log(
+      "[VERSION_NAV] Version numbers:",
+      versions.map((v) => v.version_number),
+    );
 
     if (currentVersionIndex === -1 && versions.length > 0) {
-      // Go from current to most recent version
-      console.log("Going from current to most recent version");
+      // Go from current to most recent version (index 0)
+      console.log(
+        "[VERSION_NAV] Going from current to most recent version (index 0)",
+      );
       loadVersion(0);
     } else if (currentVersionIndex < versions.length - 1) {
-      // Go to older version
-      console.log("Going to older version");
-      loadVersion(currentVersionIndex + 1);
+      // Go to older version (higher index = older version)
+      const nextIndex = currentVersionIndex + 1;
+      console.log(`[VERSION_NAV] Going to older version (index ${nextIndex})`);
+      loadVersion(nextIndex);
     } else {
-      console.log("No older version available");
+      console.log(
+        "[VERSION_NAV] Already at oldest version, no older version available",
+      );
     }
   };
 
   const handleNextVersion = () => {
-    console.log("Handling next version");
-    console.log("Current version index:", currentVersionIndex);
+    console.log("[VERSION_NAV] Handling next version");
+    console.log("[VERSION_NAV] Current version index:", currentVersionIndex);
+    console.log("[VERSION_NAV] Total versions available:", versions.length);
 
     if (currentVersionIndex > 0) {
-      // Go to newer version
-      console.log("Going to newer version");
-      loadVersion(currentVersionIndex - 1);
+      // Go to newer version (lower index = newer version)
+      const nextIndex = currentVersionIndex - 1;
+      console.log(`[VERSION_NAV] Going to newer version (index ${nextIndex})`);
+      loadVersion(nextIndex);
     } else if (currentVersionIndex === 0) {
       // Go from most recent version to current
-      console.log("Going from most recent version to current");
+      console.log("[VERSION_NAV] Going from most recent version to current");
       loadVersion(-1);
     } else {
-      console.log("Already at newest version");
+      console.log("[VERSION_NAV] Already at newest version (current)");
     }
   };
 
@@ -341,16 +435,74 @@ const StatusSheetView = () => {
                   }
                   className="flex items-center gap-1"
                 >
-                  <ChevronLeft className="h-4 w-4" /> Older ({versions.length}{" "}
-                  versions)
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Older ({versions.length} saved changes)</span>
                 </Button>
 
-                <div className="text-sm px-2">
-                  {isLoadingVersion
-                    ? "Loading..."
-                    : currentVersionIndex === -1
-                      ? "Current"
-                      : `Version ${versions[currentVersionIndex]?.version_number || ""} of ${versions.length}`}
+                <div className="text-sm px-3 py-2 bg-gray-100 rounded border min-w-[160px] text-center">
+                  {(() => {
+                    if (isLoadingVersion) {
+                      return "Loading...";
+                    }
+
+                    if (currentVersionIndex === -1) {
+                      return (
+                        <div>
+                          <div className="font-bold">Current Version</div>
+                          <div className="text-xs text-gray-600 mt-1">
+                            Latest changes
+                          </div>
+                          {versions.length > 0 && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              ({versions.length} saved changes available)
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    const currentVersion = versions[currentVersionIndex];
+                    if (!currentVersion) {
+                      return "Invalid Version";
+                    }
+
+                    // Calculate position in available versions (1-based)
+                    const positionInAvailable =
+                      versions.length - currentVersionIndex;
+                    const totalAvailable = versions.length;
+                    const actualVersionNumber = currentVersion.version_number;
+
+                    // Get the highest version number to show total saves
+                    const highestVersionNumber =
+                      versions.length > 0
+                        ? Math.max(...versions.map((v) => v.version_number))
+                        : actualVersionNumber;
+
+                    return (
+                      <div>
+                        <div className="font-bold">
+                          Change {positionInAvailable} of {totalAvailable}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          (Save #{actualVersionNumber} of {highestVersionNumber}{" "}
+                          total saves)
+                        </div>
+                        {currentVersion.created_at && (
+                          <div className="text-xs text-gray-600 mt-1">
+                            Saved:{" "}
+                            {new Date(
+                              currentVersion.created_at,
+                            ).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <Button
