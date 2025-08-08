@@ -727,10 +727,11 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                             </td>
                             <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
                               {date
-                                ? format(
-                                    new Date(date + "T00:00:00"),
-                                    "MM/dd/yy",
-                                  )
+                                ? (() => {
+                                    // Parse date string directly as YYYY-MM-DD without timezone conversion
+                                    const [year, month, day] = date.split("-");
+                                    return `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year.slice(-2)}`;
+                                  })()
                                 : ""}
                             </td>
                             <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
@@ -876,10 +877,10 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                     {(data.milestones || [])
                       .slice() // Create a copy to avoid mutating the original array
                       .sort((a, b) => {
-                        // Convert dates to timestamps for comparison
-                        const dateA = new Date(a.date || "").getTime();
-                        const dateB = new Date(b.date || "").getTime();
-                        return dateA - dateB; // Sort earliest to latest
+                        // Sort by date string directly to avoid timezone issues
+                        const dateA = (a.date || "").split("T")[0]; // Get YYYY-MM-DD part
+                        const dateB = (b.date || "").split("T")[0]; // Get YYYY-MM-DD part
+                        return dateA.localeCompare(dateB); // Sort earliest to latest
                       })
                       .map((milestone, index) => (
                         <React.Fragment key={index}>
@@ -908,10 +909,12 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                               <div className="flex items-center">
                                 <span>
                                   {milestone.date
-                                    ? format(
-                                        new Date(milestone.date + "T00:00:00"),
-                                        "MM/dd/yy",
-                                      )
+                                    ? (() => {
+                                        // Parse date string directly as YYYY-MM-DD without timezone conversion
+                                        const [year, month, day] =
+                                          milestone.date.split("-");
+                                        return `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year.slice(-2)}`;
+                                      })()
                                     : ""}
                                 </span>
                                 {/* Show change indicator for date changes */}

@@ -2,15 +2,25 @@ import OpenAI from "openai";
 import { supabase } from "../supabase";
 import type { ProjectWithRelations } from "./project";
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
+// Function to get OpenAI client with current API key
+const getOpenAIClient = () => {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      'The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: "My API Key" })',
+    );
+  }
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: true,
+  });
+};
 
 export const chatService = {
   async searchKnowledgeBase(query: string, limit = 3) {
     try {
       // Generate embedding for the query
+      const openai = getOpenAIClient();
       const embeddingResponse = await openai.embeddings.create({
         model: "text-embedding-ada-002",
         input: query,
@@ -198,6 +208,7 @@ export const chatService = {
       );
 
       console.log("[DEBUG] Sending request to OpenAI");
+      const openai = getOpenAIClient();
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [

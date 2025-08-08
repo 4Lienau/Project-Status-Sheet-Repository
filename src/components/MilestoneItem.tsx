@@ -108,7 +108,11 @@ export function MilestoneItem({
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {milestone.date ? (
-                  format(new Date(milestone.date), "MM/dd/yyyy")
+                  (() => {
+                    // Parse date string directly as YYYY-MM-DD without timezone conversion
+                    const [year, month, day] = milestone.date.split("-");
+                    return `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year}`;
+                  })()
                 ) : (
                   <span className="text-muted-foreground">Select date</span>
                 )}
@@ -117,26 +121,36 @@ export function MilestoneItem({
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={milestone.date ? new Date(milestone.date) : undefined}
+                selected={
+                  milestone.date
+                    ? (() => {
+                        // Parse YYYY-MM-DD string and create date in local timezone
+                        const [year, month, day] = milestone.date.split("-");
+                        return new Date(
+                          parseInt(year),
+                          parseInt(month) - 1,
+                          parseInt(day),
+                        );
+                      })()
+                    : undefined
+                }
                 defaultMonth={
-                  milestone.date ? new Date(milestone.date) : undefined
+                  milestone.date
+                    ? (() => {
+                        // Parse YYYY-MM-DD string and create date in local timezone
+                        const [year, month, day] = milestone.date.split("-");
+                        return new Date(
+                          parseInt(year),
+                          parseInt(month) - 1,
+                          parseInt(day),
+                        );
+                      })()
+                    : undefined
                 }
                 onSelect={(date) => {
                   if (date) {
-                    // Add a day to compensate for timezone shift
-                    const adjustedDate = new Date(date);
-                    adjustedDate.setDate(adjustedDate.getDate() + 1);
-
-                    // Extract date components from the adjusted date
-                    const year = adjustedDate.getFullYear();
-                    const month = String(adjustedDate.getMonth() + 1).padStart(
-                      2,
-                      "0",
-                    ); // +1 because months are 0-indexed
-                    const day = String(adjustedDate.getDate()).padStart(2, "0");
-
-                    // Manually construct YYYY-MM-DD format
-                    const formattedDate = `${year}-${month}-${day}`;
+                    // Simply format the date as YYYY-MM-DD without timezone adjustments
+                    const formattedDate = format(date, "yyyy-MM-dd");
 
                     onUpdate({ date: formattedDate });
 

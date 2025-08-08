@@ -24,12 +24,19 @@ import {
 } from "./aiUsageTrackingService";
 import { supabase } from "../supabase";
 
-// Check if API key is available, otherwise use a placeholder
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY || "";
-const openai = new OpenAI({
-  apiKey,
-  dangerouslyAllowBrowser: true,
-});
+// Function to get OpenAI client with current API key
+const getOpenAIClient = () => {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      'The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: "My API Key" })',
+    );
+  }
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: true,
+  });
+};
 
 const getPrompt = (
   type: "description" | "value" | "milestones" | "analysis",
@@ -235,48 +242,8 @@ export const aiService = {
           "\n\nIMPORTANT: Milestone completion percentage (0-100%) is the true measure of progress. A milestone with 0% completion has NOT been achieved, regardless of status.";
       }
 
-      // Check if OpenAI API key is available
-      if (!apiKey) {
-        console.error(
-          "OpenAI API key is not set. Please add VITE_OPENAI_API_KEY to your environment variables.",
-        );
-        // Return a fallback response for testing/development
-        if (type === "analysis") {
-          return `<p>This is a placeholder analysis since no OpenAI API key is available. The project "${title}" appears to be in the early stages with limited data available for comprehensive analysis.</p><p>To generate a real analysis, please set the VITE_OPENAI_API_KEY environment variable.</p>`;
-        } else if (type === "milestones") {
-          return JSON.stringify([
-            {
-              date: new Date().toISOString().split("T")[0],
-              milestone: "Project Kickoff",
-              owner: "Project Manager",
-              completion: 0,
-              status: "green",
-            },
-            {
-              date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-                .toISOString()
-                .split("T")[0],
-              milestone: "Requirements Gathering",
-              owner: "Business Analyst",
-              completion: 0,
-              status: "green",
-            },
-            {
-              date: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000)
-                .toISOString()
-                .split("T")[0],
-              milestone: "Project Closeout",
-              owner: "Project Manager",
-              completion: 0,
-              status: "green",
-            },
-          ]);
-        } else if (type === "description") {
-          return `This project aims to ${title.toLowerCase()}. It will deliver value through improved processes and outcomes.`;
-        } else {
-          return `This project provides business value by improving efficiency and reducing costs related to ${title.toLowerCase()}.`;
-        }
-      }
+      // Get OpenAI client - this will throw an error if API key is missing
+      const openai = getOpenAIClient();
 
       try {
         console.log(`Making direct OpenAI API call for ${type} generation`);
