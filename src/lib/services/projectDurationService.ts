@@ -28,6 +28,72 @@ export const projectDurationService = {
         projectId,
       );
 
+      // Fetch project to check status
+      const { data: project, error: projectError } = await supabase
+        .from("projects")
+        .select("status")
+        .eq("id", projectId)
+        .single();
+
+      if (projectError) {
+        console.error(
+          "[DURATION_SERVICE] Error fetching project:",
+          projectError,
+        );
+        return false;
+      }
+
+      // If project is completed, set remaining days to 0 but keep other duration data
+      if (project.status === "completed") {
+        console.log(
+          "[DURATION_SERVICE] Project is completed, setting remaining days to 0",
+        );
+
+        // Fetch milestones to calculate basic duration data
+        const { data: milestones, error: milestonesError } = await supabase
+          .from("milestones")
+          .select("*")
+          .eq("project_id", projectId);
+
+        if (milestonesError) {
+          console.error(
+            "[DURATION_SERVICE] Error fetching milestones:",
+            milestonesError,
+          );
+          return false;
+        }
+
+        const duration = calculateProjectDuration(milestones || []);
+
+        // Update with 0 remaining days for completed projects
+        const { error: updateError } = await supabase
+          .from("projects")
+          .update({
+            calculated_start_date: duration.startDate,
+            calculated_end_date: duration.endDate,
+            total_days: duration.totalDays,
+            working_days: duration.workingDays,
+            total_days_remaining: 0, // Always 0 for completed projects
+            working_days_remaining: 0, // Always 0 for completed projects
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", projectId);
+
+        if (updateError) {
+          console.error(
+            "[DURATION_SERVICE] Error updating completed project duration:",
+            updateError,
+          );
+          return false;
+        }
+
+        console.log(
+          "[DURATION_SERVICE] Successfully updated completed project duration",
+        );
+        return true;
+      }
+
+      // For non-completed projects, proceed with normal calculation
       // Fetch project milestones
       const { data: milestones, error: milestonesError } = await supabase
         .from("milestones")

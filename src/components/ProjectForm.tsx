@@ -17,6 +17,7 @@ import ProjectPilot from "@/components/chat/ProjectPilot";
 // Import refactored form components
 import ProjectDetailsSection from "@/components/form/ProjectDetailsSection";
 import ProjectStatusSection from "@/components/form/ProjectStatusSection";
+import ProjectDurationSection from "@/components/form/ProjectDurationSection";
 import BudgetLinksSection from "@/components/form/BudgetLinksSection";
 import MilestonesSection from "@/components/form/MilestonesSection";
 import AccomplishmentsSection from "@/components/form/AccomplishmentsSection";
@@ -148,6 +149,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             formData={formData}
             setFormData={setFormData}
           />
+
+          {/* Project Duration Section */}
+          <ProjectDurationSection formData={formData} />
 
           {/* Budget & Links Section */}
           <BudgetLinksSection formData={formData} setFormData={setFormData} />

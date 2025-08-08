@@ -86,6 +86,8 @@ export const calculateWeightedCompletion = (milestones: Milestone[]) => {
 };
 
 // Calculate project duration based on milestone dates
+// Note: This function calculates duration data but doesn't consider project status
+// The status-aware logic is handled in the helper functions that use this data
 export const calculateProjectDuration = (milestones: Milestone[]) => {
   if (!milestones.length) {
     return {
@@ -205,6 +207,14 @@ export const calculateTimeRemainingPercentage = (
 ): number | null => {
   const projectWithRelations = project as ProjectWithRelations;
 
+  // If project is completed, return 0% time remaining
+  if (projectWithRelations.status === "completed") {
+    console.log(
+      `[TIME_CALC] Project is completed, returning 0% time remaining`,
+    );
+    return 0;
+  }
+
   // Check if we have duration data
   if (
     !projectWithRelations.total_days ||
@@ -220,6 +230,7 @@ export const calculateTimeRemainingPercentage = (
   console.log(`[TIME_CALC] Input data:`, {
     totalDays,
     remainingDays,
+    status: projectWithRelations.status,
     calculated_start_date: projectWithRelations.calculated_start_date,
     calculated_end_date: projectWithRelations.calculated_end_date,
   });
@@ -267,6 +278,11 @@ export const getTimeRemainingDescription = (
 ): string => {
   const projectWithRelations = project as ProjectWithRelations;
 
+  // If project is completed, return completion message
+  if (projectWithRelations.status === "completed") {
+    return "Project completed";
+  }
+
   if (
     !projectWithRelations.total_days ||
     projectWithRelations.total_days_remaining === null ||
@@ -312,6 +328,7 @@ export const getTimeRemainingDescription = (
     remainingDays,
     timeRemainingPercentage,
     cappedPercentage,
+    status: projectWithRelations.status,
   });
 
   if (cappedPercentage === 100) {
