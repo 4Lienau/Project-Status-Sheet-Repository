@@ -10,7 +10,8 @@ const basename = import.meta.env.BASE_URL;
 if (import.meta.env.VITE_TEMPO === "true") {
   const initTempo = async () => {
     const { TempoDevtools } = await import("tempo-devtools");
-    await TempoDevtools.init();
+    // /* TempoDevtools.init() [deprecated] */ is deprecated - no longer needed
+    // The devtools attach automatically when VITE_TEMPO is true.
   };
   initTempo();
 }
