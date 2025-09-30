@@ -2,7 +2,7 @@
  * File: aiService.ts
  * Purpose: Service for AI-powered content generation
  * Description: This service provides functions for generating AI content for projects, including
- * descriptions, value statements, milestones, and analysis. It uses a Netlify serverless function
+ * descriptions, value statements, milestones, and analysis. It uses a Supabase Edge Function
  * for secure server-side OpenAI API calls, ensuring the API key is never exposed to the client.
  *
  * Imports from:
@@ -14,7 +14,7 @@
  * - Other components that need AI-generated content
  *
  * Calls:
- * - netlify/functions/generate-content.ts (serverless function)
+ * - supabase.functions.invoke (Supabase Edge Function)
  */
 
 import {
@@ -63,79 +63,57 @@ export const aiService = {
   ) {
     try {
       console.log(
-        `Generating ${type} content via secure Netlify function`,
+        `🚀 Starting ${type} content generation via Supabase Edge Function`,
       );
 
-      // Get the base URL from the current window location
-      const baseUrl = window.location.origin;
-
-      // Create an AbortController to handle timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      try {
-        const response = await fetch(
-          `${baseUrl}/.netlify/functions/generate-content`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              type,
-              title,
-              description,
-              projectData,
-            }),
-            signal: controller.signal,
+      // Use Supabase Edge Function instead of Netlify
+      const { data, error } = await supabase.functions.invoke(
+        'supabase-functions-generate-content',
+        {
+          body: {
+            type,
+            title,
+            description,
+            projectData,
           },
-        );
-
-        // Clear the timeout since the request completed
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Netlify function returned error: ${response.status}`);
-          console.error(`Error details: ${errorText}`);
-          throw new Error(
-            `Server error: ${response.status} - ${errorText}`,
-          );
         }
+      );
 
-        const data = await response.json();
-        console.log(
-          `Successfully generated ${type} content via Netlify function`,
-        );
-
-        // Track AI usage - only track successful generations
-        const userId = await getCurrentUserId();
-        const featureType = mapTypeToFeatureType(type);
-        if (userId && featureType) {
-          await aiUsageTrackingService.logAIUsage({
-            user_id: userId,
-            feature_type: featureType,
-            project_id: projectData?.id,
-            metadata: {
-              method: "netlify_function",
-              title: title,
-              success: true,
-            },
-          });
-        }
-
-        if (type === "milestones") {
-          return this.processMilestones(data.content);
-        }
-        return data.content;
-
-      } catch (fetchError) {
-        // Clear the timeout to prevent memory leaks
-        clearTimeout(timeoutId);
-        throw fetchError;
+      if (error) {
+        console.error(`❌ Supabase Edge Function error:`, error);
+        throw new Error(error.message || 'Failed to generate content');
       }
+
+      if (!data || !data.content) {
+        console.error(`❌ No content returned from Edge Function`);
+        throw new Error('No content returned from AI service');
+      }
+
+      console.log(`✅ Successfully generated ${type} content via Supabase Edge Function`);
+
+      // Track AI usage - only track successful generations
+      const userId = await getCurrentUserId();
+      const featureType = mapTypeToFeatureType(type);
+      if (userId && featureType) {
+        await aiUsageTrackingService.logAIUsage({
+          user_id: userId,
+          feature_type: featureType,
+          project_id: projectData?.id,
+          metadata: {
+            method: "supabase_edge_function",
+            title: title,
+            success: true,
+          },
+        });
+      }
+
+      if (type === "milestones") {
+        return this.processMilestones(data.content);
+      }
+      return data.content;
+
     } catch (error) {
-      console.error(`Error generating ${type} content:`, error.message);
+      console.error(`💥 Error generating ${type} content:`, error.message);
 
       // Track failed AI usage attempts
       const userId = await getCurrentUserId();
@@ -146,7 +124,7 @@ export const aiService = {
           feature_type: featureType,
           project_id: projectData?.id,
           metadata: {
-            method: "netlify_function",
+            method: "supabase_edge_function",
             title: title,
             success: false,
             error: error.message,
@@ -154,9 +132,28 @@ export const aiService = {
         });
       }
 
+      // Provide more specific fallback messages based on error type
+      const errorMessage = error.message || "Unknown error occurred";
+      
+      if (errorMessage.includes("configuration error") || errorMessage.includes("API key")) {
+        const fallbackMessage = `AI service configuration issue. Please contact support. (${errorMessage})`;
+        if (type === "analysis") {
+          return `<p>${fallbackMessage}</p>`;
+        } else {
+          return fallbackMessage;
+        }
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("network")) {
+        const fallbackMessage = `${errorMessage} Please try again in a moment.`;
+        if (type === "analysis") {
+          return `<p>${fallbackMessage}</p>`;
+        } else {
+          return fallbackMessage;
+        }
+      }
+
       // Provide fallback content based on type
       if (type === "analysis") {
-        return `<p>Unable to generate analysis at this time. Please check your internet connection and try again.</p><p>If the problem persists, please contact support.</p>`;
+        return `<p>Unable to generate analysis at this time. ${errorMessage}</p><p>Please try again in a few moments.</p>`;
       } else if (type === "milestones") {
         return this.processMilestones(
           JSON.stringify([
@@ -179,7 +176,7 @@ export const aiService = {
           ]),
         );
       } else {
-        return `Unable to generate content at this time. Please check your internet connection and try again.`;
+        return `Unable to generate content at this time. ${errorMessage}`;
       }
     }
   },

@@ -16,7 +16,7 @@
  * Called by: src/App.tsx
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Layout from "./layout/Layout";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
@@ -134,35 +134,39 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   const [filtersLoaded, setFiltersLoaded] = useState(false);
   const [filteredProjectCount, setFilteredProjectCount] = useState(0);
   const [totalProjectCount, setTotalProjectCount] = useState(0);
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
 
-  // Clear all filters function
-  const clearAllFilters = () => {
+  // Memoize user ID to prevent unnecessary re-renders
+  const userId = useMemo(() => user?.id, [user?.id]);
+
+  // Clear all filters function - memoized to prevent re-renders
+  const clearAllFilters = useCallback(() => {
     setSelectedManagers([]);
     setSelectedStatus("all");
     setSelectedDepartment("all");
     setSelectedStatusHealth("all");
 
     // Save cleared filters to localStorage
-    if (user?.id) {
-      saveFilterToStorage(user.id, "managers", []);
-      saveFilterToStorage(user.id, "status", "all");
-      saveFilterToStorage(user.id, "department", "all");
-      saveFilterToStorage(user.id, "statusHealth", "all");
+    if (userId) {
+      saveFilterToStorage(userId, "managers", []);
+      saveFilterToStorage(userId, "status", "all");
+      saveFilterToStorage(userId, "department", "all");
+      saveFilterToStorage(userId, "statusHealth", "all");
     }
-  };
+  }, [userId]);
 
   // Load persistent filters from localStorage when user is available
   useEffect(() => {
-    if (user?.id && !filtersLoaded) {
-      const savedManagers = loadFilterFromStorage(user.id, "managers", []);
-      const savedStatus = loadFilterFromStorage(user.id, "status", "all");
+    if (userId && !filtersLoaded) {
+      const savedManagers = loadFilterFromStorage(userId, "managers", []);
+      const savedStatus = loadFilterFromStorage(userId, "status", "all");
       const savedDepartment = loadFilterFromStorage(
-        user.id,
+        userId,
         "department",
         "all",
       );
       const savedStatusHealth = loadFilterFromStorage(
-        user.id,
+        userId,
         "statusHealth",
         "all",
       );
@@ -180,31 +184,31 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
         statusHealth: savedStatusHealth,
       });
     }
-  }, [user?.id, filtersLoaded]);
+  }, [userId, filtersLoaded]);
 
-  // Check if user profile is complete
+  // Check if user profile is complete - memoized to prevent re-renders
+  const checkUserProfile = useCallback(async () => {
+    if (!userId) return;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, department")
+      .eq("id", userId)
+      .single();
+
+    // Show profile setup dialog if name or department is missing
+    if (!data?.full_name || !data?.department) {
+      setShowProfileSetup(true);
+    }
+
+    setProfileChecked(true);
+  }, [userId]);
+
   useEffect(() => {
-    const checkUserProfile = async () => {
-      if (!user || !user.id) return;
-
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name, department")
-        .eq("id", user.id)
-        .single();
-
-      // Show profile setup dialog if name or department is missing
-      if (!data?.full_name || !data?.department) {
-        setShowProfileSetup(true);
-      }
-
-      setProfileChecked(true);
-    };
-
-    if (user && !profileChecked) {
+    if (userId && !profileChecked) {
       checkUserProfile();
     }
-  }, [user, profileChecked]);
+  }, [userId, profileChecked, checkUserProfile]);
 
   // Handle navigation from ProjectsOverview
   useEffect(() => {
@@ -232,10 +236,12 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
     }
   }, [location, navigate]);
 
-  // Load unique project managers and departments
-  useEffect(() => {
-    const loadProjectFilters = async () => {
-      if (!user) return;
+  // Load unique project managers and departments - optimized with proper dependencies
+  const loadProjectFilters = useCallback(async () => {
+    if (!userId || filtersInitialized) return;
+    
+    try {
+      console.log("🔄 Loading project filters...");
       const projects = await projectService.getAllProjects();
 
       // Get unique managers
@@ -266,10 +272,17 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
         ...new Set([...projectDepartments, ...profileDepartments]),
       ].sort();
       setDepartments(allDepartments);
-    };
+      
+      setFiltersInitialized(true);
+      console.log("✅ Project filters loaded successfully");
+    } catch (error) {
+      console.error("❌ Error loading project filters:", error);
+    }
+  }, [userId, filtersInitialized]);
 
+  useEffect(() => {
     loadProjectFilters();
-  }, [user]);
+  }, [loadProjectFilters]);
 
   const handleSelectProject = async (project: Project) => {
     // Navigate to project view page instead of using local state
