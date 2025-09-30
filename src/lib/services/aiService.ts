@@ -2,12 +2,12 @@
  * File: aiService.ts
  * Purpose: Service for AI-powered content generation
  * Description: This service provides functions for generating AI content for projects, including
- * descriptions, value statements, milestones, and analysis. It first attempts to use a Netlify
- * serverless function for generation, with a fallback to direct OpenAI API calls. The service
- * includes specialized processing for different content types and handles formatting of responses.
+ * descriptions, value statements, milestones, and analysis. It uses a Netlify serverless function
+ * for secure server-side OpenAI API calls, ensuring the API key is never exposed to the client.
  *
  * Imports from:
- * - OpenAI client
+ * - AI usage tracking service
+ * - Supabase client
  *
  * Used by:
  * - src/components/ProjectForm.tsx
@@ -17,76 +17,11 @@
  * - netlify/functions/generate-content.ts (serverless function)
  */
 
-import OpenAI from "openai";
 import {
   aiUsageTrackingService,
   AIFeatureType,
 } from "./aiUsageTrackingService";
 import { supabase } from "../supabase";
-
-// Function to get OpenAI client with current API key
-const getOpenAIClient = () => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      'The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: "My API Key" })',
-    );
-  }
-  return new OpenAI({
-    apiKey,
-    dangerouslyAllowBrowser: true,
-  });
-};
-
-const getPrompt = (
-  type: "description" | "value" | "milestones" | "analysis",
-) => {
-  switch (type) {
-    case "description":
-      return "You are a professional project manager. Generate a concise but detailed project description focusing on purpose, goals, and expected outcomes based on the project title. Return ONLY the description text, no other content or formatting.";
-    case "value":
-      return "You are a professional project manager. Generate a clear value statement focusing on the project's business value, ROI, and strategic importance based on the project title. Return ONLY the value statement text, no other content or formatting.";
-    case "milestones":
-      return `You are a professional project manager. Generate key milestones based on the project title and description. Return ONLY a JSON array of milestones with the following structure, no other text:
-[
-  {
-    "date": "YYYY-MM-DD",
-    "milestone": "Milestone description",
-    "owner": "Role title",
-    "completion": 0,
-    "status": "green"
-  }
-]
-
-CRITICAL REQUIREMENTS:
-- The FIRST milestone must ALWAYS be "Project Kickoff" with owner "Project Manager"
-- The LAST milestone must ALWAYS be "Project Closeout" with owner "Project Manager"
-- Generate 3-7 additional milestones between kickoff and closeout that are specific to the project
-- Ensure dates are realistic starting from current date, spaced appropriately
-- Status must ALWAYS be "green" for all milestones (representing "On Track" status)
-- Total milestones should be 5-9 (including mandatory kickoff and closeout)
-- NEVER use "yellow" or "red" status - ALL milestones should start as "green"`;
-    case "analysis":
-      return `You are a professional project manager creating a project status summary. Analyze the provided project data and generate a concise summary in paragraph form that highlights:
-
-- Overall project health (based primarily on milestone completion percentages, not status fields)
-- Budget context (note that zero actuals may simply indicate a new project, not a problem)
-- Key milestone progress (use the completion percentage as the primary indicator of progress)
-- Major accomplishments to date
-- Critical risks and their potential impact
-- Upcoming key activities
-
-Interpretation guidelines:
-- Milestone completion percentage (0-100%) is the true measure of progress, not the status field
-- A milestone with 0% completion has NOT been achieved, regardless of status
-- Budget actuals of zero are normal for new projects and not necessarily concerning
-- Focus on measurable data rather than making assumptions
-
-Format your response as HTML with 2-3 concise paragraphs (<p> tags). Use bullet points (<ul><li>) sparingly and only when absolutely necessary for clarity. The entire summary should be brief enough to read in under a minute. Focus on key insights rather than comprehensive details. Use a neutral, factual tone without addressing any specific audience (avoid phrases like "executives should"). Be direct and to the point, highlighting only the most critical information about the current state of the project.`;
-    default:
-      throw new Error("Invalid generation type");
-  }
-};
 
 // Helper function to get current user ID
 const getCurrentUserId = async (): Promise<string | null> => {
@@ -126,17 +61,17 @@ export const aiService = {
     description?: string,
     projectData?: any,
   ) {
-    // Try using Netlify function first with a timeout
     try {
       console.log(
-        `Attempting to generate ${type} content via Netlify function`,
+        `Generating ${type} content via secure Netlify function`,
       );
+
       // Get the base URL from the current window location
       const baseUrl = window.location.origin;
 
       // Create an AbortController to handle timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       try {
         const response = await fetch(
@@ -159,125 +94,21 @@ export const aiService = {
         // Clear the timeout since the request completed
         clearTimeout(timeoutId);
 
-        if (response.ok) {
-          console.log(
-            `Successfully generated ${type} content via Netlify function`,
-          );
-          const data = await response.json();
-
-          // Track AI usage - only track successful generations
-          const userId = await getCurrentUserId();
-          const featureType = mapTypeToFeatureType(type);
-          if (userId && featureType) {
-            await aiUsageTrackingService.logAIUsage({
-              user_id: userId,
-              feature_type: featureType,
-              project_id: projectData?.id,
-              metadata: {
-                method: "netlify_function",
-                title: title,
-                success: true,
-              },
-            });
-          }
-
-          if (type === "milestones") {
-            return this.processMilestones(data.content);
-          }
-          return data.content;
-        } else {
-          console.error(`Netlify function returned error: ${response.status}`);
+        if (!response.ok) {
           const errorText = await response.text();
+          console.error(`Netlify function returned error: ${response.status}`);
           console.error(`Error details: ${errorText}`);
           throw new Error(
-            `Netlify function error: ${response.status} - ${errorText}`,
+            `Server error: ${response.status} - ${errorText}`,
           );
         }
-      } catch (fetchError) {
-        // Clear the timeout to prevent memory leaks
-        clearTimeout(timeoutId);
-        // Re-throw to be caught by the outer try/catch
-        throw fetchError;
-      }
-    } catch (e) {
-      // If Netlify function fails, fall back to direct OpenAI call
-      console.log(
-        `Netlify function failed: ${e.message}. Falling back to direct OpenAI call`,
-      );
 
-      // Direct OpenAI call as fallback
-      // Prepare the content for the AI based on the type
-      let userContent =
-        title + (description ? "\n\nProject Description: " + description : "");
+        const data = await response.json();
+        console.log(
+          `Successfully generated ${type} content via Netlify function`,
+        );
 
-      // For analysis, include filtered project data with explanations
-      if (type === "analysis" && projectData) {
-        // Create a simplified version of the project data with explanations
-        const filteredData = {
-          title: projectData.title,
-          status: projectData.status,
-          description: projectData.description,
-          budget: {
-            total: projectData.budget?.total || 0,
-            actuals: projectData.budget?.actuals || 0,
-            forecast: projectData.budget?.forecast || 0,
-            note: "Zero actuals may indicate a new project, not necessarily a problem",
-          },
-          milestones:
-            projectData.milestones?.map((m) => ({
-              milestone: m.milestone,
-              completion: m.completion, // This is the primary indicator of progress (0-100%)
-              status: m.status, // This is secondary to completion percentage
-              date: m.date,
-              owner: m.owner,
-            })) || [],
-          accomplishments: projectData.accomplishments || [],
-          risks: projectData.risks || [],
-          next_period_activities: projectData.nextPeriodActivities || [],
-        };
-
-        userContent +=
-          "\n\nProject Data: " +
-          JSON.stringify(filteredData, null, 2) +
-          "\n\nIMPORTANT: Milestone completion percentage (0-100%) is the true measure of progress. A milestone with 0% completion has NOT been achieved, regardless of status.";
-      }
-
-      // Get OpenAI client - this will throw an error if API key is missing
-      const openai = getOpenAIClient();
-
-      try {
-        console.log(`Making direct OpenAI API call for ${type} generation`);
-
-        // Add a timeout for the OpenAI API call
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(
-            () =>
-              reject(new Error("OpenAI API call timed out after 30 seconds")),
-            30000,
-          );
-        });
-
-        // Create the API call promise
-        const apiCallPromise = openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: getPrompt(type) },
-            { role: "user", content: userContent },
-          ],
-          max_tokens: type === "milestones" || type === "analysis" ? 1500 : 500,
-          temperature: 0.7,
-        });
-
-        // Race the API call against the timeout
-        const completion = await Promise.race([apiCallPromise, timeoutPromise]);
-        console.log(`OpenAI API call successful for ${type} generation`);
-
-        const content = completion.choices[0].message?.content || "";
-        if (content.trim() === "") {
-          throw new Error("OpenAI API returned empty content");
-        }
-
-        // Track AI usage for successful OpenAI API calls - only when fallback is used
+        // Track AI usage - only track successful generations
         const userId = await getCurrentUserId();
         const featureType = mapTypeToFeatureType(type);
         if (userId && featureType) {
@@ -286,48 +117,69 @@ export const aiService = {
             feature_type: featureType,
             project_id: projectData?.id,
             metadata: {
-              method: "openai_direct_fallback",
+              method: "netlify_function",
               title: title,
               success: true,
-              model: "gpt-3.5-turbo",
-              note: "Used as fallback after Netlify function failed",
             },
           });
         }
 
         if (type === "milestones") {
-          return this.processMilestones(content);
+          return this.processMilestones(data.content);
         }
-        return content;
-      } catch (error) {
-        console.error(`Error in OpenAI API call: ${error.message}`);
-        // Provide fallback content in case of API error
-        if (type === "analysis") {
-          return `<p>Unable to generate analysis due to an API error: ${error.message}</p><p>Please try again later or check your API key configuration.</p>`;
-        } else if (type === "milestones") {
-          return this.processMilestones(
-            JSON.stringify([
-              {
-                date: new Date().toISOString().split("T")[0],
-                milestone: "Project Kickoff",
-                owner: "Project Manager",
-                completion: 0,
-                status: "green",
-              },
-              {
-                date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-                  .toISOString()
-                  .split("T")[0],
-                milestone: "Project Closeout",
-                owner: "Project Manager",
-                completion: 0,
-                status: "green",
-              },
-            ]),
-          );
-        } else {
-          return `Unable to generate content due to an API error. Please try again later.`;
-        }
+        return data.content;
+
+      } catch (fetchError) {
+        // Clear the timeout to prevent memory leaks
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+    } catch (error) {
+      console.error(`Error generating ${type} content:`, error.message);
+
+      // Track failed AI usage attempts
+      const userId = await getCurrentUserId();
+      const featureType = mapTypeToFeatureType(type);
+      if (userId && featureType) {
+        await aiUsageTrackingService.logAIUsage({
+          user_id: userId,
+          feature_type: featureType,
+          project_id: projectData?.id,
+          metadata: {
+            method: "netlify_function",
+            title: title,
+            success: false,
+            error: error.message,
+          },
+        });
+      }
+
+      // Provide fallback content based on type
+      if (type === "analysis") {
+        return `<p>Unable to generate analysis at this time. Please check your internet connection and try again.</p><p>If the problem persists, please contact support.</p>`;
+      } else if (type === "milestones") {
+        return this.processMilestones(
+          JSON.stringify([
+            {
+              date: new Date().toISOString().split("T")[0],
+              milestone: "Project Kickoff",
+              owner: "Project Manager",
+              completion: 0,
+              status: "green",
+            },
+            {
+              date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split("T")[0],
+              milestone: "Project Closeout",
+              owner: "Project Manager",
+              completion: 0,
+              status: "green",
+            },
+          ]),
+        );
+      } else {
+        return `Unable to generate content at this time. Please check your internet connection and try again.`;
       }
     }
   },
