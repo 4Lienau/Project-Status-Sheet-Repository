@@ -9,6 +9,10 @@
  * Imported by: src/main.tsx
  */
 
+/* 1. FONT IMPORTS */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -19,31 +23,39 @@
   }
 
   .prose h1 {
-    @apply text-2xl font-bold;
+    @apply text-2xl font-bold text-foreground;
   }
 
   .prose h2 {
-    @apply text-xl font-semibold;
+    @apply text-xl font-semibold text-foreground;
+  }
+
+  .prose p {
+    @apply text-foreground;
   }
 
   .prose strong {
-    @apply font-bold;
+    @apply font-bold text-foreground;
   }
 
   .prose em {
-    @apply italic;
+    @apply italic text-foreground;
   }
 
   .prose ul {
-    @apply list-disc pl-6;
+    @apply list-disc pl-6 text-foreground;
   }
 
   .prose ol {
-    @apply list-decimal pl-6;
+    @apply list-decimal pl-6 text-foreground;
+  }
+
+  .prose li {
+    @apply text-foreground;
   }
 
   .prose mark {
-    @apply bg-yellow-200;
+    @apply bg-yellow-200 text-foreground;
   }
 
   .prose a {
@@ -53,74 +65,155 @@
 
 @layer base {
   :root {
+    /* Font Families */
+    --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-family-heading: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-family-monospace: 'Fira Code', monospace;
+
+    /* Tailwind/shadcn existing variables */
     --radius: 1rem;
 
-    --background: 220 20% 94%;
-    --foreground: 240 10% 3.9%;
+    --background: 0 0% 100%;
+    --foreground: 220 15% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 220 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 220 15% 15%;
 
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 217 91% 70%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 15% 40%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 217 91% 60%;
+
+    /* Design System Additional Variables */
+    --surface: hsl(220 10% 98%);
+    --surface-foreground: hsl(220 15% 15%);
+    --popup: hsl(0 0% 100%);
+    --popup-foreground: hsl(220 15% 15%);
+    --success: hsl(142 71% 45%);
+    --success-foreground: hsl(0 0% 100%);
+    --error: hsl(0 84% 60%);
+    --error-foreground: hsl(0 0% 100%);
+    --warning: hsl(48 100% 65%);
+    --warning-foreground: hsl(0 0% 100%);
+    --info: hsl(198 93% 60%);
+    --info-foreground: hsl(0 0% 100%);
+    --border-hover: hsl(220 20% 80%);
+    --border-focus: hsl(217 91% 60%);
+
+    /* Spacing */
+    --spacing-1: 0.25rem;
+    --spacing-2: 0.5rem;
+    --spacing-3: 0.75rem;
+    --spacing-4: 1rem;
+    --spacing-6: 1.5rem;
+    --spacing-8: 2rem;
+    --spacing-12: 3rem;
+    --spacing-16: 4rem;
+
+    /* Border Radius & Shadows */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-full: 9999px;
+    --shadow: 0 1px 3px 0 hsl(220 15% 15% / 0.08), 0 1px 2px 0 hsl(220 15% 15% / 0.04);
+    --shadow-md: 0 4px 6px -1px hsl(220 15% 15% / 0.12), 0 2px 4px -2px hsl(220 15% 15% / 0.08);
+    --shadow-lg: 0 10px 15px -3px hsl(220 15% 15% / 0.15), 0 4px 6px -4px hsl(220 15% 15% / 0.10);
+    --shadow-focus: 0 0 0 3px hsl(217 91% 60% / 0.2);
+
+    /* Animation */
+    --animation-duration-fast: 150ms;
+    --animation-duration-normal: 300ms;
+    --animation-duration-slow: 500ms;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Tailwind/shadcn existing variables */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 96%;
 
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 222 47% 14%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 222 47% 14%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
+    --primary: 217 91% 65%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 217 91% 75%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 222 47% 18%;
+    --muted-foreground: 210 40% 75%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 217 91% 65%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
+    --ring: 217 91% 65%;
+
+    /* Design System Additional Dark Mode Variables */
+    --surface: hsl(222 47% 14%);
+    --surface-foreground: hsl(210 40% 98%);
+    --popup: hsl(222 47% 14%);
+    --popup-foreground: hsl(210 40% 98%);
+    --success: hsl(142 60% 50%);
+    --error: hsl(0 72% 55%);
+    --warning: hsl(48 95% 70%);
+    --info: hsl(198 93% 65%);
+    --border-hover: hsl(217 33% 35%);
+    --border-focus: hsl(217 91% 65%);
+    --shadow-focus: 0 0 0 3px hsl(217 91% 65% / 0.2);
   }
 }
 
 @layer base {
+  /* Global Resets & Base Styles */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   * {
     @apply border-border;
   }
+
+  html {
+    @apply bg-background text-foreground;
+  }
+
   body {
-    @apply text-foreground;
+    font-family: var(--font-family-base);
+    @apply bg-background text-foreground;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    @apply bg-background text-foreground min-h-screen;
   }
 }
 

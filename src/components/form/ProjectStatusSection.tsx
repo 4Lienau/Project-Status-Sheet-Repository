@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import DepartmentSelect from "@/components/DepartmentSelect";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SectionHeader } from "@/components/form/SectionHeader";
 
 interface ProjectStatusSectionProps {
   formData: any;
@@ -25,64 +27,61 @@ const ProjectStatusSection: React.FC<ProjectStatusSectionProps> = ({
   setFormData,
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
-      <div className="space-y-2">
-        <div className="flex items-center gap-1 mb-4">
-          <h3 className="text-xl font-bold text-blue-800">Project Status</h3>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs">
-                Select the current status of your project. You may select
-                Active, On Hold, Completed, Cancelled, or Draft.
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        <Select
-          value={formData.status}
-          onValueChange={(value: any) =>
-            setFormData((prev) => ({ ...prev, status: value }))
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="on_hold">On Hold</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+    <TooltipProvider>
+      <SectionHeader
+        title="Project Status"
+        tooltip="Set the current status of the project and configure health indicators."
+      />
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Status */}
+          <div className="space-y-2">
+            <Label htmlFor="status" className="text-foreground">
+              Status
+            </Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, status: value }))
+              }
+            >
+              <SelectTrigger className="bg-card border-border text-foreground">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="on_hold">On Hold</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-1 mb-4">
-          <h3 className="text-xl font-bold text-blue-800">Department</h3>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs">
-                Select the department this project belongs to. Only users in
-                this department will be able to see this project.
-              </p>
-            </TooltipContent>
-          </Tooltip>
+          {/* Health Status */}
+          <div className="space-y-2">
+            <Label htmlFor="status_health" className="text-foreground">
+              Health Status
+            </Label>
+            <Select
+              value={formData.status_health}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, status_health: value }))
+              }
+            >
+              <SelectTrigger className="bg-card border-border text-foreground">
+                <SelectValue placeholder="Select health status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="green">Green (On Track)</SelectItem>
+                <SelectItem value="yellow">Yellow (At Risk)</SelectItem>
+                <SelectItem value="red">Red (Critical)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <DepartmentSelect
-          value={formData.department || ""}
-          onValueChange={(value) =>
-            setFormData((prev) => ({ ...prev, department: value }))
-          }
-        />
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 

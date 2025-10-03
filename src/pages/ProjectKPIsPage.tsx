@@ -7,7 +7,7 @@
  * overview of project portfolio health and performance.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -81,39 +81,49 @@ const stripHtmlTags = (text: string): string => {
   return text.replace(/<[^>]*>/g, "").trim();
 };
 
-const COLORS = [
-  "#3B82F6",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-  "#06B6D4",
-  "#84CC16",
-  "#F97316",
+// Vibrant color palette for charts
+const CHART_COLORS = [
+  "#3b82f6", // blue
+  "#10b981", // green
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#8b5cf6", // purple
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#f97316", // orange
 ];
 
-// Department-specific colors for consistent theming
-const DEPARTMENT_COLORS = {
-  Technology: "#3B82F6", // Blue
-  Engineering: "#10B981", // Green
-  "Asset Management": "#F59E0B", // Orange
-  Finance: "#EF4444", // Red
-  Operations: "#8B5CF6", // Purple
-  Marketing: "#06B6D4", // Cyan
-  HR: "#84CC16", // Lime
-  Sales: "#F97316", // Orange-red
+// Department-specific colors
+const DEPARTMENT_COLORS: Record<string, string> = {
+  Technology: "#3b82f6",      // blue
+  Engineering: "#10b981",     // green
+  "Asset Management": "#f59e0b", // amber
+  Finance: "#ef4444",         // red
+  Operations: "#8b5cf6",      // purple
+  Marketing: "#ec4899",       // pink
+  HR: "#06b6d4",              // cyan
+  Sales: "#f97316",           // orange
+  Purchasing: "#14b8a6",      // teal
 };
 
-// Function to get color for department
-const getDepartmentColor = (department: string, index: number): string => {
-  return DEPARTMENT_COLORS[department] || COLORS[index % COLORS.length];
+// Health status colors
+const HEALTH_COLORS = {
+  GREEN: "#10b981",   // green
+  YELLOW: "#f59e0b",  // amber
+  RED: "#ef4444",     // red
 };
 
-const ProjectKPIsPage = () => {
+const ProjectKPIsPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Helper function to get department color
+  const getDepartmentColor = (department: string, index: number): string => {
+    return DEPARTMENT_COLORS[department] || CHART_COLORS[index % CHART_COLORS.length];
+  };
+
   const [financialKPIs, setFinancialKPIs] = useState<FinancialKPIs | null>(
     null,
   );
@@ -307,8 +317,8 @@ const ProjectKPIsPage = () => {
       <Layout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="animate-spin h-8 w-8 border-2 border-blue-500 rounded-full border-t-transparent mx-auto mb-4"></div>
-            <h2 className="text-lg font-semibold text-white">
+            <div className="animate-spin h-8 w-8 border-2 border-primary rounded-full border-t-transparent mx-auto mb-4"></div>
+            <h2 className="text-lg font-semibold text-foreground">
               Loading KPIs...
             </h2>
             <p className="text-muted-foreground">Analyzing project data...</p>
@@ -327,28 +337,28 @@ const ProjectKPIsPage = () => {
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
-                className="bg-white/90 text-gray-900 border-white hover:bg-white hover:text-gray-900 font-medium"
+                className="bg-card text-card-foreground border-border hover:bg-accent hover:text-accent-foreground font-medium"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Projects
               </Button>
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="text-3xl font-bold text-foreground">
                 Project KPIs Dashboard
               </h1>
             </div>
 
-            <Card className="bg-white/90 backdrop-blur-sm">
+            <Card className="bg-card backdrop-blur-sm">
               <CardContent className="p-12 text-center">
-                <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                <BarChart3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">
                   No Projects Found
                 </h2>
-                <p className="text-gray-600 mb-6">
+                <p className="text-muted-foreground mb-6">
                   Create some projects to see KPIs and analytics.
                 </p>
                 <Button
                   onClick={() => navigate("/")}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-primary hover:bg-primary/90"
                 >
                   Create Your First Project
                 </Button>
@@ -370,82 +380,82 @@ const ProjectKPIsPage = () => {
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
-                className="bg-white/90 text-gray-900 border-white hover:bg-white hover:text-gray-900 font-medium"
+                className="bg-card text-card-foreground border-border hover:bg-accent hover:text-accent-foreground font-medium"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Projects
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-white">
+                <h1 className="text-3xl font-bold text-foreground">
                   Project KPIs Dashboard
                 </h1>
-                <p className="text-white/70 mt-1">
+                <p className="text-muted-foreground mt-1">
                   Portfolio insights and performance metrics
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {formatNumber(projects.length)}
               </div>
-              <div className="text-white/70 text-sm">Total Projects</div>
+              <div className="text-muted-foreground text-sm">Total Projects</div>
             </div>
           </div>
 
           {/* Financial KPIs */}
           {financialKPIs && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+              <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                 <DollarSign className="h-6 w-6" />
                 Financial Performance
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Total Budget
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-2xl font-bold text-chart-1">
                       {formatCurrency(financialKPIs.totalBudget)}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Actuals
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-2xl font-bold text-chart-2">
                       {formatCurrency(financialKPIs.totalActuals)}
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
+                    <div className="text-sm text-muted-foreground mt-1">
                       {financialKPIs.budgetUtilization.toFixed(1)}% utilized
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Forecast
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-orange-600">
+                    <div className="text-2xl font-bold text-chart-3">
                       {formatCurrency(financialKPIs.totalForecast)}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Budget Variance
                     </CardTitle>
                   </CardHeader>
@@ -453,8 +463,8 @@ const ProjectKPIsPage = () => {
                     <div
                       className={`text-2xl font-bold flex items-center gap-1 ${
                         financialKPIs.budgetVariance >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
+                          ? "text-chart-2"
+                          : "text-destructive"
                       }`}
                     >
                       {financialKPIs.budgetVariance >= 0 ? (
@@ -469,7 +479,7 @@ const ProjectKPIsPage = () => {
               </div>
 
               {/* Department Budget Breakdown */}
-              <Card className="bg-white/90 backdrop-blur-sm">
+              <Card className="bg-card backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle>Budget by Department</CardTitle>
                   <CardDescription>
@@ -479,29 +489,47 @@ const ProjectKPIsPage = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={financialKPIs.departmentBudgets}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="department" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="department" stroke="hsl(var(--muted-foreground))" />
                       <YAxis
                         tickFormatter={(value) =>
                           `${(value / 1000).toFixed(0)}K`
                         }
+                        stroke="hsl(var(--muted-foreground))"
                       />
                       <Tooltip
                         formatter={(value) => formatCurrency(value as number)}
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "var(--radius)",
+                          color: "hsl(var(--popover-foreground))",
+                        }}
                       />
-                      <Bar dataKey="budget" fill="#3B82F6" name="Budget">
+                      <Bar dataKey="budget" name="Budget">
                         {financialKPIs.departmentBudgets.map((entry, index) => (
-                          <Cell key={`budget-${index}`} />
+                          <Cell 
+                            key={`budget-${index}`}
+                            fill={getDepartmentColor(entry.department, index)}
+                          />
                         ))}
                       </Bar>
-                      <Bar dataKey="actuals" fill="#10B981" name="Actuals">
+                      <Bar dataKey="actuals" name="Actuals">
                         {financialKPIs.departmentBudgets.map((entry, index) => (
-                          <Cell key={`actuals-${index}`} />
+                          <Cell 
+                            key={`actuals-${index}`}
+                            fill={getDepartmentColor(entry.department, index)}
+                            opacity={0.7}
+                          />
                         ))}
                       </Bar>
-                      <Bar dataKey="forecast" fill="#F59E0B" name="Forecast">
+                      <Bar dataKey="forecast" name="Forecast">
                         {financialKPIs.departmentBudgets.map((entry, index) => (
-                          <Cell key={`forecast-${index}`} />
+                          <Cell 
+                            key={`forecast-${index}`}
+                            fill={getDepartmentColor(entry.department, index)}
+                            opacity={0.5}
+                          />
                         ))}
                       </Bar>
                     </BarChart>
@@ -514,12 +542,12 @@ const ProjectKPIsPage = () => {
           {/* Time-Aware Health Analysis */}
           {performanceKPIs && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+              <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                 <Clock className="h-6 w-6" />
                 Time-Aware Health Analysis
               </h2>
 
-              <Card className="bg-white/90 backdrop-blur-sm">
+              <Card className="bg-card backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle>Health Calculation Rules</CardTitle>
                   <CardDescription>
@@ -529,11 +557,11 @@ const ProjectKPIsPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                      <div className="text-green-800 font-semibold mb-2">
+                    <div className="p-4 bg-chart-2/10 rounded-lg border border-chart-2/20">
+                      <div className="text-chart-2 font-semibold mb-2">
                         Substantial Time (&gt;70%)
                       </div>
-                      <div className="text-sm text-green-700">
+                      <div className="text-sm text-foreground/80">
                         <div>
                           • ≥5% completion = <strong>Green</strong>
                         </div>
@@ -545,11 +573,11 @@ const ProjectKPIsPage = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="text-blue-800 font-semibold mb-2">
+                    <div className="p-4 bg-chart-1/10 rounded-lg border border-chart-1/20">
+                      <div className="text-chart-1 font-semibold mb-2">
                         Plenty of Time (&gt;40%)
                       </div>
-                      <div className="text-sm text-blue-700">
+                      <div className="text-sm text-foreground/80">
                         <div>
                           • ≥15% completion = <strong>Green</strong>
                         </div>
@@ -561,11 +589,11 @@ const ProjectKPIsPage = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="text-yellow-800 font-semibold mb-2">
+                    <div className="p-4 bg-chart-3/10 rounded-lg border border-chart-3/20">
+                      <div className="text-chart-3 font-semibold mb-2">
                         Moderate Time (&gt;20%)
                       </div>
-                      <div className="text-sm text-yellow-700">
+                      <div className="text-sm text-foreground/80">
                         <div>
                           • ≥30% completion = <strong>Green</strong>
                         </div>
@@ -577,11 +605,11 @@ const ProjectKPIsPage = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                      <div className="text-red-800 font-semibold mb-2">
+                    <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+                      <div className="text-destructive font-semibold mb-2">
                         Little Time (1-20%)
                       </div>
-                      <div className="text-sm text-red-700">
+                      <div className="text-sm text-foreground/80">
                         <div>
                           • ≥70% completion = <strong>Green</strong>
                         </div>
@@ -594,31 +622,31 @@ const ProjectKPIsPage = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-700">
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground">
                       <strong>Special Cases:</strong>
                       <ul className="list-disc list-inside mt-1 space-y-1">
                         <li>
                           Completed projects ={" "}
-                          <span className="text-green-600 font-semibold">
+                          <span className="text-chart-2 font-semibold">
                             Green (100%)
                           </span>
                         </li>
                         <li>
                           Cancelled projects ={" "}
-                          <span className="text-gray-600 font-semibold">
+                          <span className="text-muted-foreground font-semibold">
                             Excluded from health metrics
                           </span>
                         </li>
                         <li>
                           Draft/On Hold projects ={" "}
-                          <span className="text-yellow-600 font-semibold">
+                          <span className="text-chart-3 font-semibold">
                             Yellow
                           </span>
                         </li>
                         <li>
                           Overdue projects ={" "}
-                          <span className="text-red-600 font-semibold">
+                          <span className="text-destructive font-semibold">
                             Strict thresholds applied
                           </span>
                         </li>
@@ -633,20 +661,20 @@ const ProjectKPIsPage = () => {
           {/* Performance KPIs */}
           {performanceKPIs && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+              <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                 <Activity className="h-6 w-6" />
                 Performance Metrics
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Overall Completion
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-blue-600 mb-2">
+                    <div className="text-3xl font-bold text-chart-1 mb-2">
                       {performanceKPIs.overallCompletion}%
                     </div>
                     <Progress
@@ -656,26 +684,26 @@ const ProjectKPIsPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Milestone Completion
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-green-600 mb-2">
+                    <div className="text-3xl font-bold text-chart-2 mb-2">
                       {performanceKPIs.milestoneCompletionRate}%
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-muted-foreground">
                       {performanceKPIs.completedMilestones} of{" "}
                       {performanceKPIs.totalMilestones} milestones
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Project Health (Time-Aware)
                     </CardTitle>
                   </CardHeader>
@@ -697,10 +725,10 @@ const ProjectKPIsPage = () => {
                               <div
                                 className={`w-3 h-3 rounded-full ${
                                   item.health === "GREEN"
-                                    ? "bg-green-500"
+                                    ? "bg-chart-2"
                                     : item.health === "YELLOW"
-                                      ? "bg-yellow-500"
-                                      : "bg-red-500"
+                                      ? "bg-chart-3"
+                                      : "bg-destructive"
                                 }`}
                               />
                               <span className="text-sm">{healthLabel}</span>
@@ -709,7 +737,7 @@ const ProjectKPIsPage = () => {
                               <span className="text-sm font-medium">
                                 {item.count}
                               </span>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-muted-foreground">
                                 {item.percentage}%
                               </div>
                             </div>
@@ -717,8 +745,8 @@ const ProjectKPIsPage = () => {
                         );
                       })}
                     </div>
-                    <div className="mt-3 pt-2 border-t border-gray-200">
-                      <div className="text-xs text-gray-500 mt-2">
+                    <div className="mt-3 pt-2 border-t border-border">
+                      <div className="text-xs text-muted-foreground mt-2">
                         <strong>Time-Aware Calculation:</strong> Projects with
                         substantial time remaining (&gt;70%) need only ≥5%
                         completion for Green status. Cancelled projects
@@ -728,9 +756,9 @@ const ProjectKPIsPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Project Status
                     </CardTitle>
                   </CardHeader>
@@ -754,7 +782,7 @@ const ProjectKPIsPage = () => {
 
               {/* Status Distribution Chart */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle>Project Status Distribution</CardTitle>
                   </CardHeader>
@@ -777,18 +805,25 @@ const ProjectKPIsPage = () => {
                             (entry, index) => (
                               <Cell
                                 key={`cell-${index}`}
-                                fill={COLORS[index % COLORS.length]}
+                                fill={CHART_COLORS[index % CHART_COLORS.length]}
                               />
                             ),
                           )}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--popover))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "var(--radius)",
+                            color: "hsl(var(--popover-foreground))",
+                          }}
+                        />
                       </RechartsPieChart>
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle>Time-Aware Health Distribution</CardTitle>
                     <CardDescription>
@@ -821,13 +856,7 @@ const ProjectKPIsPage = () => {
                             (entry, index) => (
                               <Cell
                                 key={`cell-${index}`}
-                                fill={
-                                  entry.health === "GREEN"
-                                    ? "#10B981"
-                                    : entry.health === "YELLOW"
-                                      ? "#F59E0B"
-                                      : "#EF4444"
-                                }
+                                fill={HEALTH_COLORS[entry.health as keyof typeof HEALTH_COLORS] || CHART_COLORS[index % CHART_COLORS.length]}
                               />
                             ),
                           )}
@@ -842,10 +871,16 @@ const ProjectKPIsPage = () => {
                                   : "Critical";
                             return [value, healthLabel];
                           }}
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--popover))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "var(--radius)",
+                            color: "hsl(var(--popover-foreground))",
+                          }}
                         />
                       </RechartsPieChart>
                     </ResponsiveContainer>
-                    <div className="mt-4 space-y-2 text-xs text-gray-600">
+                    <div className="mt-4 space-y-2 text-xs text-muted-foreground">
                       <div>
                         <strong>On Track (Green):</strong> Projects meeting
                         completion thresholds for their time remaining
@@ -858,7 +893,7 @@ const ProjectKPIsPage = () => {
                         <strong>Critical (Red):</strong> Projects significantly
                         behind or overdue
                       </div>
-                      <div className="text-xs text-gray-500 mt-2">
+                      <div className="text-xs text-muted-foreground mt-2">
                         <em>
                           Note: Cancelled projects are excluded from health
                           calculations
@@ -874,13 +909,13 @@ const ProjectKPIsPage = () => {
           {/* Resource KPIs */}
           {resourceKPIs && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+              <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                 <Users className="h-6 w-6" />
                 Resource Utilization
               </h2>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle>Projects by Department</CardTitle>
                     <CardDescription>
@@ -917,7 +952,7 @@ const ProjectKPIsPage = () => {
                                   >
                                     {dept.count} projects
                                   </Badge>
-                                  <span className="text-sm text-gray-600">
+                                  <span className="text-sm text-muted-foreground">
                                     {dept.avgCompletion}% avg
                                   </span>
                                 </div>
@@ -944,7 +979,7 @@ const ProjectKPIsPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle>Project Manager Workload</CardTitle>
                     <CardDescription>
@@ -954,12 +989,12 @@ const ProjectKPIsPage = () => {
                   <CardContent>
                     <div className="space-y-3">
                       {resourceKPIs.projectManagerWorkload.length === 0 ? (
-                        <div className="text-center py-4 text-gray-500">
+                        <div className="text-center py-4 text-muted-foreground">
                           No project managers found
                         </div>
                       ) : (
                         <>
-                          <div className="text-xs text-gray-500 mb-2">
+                          <div className="text-xs text-muted-foreground mb-2">
                             Showing all{" "}
                             {resourceKPIs.projectManagerWorkload.length} project
                             managers
@@ -967,11 +1002,11 @@ const ProjectKPIsPage = () => {
                           {resourceKPIs.projectManagerWorkload.map((pm) => (
                             <div
                               key={pm.manager}
-                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                              className="flex items-center justify-between p-3 bg-muted rounded-lg"
                             >
                               <div>
                                 <div className="font-medium">{pm.manager}</div>
-                                <div className="text-sm text-gray-600">
+                                <div className="text-sm text-muted-foreground">
                                   {formatCurrency(pm.totalBudget)} budget
                                 </div>
                               </div>
@@ -979,7 +1014,7 @@ const ProjectKPIsPage = () => {
                                 <div className="font-semibold">
                                   {pm.projectCount} projects
                                 </div>
-                                <div className="text-sm text-gray-600">
+                                <div className="text-sm text-muted-foreground">
                                   {pm.avgCompletion}% avg completion
                                 </div>
                               </div>
@@ -997,66 +1032,66 @@ const ProjectKPIsPage = () => {
           {/* Operational KPIs */}
           {operationalKPIs && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+              <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                 <BarChart3 className="h-6 w-6" />
                 Operational Metrics
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Active Projects
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-blue-600">
+                    <div className="text-3xl font-bold text-chart-1">
                       {operationalKPIs.activeProjects}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Completed Projects
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-green-600">
+                    <div className="text-3xl font-bold text-chart-2">
                       {operationalKPIs.completedProjects}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Task Completion
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-purple-600 mb-2">
+                    <div className="text-3xl font-bold text-chart-5 mb-2">
                       {operationalKPIs.taskCompletionRate}%
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-muted-foreground">
                       {operationalKPIs.tasksCompleted} of{" "}
                       {operationalKPIs.totalTasks} tasks
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Avg Duration
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-orange-600">
+                    <div className="text-3xl font-bold text-chart-3">
                       {operationalKPIs.averageProjectDuration}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-muted-foreground">
                       {operationalKPIs.averageWorkingDays} working days
                     </div>
                   </CardContent>
@@ -1064,7 +1099,7 @@ const ProjectKPIsPage = () => {
               </div>
 
               {/* Project Creation Trend */}
-              <Card className="bg-white/90 backdrop-blur-sm">
+              <Card className="bg-card backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle>Project Creation Trend</CardTitle>
                   <CardDescription>
@@ -1074,15 +1109,22 @@ const ProjectKPIsPage = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={operationalKPIs.projectCreationTrend}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                      <YAxis stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "var(--radius)",
+                          color: "hsl(var(--popover-foreground))",
+                        }}
+                      />
                       <Area
                         type="monotone"
                         dataKey="count"
-                        stroke="#3B82F6"
-                        fill="#3B82F6"
+                        stroke={CHART_COLORS[0]}
+                        fill={CHART_COLORS[0]}
                         fillOpacity={0.3}
                       />
                       {operationalKPIs.projectCreationTrend.map(
@@ -1092,7 +1134,7 @@ const ProjectKPIsPage = () => {
                             x={`${(index / (operationalKPIs.projectCreationTrend.length - 1)) * 100}%`}
                             y="20"
                             textAnchor="middle"
-                            fill="#374151"
+                            fill="hsl(var(--foreground))"
                             fontSize="12"
                           >
                             {entry.count}
@@ -1111,14 +1153,14 @@ const ProjectKPIsPage = () => {
             (timelineKPIs.upcomingMilestones.length > 0 ||
               timelineKPIs.overdueMilestones.length > 0) && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+                <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                   <Calendar className="h-6 w-6" />
                   Timeline Analysis
                 </h2>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {timelineKPIs.upcomingMilestones.length > 0 && (
-                    <Card className="bg-white/90 backdrop-blur-sm">
+                    <Card className="bg-card backdrop-blur-sm">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Clock className="h-5 w-5" />
@@ -1135,13 +1177,13 @@ const ProjectKPIsPage = () => {
                             .map((milestone, index) => (
                               <div
                                 key={index}
-                                className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
+                                className="flex items-center justify-between p-3 bg-chart-1/10 rounded-lg border border-chart-1/20"
                               >
                                 <div className="flex-1">
                                   <div className="font-medium text-sm">
                                     {milestone.milestone}
                                   </div>
-                                  <div className="text-xs text-gray-600">
+                                  <div className="text-xs text-muted-foreground">
                                     {stripHtmlTags(milestone.projectTitle)}
                                   </div>
                                 </div>
@@ -1149,7 +1191,7 @@ const ProjectKPIsPage = () => {
                                   <div className="text-sm font-semibold">
                                     {milestone.daysUntilDue} days
                                   </div>
-                                  <div className="text-xs text-gray-600">
+                                  <div className="text-xs text-muted-foreground">
                                     {milestone.completion}% complete
                                   </div>
                                 </div>
@@ -1161,10 +1203,10 @@ const ProjectKPIsPage = () => {
                   )}
 
                   {timelineKPIs.overdueMilestones.length > 0 && (
-                    <Card className="bg-white/90 backdrop-blur-sm">
+                    <Card className="bg-card backdrop-blur-sm">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-red-500" />
+                          <AlertTriangle className="h-5 w-5 text-destructive" />
                           Overdue Milestones
                         </CardTitle>
                         <CardDescription>
@@ -1178,21 +1220,21 @@ const ProjectKPIsPage = () => {
                             .map((milestone, index) => (
                               <div
                                 key={index}
-                                className="flex items-center justify-between p-3 bg-red-50 rounded-lg"
+                                className="flex items-center justify-between p-3 bg-destructive/10 rounded-lg border border-destructive/20"
                               >
                                 <div className="flex-1">
                                   <div className="font-medium text-sm">
                                     {milestone.milestone}
                                   </div>
-                                  <div className="text-xs text-gray-600">
+                                  <div className="text-xs text-muted-foreground">
                                     {stripHtmlTags(milestone.projectTitle)}
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-sm font-semibold text-red-600">
+                                  <div className="text-sm font-semibold text-destructive">
                                     {milestone.daysOverdue} days overdue
                                   </div>
-                                  <div className="text-xs text-gray-600">
+                                  <div className="text-xs text-muted-foreground">
                                     {milestone.completion}% complete
                                   </div>
                                 </div>
@@ -1210,53 +1252,53 @@ const ProjectKPIsPage = () => {
           {durationKPIs && (
             <TooltipProvider>
               <div className="space-y-6">
-                <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+                <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                   <Clock className="h-6 w-6" />
                   Project Duration Analysis
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Card className="bg-white/90 backdrop-blur-sm">
+                  <Card className="bg-card backdrop-blur-sm">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-600">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
                         Avg Total Duration
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-blue-600">
+                      <div className="text-3xl font-bold text-chart-1">
                         {durationKPIs.averageTotalDays}
                       </div>
-                      <div className="text-sm text-gray-500">days</div>
+                      <div className="text-sm text-muted-foreground">days</div>
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-white/90 backdrop-blur-sm">
+                  <Card className="bg-card backdrop-blur-sm">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-600">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
                         Avg Working Days
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-green-600">
+                      <div className="text-3xl font-bold text-chart-2">
                         {durationKPIs.averageWorkingDays}
                       </div>
-                      <div className="text-sm text-gray-500">working days</div>
+                      <div className="text-sm text-muted-foreground">working days</div>
                     </CardContent>
                   </Card>
 
                   <UITooltip>
                     <TooltipTrigger asChild>
-                      <Card className="bg-white/90 backdrop-blur-sm cursor-help">
+                      <Card className="bg-card backdrop-blur-sm cursor-help">
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-gray-600">
+                          <CardTitle className="text-sm font-medium text-muted-foreground">
                             Duration Coverage
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="text-3xl font-bold text-purple-600 mb-2">
+                          <div className="text-3xl font-bold text-chart-5 mb-2">
                             {durationKPIs.durationCoverage}%
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             {durationKPIs.projectsWithDuration} of{" "}
                             {projects.length} projects
                           </div>
@@ -1277,17 +1319,17 @@ const ProjectKPIsPage = () => {
 
                   <UITooltip>
                     <TooltipTrigger asChild>
-                      <Card className="bg-white/90 backdrop-blur-sm cursor-help">
+                      <Card className="bg-card backdrop-blur-sm cursor-help">
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-gray-600">
+                          <CardTitle className="text-sm font-medium text-muted-foreground">
                             Duration Efficiency
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="text-3xl font-bold text-orange-600 mb-2">
+                          <div className="text-3xl font-bold text-chart-3 mb-2">
                             {durationKPIs.durationEfficiency}%
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             working/total ratio
                           </div>
                         </CardContent>
@@ -1308,7 +1350,7 @@ const ProjectKPIsPage = () => {
 
                 {/* Duration Distribution and Department Analysis */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className="bg-white/90 backdrop-blur-sm">
+                  <Card className="bg-card backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle>Duration Distribution</CardTitle>
                       <CardDescription>
@@ -1334,18 +1376,25 @@ const ProjectKPIsPage = () => {
                               (entry, index) => (
                                 <Cell
                                   key={`cell-${index}`}
-                                  fill={COLORS[index % COLORS.length]}
+                                  fill={CHART_COLORS[index % CHART_COLORS.length]}
                                 />
                               ),
                             )}
                           </Pie>
-                          <Tooltip />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--popover))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "var(--radius)",
+                              color: "hsl(var(--popover-foreground))",
+                            }}
+                          />
                         </RechartsPieChart>
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-white/90 backdrop-blur-sm">
+                  <Card className="bg-card backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle>Duration by Department</CardTitle>
                       <CardDescription>
@@ -1355,29 +1404,41 @@ const ProjectKPIsPage = () => {
                     <CardContent>
                       <ResponsiveContainer width="100%" height={250}>
                         <BarChart data={durationKPIs.departmentDurations}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="department" />
-                          <YAxis />
-                          <Tooltip />
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="department" stroke="hsl(var(--muted-foreground))" />
+                          <YAxis stroke="hsl(var(--muted-foreground))" />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--popover))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "var(--radius)",
+                              color: "hsl(var(--popover-foreground))",
+                            }}
+                          />
                           <Bar
                             dataKey="avgTotalDays"
-                            fill="#3B82F6"
                             name="Total Days"
                           >
                             {durationKPIs.departmentDurations.map(
                               (entry, index) => (
-                                <Cell key={`total-${index}`} />
+                                <Cell 
+                                  key={`total-${index}`}
+                                  fill={getDepartmentColor(entry.department, index)}
+                                />
                               ),
                             )}
                           </Bar>
                           <Bar
                             dataKey="avgWorkingDays"
-                            fill="#10B981"
                             name="Working Days"
                           >
                             {durationKPIs.departmentDurations.map(
                               (entry, index) => (
-                                <Cell key={`working-${index}`} />
+                                <Cell 
+                                  key={`working-${index}`}
+                                  fill={getDepartmentColor(entry.department, index)}
+                                  opacity={0.7}
+                                />
                               ),
                             )}
                           </Bar>
@@ -1392,10 +1453,10 @@ const ProjectKPIsPage = () => {
                   durationKPIs.shortestProject) && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {durationKPIs.longestProject && (
-                      <Card className="bg-white/90 backdrop-blur-sm">
+                      <Card className="bg-card backdrop-blur-sm">
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-red-500" />
+                            <TrendingUp className="h-5 w-5 text-destructive" />
                             Longest Project
                           </CardTitle>
                         </CardHeader>
@@ -1405,7 +1466,7 @@ const ProjectKPIsPage = () => {
                               {stripHtmlTags(durationKPIs.longestProject.title)}
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Total Duration:
                               </span>
                               <span className="font-semibold">
@@ -1413,7 +1474,7 @@ const ProjectKPIsPage = () => {
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Working Days:
                               </span>
                               <span className="font-semibold">
@@ -1426,10 +1487,10 @@ const ProjectKPIsPage = () => {
                     )}
 
                     {durationKPIs.shortestProject && (
-                      <Card className="bg-white/90 backdrop-blur-sm">
+                      <Card className="bg-card backdrop-blur-sm">
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
-                            <TrendingDown className="h-5 w-5 text-green-500" />
+                            <TrendingDown className="h-5 w-5 text-chart-2" />
                             Shortest Project
                           </CardTitle>
                         </CardHeader>
@@ -1441,7 +1502,7 @@ const ProjectKPIsPage = () => {
                               )}
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Total Duration:
                               </span>
                               <span className="font-semibold">
@@ -1449,7 +1510,7 @@ const ProjectKPIsPage = () => {
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Working Days:
                               </span>
                               <span className="font-semibold">
@@ -1465,7 +1526,7 @@ const ProjectKPIsPage = () => {
 
                 {/* Duration Statistics Summary */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className="bg-white/90 backdrop-blur-sm">
+                  <Card className="bg-card backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle>Average Duration (Planning Metrics)</CardTitle>
                       <CardDescription>
@@ -1475,24 +1536,24 @@ const ProjectKPIsPage = () => {
                     <CardContent>
                       <div className="grid grid-cols-2 gap-6">
                         <div className="text-center">
-                          <div className="text-3xl font-bold text-blue-600">
+                          <div className="text-3xl font-bold text-chart-1">
                             {durationKPIs.averageTotalDays}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-muted-foreground">
                             Avg Total Days
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             Calendar days from start to end
                           </div>
                         </div>
                         <div className="text-center">
-                          <div className="text-3xl font-bold text-green-600">
+                          <div className="text-3xl font-bold text-chart-2">
                             {durationKPIs.averageWorkingDays}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-muted-foreground">
                             Avg Working Days
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             Business days (excludes weekends)
                           </div>
                         </div>
@@ -1500,7 +1561,7 @@ const ProjectKPIsPage = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-white/90 backdrop-blur-sm">
+                  <Card className="bg-card backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle>Median Duration (Typical Projects)</CardTitle>
                       <CardDescription>
@@ -1510,24 +1571,24 @@ const ProjectKPIsPage = () => {
                     <CardContent>
                       <div className="grid grid-cols-2 gap-6">
                         <div className="text-center">
-                          <div className="text-3xl font-bold text-blue-600">
+                          <div className="text-3xl font-bold text-chart-1">
                             {durationKPIs.medianTotalDays}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-muted-foreground">
                             Median Total Days
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             50% of projects are shorter
                           </div>
                         </div>
                         <div className="text-center">
-                          <div className="text-3xl font-bold text-green-600">
+                          <div className="text-3xl font-bold text-chart-2">
                             {durationKPIs.medianWorkingDays}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-muted-foreground">
                             Median Working Days
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             Typical project effort
                           </div>
                         </div>
@@ -1537,7 +1598,7 @@ const ProjectKPIsPage = () => {
                 </div>
 
                 {/* Remaining Days and Project Categories */}
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle>Current Status & Project Categories</CardTitle>
                     <CardDescription>
@@ -1550,16 +1611,16 @@ const ProjectKPIsPage = () => {
                         <div
                           className={`text-2xl font-bold ${
                             durationKPIs.medianTotalDaysRemaining >= 0
-                              ? "text-blue-600"
-                              : "text-red-600"
+                              ? "text-chart-1"
+                              : "text-destructive"
                           }`}
                         >
                           {durationKPIs.medianTotalDaysRemaining}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-muted-foreground">
                           Median Days Remaining
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           {durationKPIs.medianTotalDaysRemaining < 0
                             ? "Overdue"
                             : "Until completion"}
@@ -1569,38 +1630,38 @@ const ProjectKPIsPage = () => {
                         <div
                           className={`text-2xl font-bold ${
                             durationKPIs.medianWorkingDaysRemaining >= 0
-                              ? "text-green-600"
-                              : "text-red-600"
+                              ? "text-chart-2"
+                              : "text-destructive"
                           }`}
                         >
                           {durationKPIs.medianWorkingDaysRemaining}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-muted-foreground">
                           Median Working Days Remaining
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           Business days left
                         </div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600">
+                        <div className="text-2xl font-bold text-chart-3">
                           {durationKPIs.shortProjects}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-muted-foreground">
                           Short Projects
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           &lt; 30 days
                         </div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-red-600">
+                        <div className="text-2xl font-bold text-destructive">
                           {durationKPIs.longProjects}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-muted-foreground">
                           Long Projects
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           &gt; 90 days
                         </div>
                       </div>
@@ -1614,20 +1675,20 @@ const ProjectKPIsPage = () => {
           {/* Quality KPIs */}
           {qualityKPIs && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center gap-2">
+              <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                 <CheckCircle className="h-6 w-6" />
                 Quality Indicators
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Success Rate
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-green-600 mb-2">
+                    <div className="text-3xl font-bold text-chart-2 mb-2">
                       {qualityKPIs.projectSuccessRate}%
                     </div>
                     <Progress
@@ -1637,14 +1698,14 @@ const ProjectKPIsPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       On-Time Delivery
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-blue-600 mb-2">
+                    <div className="text-3xl font-bold text-chart-1 mb-2">
                       {qualityKPIs.onTimeDeliveryRate}%
                     </div>
                     <Progress
@@ -1654,30 +1715,30 @@ const ProjectKPIsPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Avg Risks/Project
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-orange-600">
+                    <div className="text-3xl font-bold text-chart-3">
                       {qualityKPIs.averageRisksPerProject}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/90 backdrop-blur-sm">
+                <Card className="bg-card backdrop-blur-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       Change Frequency
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-purple-600">
+                    <div className="text-3xl font-bold text-chart-5">
                       {qualityKPIs.changeRequestFrequency}
                     </div>
-                    <div className="text-sm text-gray-500">changes/project</div>
+                    <div className="text-sm text-muted-foreground">changes/project</div>
                   </CardContent>
                 </Card>
               </div>

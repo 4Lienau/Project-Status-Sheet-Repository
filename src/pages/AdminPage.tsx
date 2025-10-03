@@ -60,13 +60,18 @@ import {
   Brain,
   Zap,
   Calendar,
+  Users2,
+  Building2,
+  BookOpen,
+  Palette,
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { Breadcrumb, BreadcrumbItem } from "@/components/ui/breadcrumb";
 
 // Admin emails - add your email here to get admin access
 const ADMIN_EMAILS = ["4lienau@gmail.com", "chrisl@re-wa.org"];
 
-const AdminPage = () => {
+const AdminPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -89,6 +94,7 @@ const AdminPage = () => {
   const [isUpdatingFrequency, setIsUpdatingFrequency] = useState(false);
   const [isCheckingDueSyncs, setIsCheckingDueSyncs] = useState(false);
   const [isTogglingSync, setIsTogglingSync] = useState(false);
+  const [activeTab, setActiveTab] = useState("users");
 
   // Pagination state for directory users
   const [currentPage, setCurrentPage] = useState(1);
@@ -550,237 +556,109 @@ const AdminPage = () => {
 
   return (
     <Layout>
-      <div className="container py-8">
+      <div className="container mx-auto p-6 bg-background">
+        <div className="mb-6">
+          <Breadcrumb
+            items={[
+              { label: "Home", href: "/" },
+              { label: "Admin Dashboard", current: true },
+            ]}
+          />
+        </div>
+
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                window.location.href = "/";
-              }}
-              className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-            </Button>
-            <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-              Admin Dashboard
-            </h1>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+            <p className="text-muted-foreground">
+              Manage users, departments, and system settings
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => navigate("/roadmap")}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl font-medium"
-            >
-              <Calendar className="h-4 w-4" />
-              Projects Roadmap
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/")}
+            className="text-foreground border-border hover:bg-card"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Projects
+          </Button>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Projects
-              </CardTitle>
-              <FileSpreadsheet className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-800">
-                {stats.totalProjects}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Active Projects
-              </CardTitle>
-              <Activity className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-800">
-                {stats.activeProjects}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Avg Milestones Per Project
-              </CardTitle>
-              <BarChart3 className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-800">
-                {stats.totalProjects > 0
-                  ? (stats.totalMilestones / stats.totalProjects).toFixed(1)
-                  : 0}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs
-          defaultValue="usage"
-          className="space-y-4 bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100/50 shadow-sm p-4"
-        >
-          <TabsList className="bg-blue-50 border border-blue-100">
-            <TabsTrigger value="usage" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Usage Analytics
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Users className="h-4 w-4 mr-2" />
+              Users
             </TabsTrigger>
-            <TabsTrigger
-              value="departments"
-              className="flex items-center gap-2"
-            >
-              <Building className="h-4 w-4" />
+            <TabsTrigger value="departments" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Building2 className="h-4 w-4 mr-2" />
               Departments
             </TabsTrigger>
-
-            <TabsTrigger value="supabase" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="knowledge" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <BookOpen className="h-4 w-4 mr-2" />
+              Knowledge Base
+            </TabsTrigger>
+            <TabsTrigger value="supabase" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Database className="h-4 w-4 mr-2" />
               Supabase Metrics
             </TabsTrigger>
-            <TabsTrigger value="knowledge" className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              Project Pilot Knowledge
-            </TabsTrigger>
-            <TabsTrigger value="duration" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
+            <TabsTrigger value="duration" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Clock className="h-4 w-4 mr-2" />
               Project Duration
             </TabsTrigger>
-            <TabsTrigger value="ai-usage" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              AI Usage
-            </TabsTrigger>
-            <TabsTrigger value="azure-ad" className="flex items-center gap-2">
-              <Cloud className="h-4 w-4" />
-              Azure AD Sync
+            <TabsTrigger value="status-colors" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Palette className="h-4 w-4 mr-2" />
+              Status Colors
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="usage" className="space-y-4">
-            <UsageAnalytics />
-          </TabsContent>
-
-          <TabsContent value="departments" className="space-y-4">
-            <DepartmentManager />
-          </TabsContent>
-
-          <TabsContent value="knowledge" className="space-y-4">
-            <KnowledgeManager />
-          </TabsContent>
-
-          <TabsContent value="duration" className="space-y-4">
-            <ProjectDurationManager />
-          </TabsContent>
-
-          <TabsContent value="supabase" className="space-y-4">
-            <SupabaseMetrics />
-          </TabsContent>
-
-          <TabsContent value="ai-usage" className="space-y-4">
-            <AIUsageAnalytics />
-          </TabsContent>
-
-          <TabsContent value="azure-ad" className="space-y-4">
-            {/* Azure AD Sync Status Card */}
-            <Card className="bg-blue-50 border-blue-200 mb-4">
-              <CardContent className="pt-4">
-                <div className="flex items-start gap-2">
-                  <div className="bg-blue-100 p-2 rounded-full">
-                    <Database className="h-5 w-5 text-blue-600" />
+          <TabsContent value="users" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total Projects
+                  </CardTitle>
+                  <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-800">
+                    {stats.totalProjects}
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium text-blue-800">
-                        Azure AD Sync Status
-                      </h3>
-                      <Button
-                        onClick={handleToggleSync}
-                        disabled={isTogglingSync}
-                        size="sm"
-                        className={`flex items-center gap-2 ${
-                          syncConfig?.is_enabled
-                            ? "bg-red-500 hover:bg-red-600 text-white"
-                            : "bg-green-500 hover:bg-green-600 text-white"
-                        }`}
-                      >
-                        {isTogglingSync ? (
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                        ) : syncConfig?.is_enabled ? (
-                          <PowerOff className="h-4 w-4" />
-                        ) : (
-                          <Power className="h-4 w-4" />
-                        )}
-                        {isTogglingSync
-                          ? "Updating..."
-                          : syncConfig?.is_enabled
-                            ? "Disable"
-                            : "Enable"}
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Last Sync:</span>
-                        <span>
-                          {syncConfig?.last_run_at
-                            ? new Date(syncConfig.last_run_at).toLocaleString()
-                            : "Never"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Next Sync Due:</span>
-                        <span
-                          className={
-                            syncConfig?.next_run_at &&
-                            new Date(syncConfig.next_run_at) <= new Date()
-                              ? "text-red-600 font-semibold"
-                              : ""
-                          }
-                        >
-                          {syncConfig?.next_run_at
-                            ? new Date(syncConfig.next_run_at).toLocaleString()
-                            : "Not scheduled"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Frequency:</span>
-                        <span>{syncConfig?.frequency_hours || 6} hours</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Status:</span>
-                        <span
-                          className={
-                            syncConfig?.is_enabled
-                              ? "text-green-600 font-semibold"
-                              : "text-red-600 font-semibold"
-                          }
-                        >
-                          {syncConfig?.is_enabled ? "Enabled" : "Disabled"}
-                        </span>
-                      </div>
-                    </div>
-                    {syncConfig?.is_enabled &&
-                      syncConfig?.next_run_at &&
-                      new Date(syncConfig.next_run_at) <= new Date() && (
-                        <div className="text-red-600 font-medium text-center mt-3 p-2 bg-red-50 rounded border border-red-200">
-                          ⚠️ Sync is overdue! Click "Check Sync" to trigger it.
-                        </div>
-                      )}
-                    {!syncConfig?.is_enabled && (
-                      <div className="text-amber-600 font-medium text-center mt-3 p-2 bg-amber-50 rounded border border-amber-200">
-                        ℹ️ Sync is currently disabled. Click "Enable" to
-                        activate automatic syncing.
-                      </div>
-                    )}
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Active Projects
+                  </CardTitle>
+                  <Activity className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-800">
+                    {stats.activeProjects}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Avg Milestones Per Project
+                  </CardTitle>
+                  <BarChart3 className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-800">
+                    {stats.totalProjects > 0
+                      ? (stats.totalMilestones / stats.totalProjects).toFixed(1)
+                      : 0}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Azure AD Sync Control */}
@@ -1096,6 +974,75 @@ const AdminPage = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="departments" className="space-y-4">
+            <DepartmentManager />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            <UsageAnalytics />
+          </TabsContent>
+
+          <TabsContent value="knowledge" className="space-y-4">
+            <KnowledgeManager />
+          </TabsContent>
+
+          <TabsContent value="supabase" className="space-y-4">
+            <SupabaseMetrics />
+          </TabsContent>
+
+          <TabsContent value="duration" className="space-y-4">
+            <ProjectDurationManager />
+          </TabsContent>
+
+          <TabsContent value="status-colors" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-blue-800">Status Colors</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div>
+                        <h3 className="font-medium text-blue-900">Active</h3>
+                        <p className="text-sm text-blue-700">Projects in active state</p>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-blue-500" />
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div>
+                        <h3 className="font-medium text-green-900">Completed</h3>
+                        <p className="text-sm text-green-700">Projects completed</p>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-green-500" />
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div>
+                        <h3 className="font-medium text-yellow-900">On Hold</h3>
+                        <p className="text-sm text-yellow-700">Projects on hold</p>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-yellow-500" />
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
+                      <div>
+                        <h3 className="font-medium text-red-900">Cancelled</h3>
+                        <p className="text-sm text-red-700">Cancelled projects</p>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-red-500" />
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div>
+                        <h3 className="font-medium text-gray-900">Draft</h3>
+                        <p className="text-sm text-gray-700">Draft projects</p>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-gray-500" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
 

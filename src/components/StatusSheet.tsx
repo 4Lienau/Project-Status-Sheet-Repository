@@ -775,7 +775,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
 
               {/* Considerations Section */}
               <div
-                className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("considerations")}`}
+                className={`border-2 border-gray-300 p-3 ${getChangedSectionClass("considerations")}`}
               >
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Questions / Items for Consideration
@@ -796,8 +796,172 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                   ))}
                 </ul>
               </div>
+            </div>
 
-              {/* Changes Section */}
+            <div>
+              {/* Project Schedule Section */}
+              <div
+                className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("milestones")}`}
+              >
+                <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
+                  High Level Project Schedule
+                </h2>
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-gray-300">
+                      <th className="py-1 pr-4 w-24 font-bold text-gray-900 dark:text-gray-900">
+                        Status
+                      </th>
+                      <th className="py-1 pr-4 w-32 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
+                        Date
+                      </th>
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900 w-full">
+                        Milestone
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.milestones || [])
+                      .slice() // Create a copy to avoid mutating the original array
+                      .sort((a, b) => {
+                        // Sort by date string directly to avoid timezone issues
+                        const dateA = (a.date || "").split("T")[0]; // Get YYYY-MM-DD part
+                        const dateB = (b.date || "").split("T")[0]; // Get YYYY-MM-DD part
+                        return dateA.localeCompare(dateB); // Sort earliest to latest
+                      })
+                      .map((milestone, index) => (
+                        <tr key={index} className="border-b border-gray-300">
+                          <td className="py-1 pr-4">
+                            <div className="flex items-center">
+                              <div
+                                className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion || 0, milestone.status || "green")}`}
+                              >
+                                {milestone.completion || 0}%
+                              </div>
+                              {/* Show change indicator for completion percentage changes */}
+                              {(() => {
+                                const milestone = data.milestones?.[index];
+                                if (!milestone) return null;
+                                const stableId =
+                                  `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
+                                return renderChangeIndicator(
+                                  `milestone_completion_${stableId}`,
+                                  `Milestone completion changed`,
+                                );
+                              })()}
+                            </div>
+                          </td>
+                          <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
+                            <div className="flex items-center">
+                              <span>
+                                {milestone.date
+                                  ? (() => {
+                                      // Parse date string directly as YYYY-MM-DD without timezone conversion
+                                      const [year, month, day] =
+                                        milestone.date.split("-");
+                                      return `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year.slice(-2)}`;
+                                    })()
+                                  : ""}
+                              </span>
+                              {/* Show change indicator for date changes */}
+                              {(() => {
+                                const milestone = data.milestones?.[index];
+                                if (!milestone) return null;
+                                const stableId =
+                                  `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
+                                return renderChangeIndicator(
+                                  `milestone_date_${stableId}`,
+                                  `Milestone date changed`,
+                                );
+                              })()}
+                            </div>
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
+                            <div className="flex items-center">
+                              <span>{milestone.milestone || ""}</span>
+                              {/* Check for specific milestone changes using stable IDs */}
+                              {(() => {
+                                const milestone = data.milestones?.[index];
+                                if (!milestone) return null;
+                                const stableId =
+                                  `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
+
+                                return (
+                                  <>
+                                    {renderChangeIndicator(
+                                      `milestone_milestone_${stableId}`,
+                                      `Milestone description changed`,
+                                    )}
+                                    {renderChangeIndicator(
+                                      `milestone_added_${stableId}`,
+                                      `New milestone added`,
+                                    )}
+                                    {renderChangeIndicator(
+                                      `milestone_removed_${stableId}`,
+                                      `Milestone removed`,
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Risks Section */}
+              <div
+                className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("risks")}`}
+              >
+                <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
+                  Risks and Issues
+                </h3>
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-gray-300">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Risk/Issue
+                      </th>
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
+                        Impact
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.risks || []).map((risk, index) => {
+                      // Handle different risk formats
+                      const description =
+                        typeof risk === "string"
+                          ? risk
+                          : risk.description || "";
+                      const impact =
+                        typeof risk === "string" ? "" : risk.impact || "";
+
+                      return (
+                        <tr key={index} className="border-b border-gray-300">
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            <div className="flex items-center">
+                              <span>{description}</span>
+                              {index === 0 &&
+                                renderChangeIndicator(
+                                  "risks",
+                                  "Risks and issues have changed",
+                                )}
+                            </div>
+                          </td>
+                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
+                            {impact}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Changes Section - Moved from left column */}
               <div
                 className={`border-2 border-gray-300 p-3 ${getChangedSectionClass("changes")}`}
               >
@@ -842,173 +1006,6 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                           </td>
                           <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
                             {disposition}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div>
-              {/* Project Schedule Section */}
-              <div
-                className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("milestones")}`}
-              >
-                <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
-                  High Level Project Schedule
-                </h2>
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left border-b border-gray-300">
-                      <th className="py-1 pr-4 w-24 font-bold text-gray-900 dark:text-gray-900">
-                        Status
-                      </th>
-                      <th className="py-1 pr-4 w-32 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
-                        Date
-                      </th>
-                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900 w-full">
-                        Milestone
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(data.milestones || [])
-                      .slice() // Create a copy to avoid mutating the original array
-                      .sort((a, b) => {
-                        // Sort by date string directly to avoid timezone issues
-                        const dateA = (a.date || "").split("T")[0]; // Get YYYY-MM-DD part
-                        const dateB = (b.date || "").split("T")[0]; // Get YYYY-MM-DD part
-                        return dateA.localeCompare(dateB); // Sort earliest to latest
-                      })
-                      .map((milestone, index) => (
-                        <React.Fragment key={index}>
-                          <tr className="border-b border-gray-300">
-                            <td className="py-1 pr-4">
-                              <div className="flex items-center">
-                                <div
-                                  className={`w-16 text-center text-sm font-medium py-1 px-2 rounded ${getMilestoneStatus(milestone.completion || 0, milestone.status || "green")}`}
-                                >
-                                  {milestone.completion || 0}%
-                                </div>
-                                {/* Show change indicator for completion percentage changes */}
-                                {(() => {
-                                  const milestone = data.milestones?.[index];
-                                  if (!milestone) return null;
-                                  const stableId =
-                                    `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
-                                  return renderChangeIndicator(
-                                    `milestone_completion_${stableId}`,
-                                    `Milestone completion changed`,
-                                  );
-                                })()}
-                              </div>
-                            </td>
-                            <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
-                              <div className="flex items-center">
-                                <span>
-                                  {milestone.date
-                                    ? (() => {
-                                        // Parse date string directly as YYYY-MM-DD without timezone conversion
-                                        const [year, month, day] =
-                                          milestone.date.split("-");
-                                        return `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year.slice(-2)}`;
-                                      })()
-                                    : ""}
-                                </span>
-                                {/* Show change indicator for date changes */}
-                                {(() => {
-                                  const milestone = data.milestones?.[index];
-                                  if (!milestone) return null;
-                                  const stableId =
-                                    `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
-                                  return renderChangeIndicator(
-                                    `milestone_date_${stableId}`,
-                                    `Milestone date changed`,
-                                  );
-                                })()}
-                              </div>
-                            </td>
-                            <td className="py-1 pr-4 text-gray-900 dark:text-gray-900 font-medium">
-                              <div className="flex items-center">
-                                <span>{milestone.milestone || ""}</span>
-                                {/* Check for specific milestone changes using stable IDs */}
-                                {(() => {
-                                  const milestone = data.milestones?.[index];
-                                  if (!milestone) return null;
-                                  const stableId =
-                                    `${milestone.date || "no-date"}|${milestone.milestone || "no-text"}|${milestone.owner || "no-owner"}`.toLowerCase();
-
-                                  return (
-                                    <>
-                                      {renderChangeIndicator(
-                                        `milestone_milestone_${stableId}`,
-                                        `Milestone description changed`,
-                                      )}
-                                      {renderChangeIndicator(
-                                        `milestone_added_${stableId}`,
-                                        `New milestone added`,
-                                      )}
-                                      {renderChangeIndicator(
-                                        `milestone_removed_${stableId}`,
-                                        `Milestone removed`,
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            </td>
-                          </tr>
-                          {/* Tasks are hidden from Status Sheet view */}
-                        </React.Fragment>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Risks Section */}
-              <div
-                className={`border-2 border-gray-300 p-3 ${getChangedSectionClass("risks")}`}
-              >
-                <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
-                  Risks and Issues
-                </h3>
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left border-b border-gray-300">
-                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
-                        Risk/Issue
-                      </th>
-                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
-                        Impact
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(data.risks || []).map((risk, index) => {
-                      // Handle different risk formats
-                      const description =
-                        typeof risk === "string"
-                          ? risk
-                          : risk.description || "";
-                      const impact =
-                        typeof risk === "string" ? "" : risk.impact || "";
-
-                      return (
-                        <tr key={index} className="border-b border-gray-300">
-                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            <div className="flex items-center">
-                              <span>{description}</span>
-                              {index === 0 &&
-                                renderChangeIndicator(
-                                  "risks",
-                                  "Risks and issues have changed",
-                                )}
-                            </div>
-                          </td>
-                          <td className="py-1 pr-4 text-gray-900 dark:text-gray-900">
-                            {impact}
                           </td>
                         </tr>
                       );

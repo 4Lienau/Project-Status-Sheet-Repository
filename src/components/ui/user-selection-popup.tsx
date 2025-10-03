@@ -572,10 +572,10 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col bg-white shadow-2xl border-0">
-        <DialogHeader className="pb-4 border-b border-gray-100">
-          <DialogTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <User className="h-5 w-5 text-blue-600" />
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col bg-card shadow-2xl border border-border">
+        <DialogHeader className="pb-4 border-b border-border">
+          <DialogTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
             {title}
           </DialogTitle>
         </DialogHeader>
@@ -584,23 +584,23 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
           {/* Search Input */}
           <div className="space-y-3">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
               <Input
                 placeholder="Search users or enter other name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
-                className="pl-12 pr-4 py-3 text-base border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg transition-all duration-200"
+                className="pl-12 pr-4 py-3 text-base border-border focus:border-primary focus:ring-2 focus:ring-ring rounded-lg transition-all duration-200 bg-card text-foreground"
                 autoFocus
               />
             </div>
 
             {/* Recent Searches - Show when there's no search term and we have history */}
             {searchHistory.length > 0 && searchTerm.trim() === "" && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-800">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">
                     Recent Searches
                   </span>
                 </div>
@@ -608,16 +608,16 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                   {searchHistory.map((item, index) => (
                     <div
                       key={`${item.searchTerm}-${item.selectedUser}-${index}`}
-                      className="group flex items-center justify-between p-2 rounded-md hover:bg-blue-100 cursor-pointer transition-colors"
+                      className="group flex items-center justify-between p-2 rounded-md hover:bg-primary/20 cursor-pointer transition-colors"
                       onClick={() => handleHistoryItemClick(item)}
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <User className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                        <User className="h-3 w-3 text-primary flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium text-blue-900 truncate">
+                          <div className="text-sm font-medium text-foreground truncate">
                             {item.selectedUser}
                           </div>
-                          <div className="text-xs text-blue-600 truncate">
+                          <div className="text-xs text-muted-foreground truncate">
                             Search: &quot;{item.searchTerm}&quot;
                           </div>
                         </div>
@@ -628,7 +628,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                         onClick={(e) =>
                           handleRemoveFromHistory(item.searchTerm, e)
                         }
-                        className="h-6 w-6 p-0 text-blue-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Remove from history"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -636,7 +636,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-blue-600 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   Click on a recent search to quickly select that user again.
                 </p>
               </div>
@@ -673,7 +673,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
 
           {/* Results Count - Only show when searching */}
           {!loading && searchTerm.trim() && (
-            <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 {(() => {
                   // Count custom entries that match the search term
@@ -693,7 +693,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
               </span>
               <button
                 onClick={() => setSearchTerm("")}
-                className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                className="text-primary hover:text-primary/80 font-medium transition-colors"
               >
                 Clear search
               </button>
@@ -702,8 +702,8 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
 
           {/* Selected Users (for multi-select) */}
           {multiSelect && tempSelectedUsers.length > 0 && (
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-              <div className="text-sm font-semibold text-blue-900 mb-3">
+            <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
+              <div className="text-sm font-semibold text-foreground mb-3">
                 Selected ({tempSelectedUsers.length}):
               </div>
               <div className="flex flex-wrap gap-2">
@@ -715,7 +715,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                       className={`${
                         isOtherEntry
                           ? "bg-green-100 text-green-800 hover:bg-green-200 border border-green-200"
-                          : "bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200"
+                          : "bg-primary/20 text-foreground hover:bg-primary/30 border border-primary/30"
                       } px-3 py-1 flex items-center gap-2 transition-colors`}
                     >
                       {isOtherEntry && <Building2 className="h-3 w-3" />}
@@ -725,7 +725,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                         <span className="text-xs opacity-75">(Custom)</span>
                       )}
                       <X
-                        className="h-3 w-3 cursor-pointer hover:text-red-600 transition-colors"
+                        className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           removeSelectedUser(displayName);
@@ -744,38 +744,38 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
 
           {/* Users List */}
           <ScrollArea
-            className="flex-1 border border-gray-200 rounded-lg bg-gray-50/30"
+            className="flex-1 border border-border rounded-lg bg-muted/30"
             style={{ minHeight: "300px", maxHeight: "400px" }}
           >
             {loading ? (
-              <div className="flex flex-col items-center justify-center p-12 text-gray-500">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-3" />
+              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
                 <span className="text-base font-medium">Loading users...</span>
-                <span className="text-sm text-gray-400 mt-1">
+                <span className="text-sm text-muted-foreground mt-1">
                   Please wait while we fetch the directory
                 </span>
               </div>
             ) : filteredUsers.length === 0 && searchTerm.trim() ? (
-              <div className="flex flex-col items-center justify-center p-12 text-gray-500">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <Search className="h-8 w-8 text-gray-400" />
+              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Search className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <span className="text-base font-medium mb-2">
                   No users found matching your search
                 </span>
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-muted-foreground">
                   Try adjusting your search terms
                 </span>
               </div>
             ) : !searchTerm.trim() ? (
-              <div className="flex flex-col items-center justify-center p-12 text-gray-500">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <Search className="h-8 w-8 text-gray-400" />
+              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Search className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <span className="text-base font-medium mb-2">
                   Start typing to search users
                 </span>
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-muted-foreground">
                   Enter a name or email to find users
                 </span>
               </div>
@@ -861,7 +861,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                         className={`group flex items-center gap-4 p-4 rounded-xl transition-all duration-200 relative ${
                           isSelected
                             ? "bg-green-50 border-2 border-green-200 shadow-sm"
-                            : "hover:bg-white hover:shadow-sm border-2 border-transparent"
+                            : "hover:bg-card hover:shadow-sm border-2 border-transparent"
                         }`}
                       >
                         {/* Main content area - clickable for selection */}
@@ -891,7 +891,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                               className={`font-semibold text-base transition-colors ${
                                 isSelected
                                   ? "text-green-900"
-                                  : "text-gray-900 group-hover:text-green-800"
+                                  : "text-foreground group-hover:text-green-800"
                               }`}
                             >
                               {other.display_name}
@@ -918,7 +918,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                               e.stopPropagation();
                               removeCustomOther(other.display_name);
                             }}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Delete custom entry"
                           >
                             <X className="h-4 w-4" />
@@ -938,8 +938,8 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                       key={user.id}
                       className={`group flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 ${
                         isSelected
-                          ? "bg-blue-50 border-2 border-blue-200 shadow-sm"
-                          : "hover:bg-white hover:shadow-sm border-2 border-transparent"
+                          ? "bg-primary/10 border-2 border-primary/30 shadow-sm"
+                          : "hover:bg-card hover:shadow-sm border-2 border-transparent"
                       }`}
                       onClick={() => handleUserToggle(user.display_name)}
                     >
@@ -947,15 +947,15 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                         <div
                           className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
                             isSelected
-                              ? "bg-blue-100 border-2 border-blue-300"
-                              : "bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-blue-50 group-hover:to-blue-100"
+                              ? "bg-primary/20 border-2 border-primary/40"
+                              : "bg-gradient-to-br from-muted to-muted/50 group-hover:from-primary/10 group-hover:to-primary/20"
                           }`}
                         >
                           <User
                             className={`h-6 w-6 transition-colors ${
                               isSelected
-                                ? "text-blue-600"
-                                : "text-gray-600 group-hover:text-blue-500"
+                                ? "text-primary"
+                                : "text-muted-foreground group-hover:text-primary"
                             }`}
                           />
                         </div>
@@ -964,24 +964,24 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                         <div
                           className={`font-semibold text-base transition-colors ${
                             isSelected
-                              ? "text-blue-900"
-                              : "text-gray-900 group-hover:text-blue-800"
+                              ? "text-foreground"
+                              : "text-foreground group-hover:text-primary"
                           }`}
                         >
                           {user.display_name}
                         </div>
-                        <div className="text-sm text-gray-600 truncate mt-1">
+                        <div className="text-sm text-muted-foreground truncate mt-1">
                           {user.email}
                         </div>
                         {user.job_title && (
-                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                             <span className="font-medium">
                               {user.job_title}
                             </span>
                             {user.department && (
                               <>
-                                <span className="text-gray-300">•</span>
-                                <span className="bg-gray-100 px-2 py-0.5 rounded-full text-xs font-medium text-gray-600">
+                                <span className="text-muted-foreground/50">•</span>
+                                <span className="bg-muted px-2 py-0.5 rounded-full text-xs font-medium text-foreground">
                                   {user.department}
                                 </span>
                               </>
@@ -991,7 +991,7 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
                       </div>
                       {isSelected && (
                         <div className="flex-shrink-0">
-                          <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center shadow-sm">
+                          <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-sm">
                             <div className="w-2.5 h-2.5 bg-white rounded-full" />
                           </div>
                         </div>
@@ -1004,29 +1004,29 @@ const UserSelectionPopup: React.FC<UserSelectionPopupProps> = ({
           </ScrollArea>
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-            <div className="text-sm text-gray-500">
+          <div className="flex justify-between items-center pt-4 border-t border-border">
+            <div className="text-sm text-muted-foreground">
               {tempSelectedUsers.length > 0 ? (
                 <span>
                   {tempSelectedUsers.length} user
                   {tempSelectedUsers.length !== 1 ? "s" : ""} selected
                 </span>
               ) : (
-                <span className="text-gray-400">No users selected</span>
+                <span className="text-muted-foreground/50">No users selected</span>
               )}
             </div>
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={handleCancel}
-                className="px-6 py-2 border-gray-300 hover:bg-gray-50 transition-colors"
+                className="px-6 py-2 border-border hover:bg-muted transition-colors"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleConfirm}
                 disabled={tempSelectedUsers.length === 0}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
+                className="px-6 py-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 {multiSelect
                   ? `Select ${tempSelectedUsers.length} User${tempSelectedUsers.length !== 1 ? "s" : ""}`

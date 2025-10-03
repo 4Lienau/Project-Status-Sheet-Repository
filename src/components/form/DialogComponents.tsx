@@ -163,7 +163,7 @@ export const DeleteConfirmationDialog: React.FC<
           <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            className="bg-destructive hover:bg-destructive/90 focus:ring-destructive text-destructive-foreground"
           >
             Yes, Delete
           </AlertDialogAction>

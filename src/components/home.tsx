@@ -238,8 +238,6 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
 
   // Load unique project managers and departments - optimized with proper dependencies
   const loadProjectFilters = useCallback(async () => {
-    if (!userId || filtersInitialized) return;
-    
     try {
       console.log("🔄 Loading project filters...");
       const projects = await projectService.getAllProjects();
@@ -273,16 +271,18 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
       ].sort();
       setDepartments(allDepartments);
       
-      setFiltersInitialized(true);
       console.log("✅ Project filters loaded successfully");
     } catch (error) {
       console.error("❌ Error loading project filters:", error);
     }
-  }, [userId, filtersInitialized]);
+  }, []);
 
   useEffect(() => {
-    loadProjectFilters();
-  }, [loadProjectFilters]);
+    if (userId && !filtersInitialized) {
+      loadProjectFilters();
+      setFiltersInitialized(true);
+    }
+  }, [userId, filtersInitialized, loadProjectFilters]);
 
   const handleSelectProject = async (project: Project) => {
     // Navigate to project view page instead of using local state
@@ -384,10 +384,10 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
               {/* Header with logo */}
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h1 className="text-3xl font-bold text-white">
+                  <h1 className="text-3xl font-bold text-foreground">
                     Project Dashboard
                   </h1>
-                  <p className="text-white/70">
+                  <p className="text-muted-foreground">
                     Track and report your projects status
                   </p>
                 </div>
@@ -401,7 +401,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start gap-4">
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-white/80 mb-2">
+                    <label className="text-sm font-medium text-muted-foreground mb-2">
                       Filter by Department
                     </label>
                     <Select
@@ -413,10 +413,10 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         }
                       }}
                     >
-                      <SelectTrigger className="w-[280px] text-white border-white/30 bg-white/10 hover:bg-white/20">
+                      <SelectTrigger className="w-[280px] text-foreground border-border bg-card/50 hover:bg-card">
                         <SelectValue
                           placeholder="All Departments"
-                          className="text-white"
+                          className="text-foreground"
                         />
                       </SelectTrigger>
                       <SelectContent>
@@ -431,7 +431,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                   </div>
 
                   <div className="w-[280px] flex flex-col">
-                    <label className="text-sm font-medium text-white/80 mb-2">
+                    <label className="text-sm font-medium text-muted-foreground mb-2">
                       Filter by Project Manager
                     </label>
                     <Popover
@@ -443,7 +443,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                           variant="outline"
                           role="combobox"
                           aria-expanded={managerPopoverOpen}
-                          className="w-full justify-between text-white border-white/30 bg-white/10 hover:bg-white/20 hover:text-white h-10"
+                          className="w-full justify-between text-foreground border-border bg-card/50 hover:bg-card h-10"
                         >
                           {selectedManagers.length > 0
                             ? `${selectedManagers.length} manager${selectedManagers.length > 1 ? "s" : ""} selected`
@@ -517,13 +517,13 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                           <Badge
                             key={manager}
                             variant="secondary"
-                            className="flex items-center gap-1 bg-white/20 text-white border-white/30 hover:bg-white/30"
+                            className="flex items-center gap-1 bg-secondary text-secondary-foreground border-border hover:bg-secondary/80"
                           >
                             {manager}
                             <X
-                              className="h-3 w-3 cursor-pointer text-white hover:text-gray-200"
+                              className="h-3 w-3 cursor-pointer hover:text-muted-foreground"
                               onClick={(e) => {
-                                e.stopPropagation(); // Prevent triggering popover
+                                e.stopPropagation();
                                 setSelectedManagers((prev) => {
                                   const newManagers = prev.filter(
                                     (m) => m !== manager,
@@ -544,9 +544,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         {selectedManagers.length > 1 && (
                           <Badge
                             variant="outline"
-                            className="cursor-pointer bg-white/10 text-white border-white/30 hover:bg-white/20"
+                            className="cursor-pointer bg-card/50 text-foreground border-border hover:bg-card"
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent triggering popover
+                              e.stopPropagation();
                               setSelectedManagers([]);
                               if (user?.id) {
                                 saveFilterToStorage(user.id, "managers", []);
@@ -561,7 +561,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-white/80 mb-2">
+                    <label className="text-sm font-medium text-muted-foreground mb-2">
                       Filter by Status
                     </label>
                     <Select
@@ -573,10 +573,10 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         }
                       }}
                     >
-                      <SelectTrigger className="w-[200px] text-white border-white/30 bg-white/10 hover:bg-white/20">
+                      <SelectTrigger className="w-[200px] text-foreground border-border bg-card/50 hover:bg-card">
                         <SelectValue
                           placeholder="All Statuses"
-                          className="text-white"
+                          className="text-foreground"
                         />
                       </SelectTrigger>
                       <SelectContent>
@@ -591,7 +591,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-white/80 mb-2">
+                    <label className="text-sm font-medium text-muted-foreground mb-2">
                       Filter by Status Health
                     </label>
                     <Select
@@ -603,10 +603,10 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         }
                       }}
                     >
-                      <SelectTrigger className="w-[200px] text-white border-white/30 bg-white/10 hover:bg-white/20">
+                      <SelectTrigger className="w-[200px] text-foreground border-border bg-card/50 hover:bg-card">
                         <SelectValue
                           placeholder="All Health Status"
-                          className="text-white"
+                          className="text-foreground"
                         />
                       </SelectTrigger>
                       <SelectContent>
@@ -627,7 +627,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                     <Button
                       onClick={clearAllFilters}
                       variant="outline"
-                      className="text-white border-white/30 bg-white/10 hover:bg-white/20 hover:text-white font-semibold flex items-center gap-2"
+                      className="text-foreground border-border bg-card/50 hover:bg-card font-semibold flex items-center gap-2"
                     >
                       <X className="h-4 w-4" />
                       Clear Filters
@@ -638,7 +638,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="default"
-                          className="bg-blue-600 hover:bg-blue-700 text-white border-0 font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
                         >
                           <MoreVertical className="h-4 w-4" />
                           Options
@@ -760,13 +760,13 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
           {mode === "form" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold text-white">
+                <h2 className="text-2xl font-semibold text-foreground">
                   Create New Project
                 </h2>
                 <Button
                   variant="outline"
                   onClick={() => navigate("/")}
-                  className="text-white border-white/30 hover:bg-white/10 hover:text-white"
+                  className="text-foreground border-border hover:bg-card"
                 >
                   Cancel
                 </Button>

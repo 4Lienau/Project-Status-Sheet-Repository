@@ -24,28 +24,30 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className }) => {
         <Home className="h-4 w-4" />
       </Link>
 
-      {items.map((item, index) => (
-        <React.Fragment key={index}>
-          <ChevronRight className="h-4 w-4 text-white/50" />
-          {item.href && !item.current ? (
-            <Link
-              to={item.href}
-              className="text-white/70 hover:text-white transition-colors"
-            >
-              {item.label}
-            </Link>
-          ) : (
-            <span
-              className={cn(
-                "font-medium",
-                item.current ? "text-white" : "text-white/70",
-              )}
-            >
-              {item.label}
-            </span>
-          )}
-        </React.Fragment>
-      ))}
+      {items.map((item, index) => {
+        return (
+          <div key={index} className="flex items-center space-x-1">
+            <ChevronRight className="h-4 w-4 text-white/50" />
+            {item.href && !item.current ? (
+              <Link
+                to={item.href}
+                className="text-white/70 hover:text-white transition-colors"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <span
+                className={cn(
+                  "font-medium",
+                  item.current ? "text-white" : "text-white/70",
+                )}
+              >
+                {item.label}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </nav>
   );
 };

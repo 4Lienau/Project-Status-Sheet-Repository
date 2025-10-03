@@ -134,10 +134,11 @@ export function RichTextEditor({
           "min-h-[120px] p-3 border border-input",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "placeholder:text-muted-foreground",
+          "text-foreground", // Explicitly set text color
           "tiptap-editor", // Add a class for custom styling
           className, // Apply the passed className which includes bg-white and border radius
         ),
-        style: `min-height: ${minHeight}`,
+        style: `min-height: ${minHeight}; color: hsl(var(--foreground));`,
       },
     },
   });

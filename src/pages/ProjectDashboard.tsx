@@ -14,6 +14,7 @@
  * - UI components from shadcn/ui
  * - ProjectForm for editing
  * - StatusSheet for viewing
+ * - AlertDialog for warnings
  *
  * Called by:
  * - src/App.tsx (via routing)
@@ -21,12 +22,13 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { projectService } from "@/lib/services/project";
 import { projectVersionsService } from "@/lib/services/projectVersions";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ProjectForm from "@/components/ProjectForm";
 import StatusSheet from "@/components/StatusSheet";
 import { useToast } from "@/components/ui/use-toast";
@@ -35,6 +37,18 @@ import {
   compareVersions,
   type VersionChanges,
 } from "@/lib/utils/versionComparison";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Force re-parse
 
 interface ProjectDashboardProps {
   project?: any;
@@ -43,25 +57,30 @@ interface ProjectDashboardProps {
   id?: string;
 }
 
-const ProjectDashboard = ({
-  project: initialProject,
-  onBack,
-  initialEditMode = false,
-  id: propId,
-}: ProjectDashboardProps) => {
+const ProjectDashboard: React.FC = () => {
   const { id: paramId } = useParams<{ id: string }>();
-  const id = propId || paramId;
+  const id = paramId;
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const [project, setProject] = useState<any>(initialProject || null);
-  const [loading, setLoading] = useState(!initialProject);
+  const [project, setProject] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isEditing, setIsEditing] = useState(initialEditMode);
+  
+  // Initialize isEditing based on the route path
+  // If the path is /project/:id (without /view), it's edit mode
+  // If the path is /project/:id/view, it's view mode
+  const [isEditing, setIsEditing] = useState(() => {
+    return !location.pathname.endsWith('/view');
+  });
+  
+  const [activeTab, setActiveTab] = useState("overview");
   const [versions, setVersions] = useState([]);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1); // -1 means current
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
   const [formattedData, setFormattedData] = useState(null);
   const [versionChanges, setVersionChanges] = useState<VersionChanges>({});
+  const [showCompletedWarning, setShowCompletedWarning] = useState(false);
 
   // Add state to track when milestones were recently added
   const [milestonesAddedTimestamp, setMilestonesAddedTimestamp] = useState<
@@ -104,6 +123,13 @@ const ProjectDashboard = ({
     return () => clearInterval(interval);
   }, []);
 
+  // Update isEditing when the route changes
+  useEffect(() => {
+    const shouldBeEditing = !location.pathname.endsWith('/view');
+    console.log('[DEBUG] Route changed:', location.pathname, 'Should be editing:', shouldBeEditing);
+    setIsEditing(shouldBeEditing);
+  }, [location.pathname]);
+
   // Load project versions
   useEffect(() => {
     let mounted = true;
@@ -131,81 +157,18 @@ const ProjectDashboard = ({
           return;
         }
 
-        if (!versionsData.length && retryCount < maxRetries) {
-          console.log("[DEBUG] No versions found, retrying...");
-          retryCount++;
-          setTimeout(loadVersions, 1000); // Retry after 1 second
-          return;
-        }
-
         console.log("[DEBUG] Loaded versions:", versionsData.length);
-        console.log(
-          "[DEBUG] Version data:",
-          versionsData.map((v, index) => ({
-            index: index,
-            id: v.id,
-            number: v.version_number,
-            created: v.created_at,
-          })),
-        );
-        console.log("[DEBUG] Total versions available:", versionsData.length);
-        console.log("[DEBUG] Version numbers range:", {
-          highest: versionsData[0]?.version_number,
-          lowest: versionsData[versionsData.length - 1]?.version_number,
-        });
-
-        // INVESTIGATION: Check if we're missing versions based on version number gaps
-        if (versionsData.length > 0) {
-          const versionNumbers = versionsData
-            .map((v) => v.version_number)
-            .sort((a, b) => a - b);
-          const minVersion = versionNumbers[0];
-          const maxVersion = versionNumbers[versionNumbers.length - 1];
-          const expectedCount = maxVersion - minVersion + 1;
-
-          console.log(`[DEBUG] PROJECT DASHBOARD VERSION ANALYSIS:`);
-          console.log(
-            `[DEBUG] - Version numbers found: [${versionNumbers.join(", ")}]`,
-          );
-          console.log(`[DEBUG] - Range: ${minVersion} to ${maxVersion}`);
-          console.log(`[DEBUG] - Expected versions in range: ${expectedCount}`);
-          console.log(
-            `[DEBUG] - Actual versions received: ${versionsData.length}`,
-          );
-
-          if (expectedCount > versionsData.length) {
-            const missingCount = expectedCount - versionsData.length;
-            console.warn(
-              `[DEBUG] ⚠️  MISSING ${missingCount} VERSIONS: This explains why you can't see all versions!`,
-            );
-            console.warn(
-              `[DEBUG] The database appears to be missing versions 1-${minVersion - 1}`,
-            );
-            console.warn(`[DEBUG] This could be due to:`);
-            console.warn(`[DEBUG] 1. A data cleanup/retention policy`);
-            console.warn(
-              `[DEBUG] 2. Database migration that didn't preserve all versions`,
-            );
-            console.warn(`[DEBUG] 3. Manual deletion of older versions`);
-          }
-        }
 
         if (mounted) {
           setVersions(versionsData);
           setCurrentVersionIndex(-1);
         }
       } catch (error) {
-        console.error("[DEBUG] Error loading project versions:", error);
-        if (mounted && (!project || retryCount >= maxRetries)) {
-          toast({
-            title: "Error",
-            description: "Failed to load project versions",
-            variant: "destructive",
-          });
-        } else if (mounted && retryCount < maxRetries) {
-          console.log("[DEBUG] Retrying version load after error...");
-          retryCount++;
-          setTimeout(loadVersions, 1000); // Retry after 1 second
+        console.warn("[DEBUG] Error loading project versions (non-critical):", error);
+        // Don't show error toast for version loading failures - it's not critical
+        if (mounted) {
+          setVersions([]);
+          setCurrentVersionIndex(-1);
         }
       }
     };
@@ -221,7 +184,14 @@ const ProjectDashboard = ({
       mounted = false;
       console.log("[DEBUG] Version loading effect cleanup");
     };
-  }, [id, toast, project?.id]); // Only depend on project.id, not the entire project object
+  }, [id, project?.id]); // Only depend on project.id, not the entire project object
+
+  // Check if project is completed when entering edit mode
+  useEffect(() => {
+    if (isEditing && project?.status === 'completed' && !showCompletedWarning) {
+      setShowCompletedWarning(true);
+    }
+  }, [isEditing, project?.status]);
 
   const loadVersion = async (versionIndex) => {
     console.log("Loading version index:", versionIndex);
@@ -538,7 +508,7 @@ const ProjectDashboard = ({
     };
 
     fetchProject();
-  }, [id, initialProject, isEditing, milestonesAddedTimestamp]);
+  }, [id, isEditing, milestonesAddedTimestamp]);
 
   // Add a timeout to prevent infinite loading
   useEffect(() => {
@@ -725,13 +695,8 @@ const ProjectDashboard = ({
   };
 
   const handleBack = () => {
-    if (onBack) {
-      // Use the callback from props if provided
-      onBack();
-    } else {
-      // Otherwise navigate directly
-      navigate("/");
-    }
+    // Always navigate directly since we don't accept props
+    navigate("/");
   };
 
   // Get breadcrumb items based on current state
@@ -818,13 +783,36 @@ const ProjectDashboard = ({
 
   return (
     <Layout>
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto p-6 bg-background">
+        {/* Completed Project Warning Dialog */}
+        <AlertDialog open={showCompletedWarning} onOpenChange={setShowCompletedWarning}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-yellow-600">⚠️ Project Completed</AlertDialogTitle>
+              <AlertDialogDescription className="text-base">
+                This project has been marked as <strong>Completed</strong> and should not be modified. 
+                Any changes made to a completed project may affect historical records and reporting.
+                <br /><br />
+                Are you sure you want to proceed with editing?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => navigate(`/project/${id}/view`)}>
+                Return to View Mode
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => setShowCompletedWarning(false)}>
+                Continue Editing
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Breadcrumb Navigation */}
-        <div className="mb-4">
+        <div className="mb-6">
           <Breadcrumb items={getBreadcrumbItems()} />
         </div>
 
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -836,7 +824,7 @@ const ProjectDashboard = ({
                   handleBack();
                 }
               }}
-              className="flex items-center gap-2 text-white hover:text-white hover:bg-white/20 font-medium"
+              className="flex items-center gap-2 text-foreground hover:text-foreground hover:bg-muted font-medium"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Projects
@@ -854,38 +842,38 @@ const ProjectDashboard = ({
                     currentVersionIndex >= versions.length - 1 ||
                     isLoadingVersion
                   }
-                  className="flex items-center gap-1 text-white hover:text-white border-white/30 hover:bg-white/20 bg-white/10"
+                  className="flex items-center gap-1 text-foreground hover:text-foreground border-border hover:bg-muted bg-card"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  <span className="text-white font-medium">
+                  <span className="text-foreground font-medium">
                     Older ({versions.length} saved changes)
                   </span>
                 </Button>
 
-                <div className="text-sm px-3 py-2 text-white font-medium bg-white/10 rounded border border-white/30">
+                <div className="text-sm px-3 py-2 text-foreground font-medium bg-card rounded border border-border">
                   {isLoadingVersion ? (
-                    <span className="text-white">Loading...</span>
+                    <span className="text-foreground">Loading...</span>
                   ) : currentVersionIndex === -1 ? (
                     <div className="text-center">
-                      <div className="text-white font-bold">
+                      <div className="text-foreground font-bold">
                         Current Version
                       </div>
-                      <div className="text-xs text-white/90 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         Latest changes
                       </div>
                       {versions.length > 0 && (
-                        <div className="text-xs text-white/90 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           ({versions.length} saved changes available)
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="text-center">
-                      <div className="text-white font-bold">
+                      <div className="text-foreground font-bold">
                         Change {versions.length - currentVersionIndex} of{" "}
                         {versions.length}
                       </div>
-                      <div className="text-xs text-white/90">
+                      <div className="text-xs text-muted-foreground">
                         (Save #
                         {versions[currentVersionIndex]?.version_number || "N/A"}
                         {versions.length > 0 &&
@@ -893,7 +881,7 @@ const ProjectDashboard = ({
                         )
                       </div>
                       {versions[currentVersionIndex]?.created_at && (
-                        <div className="text-xs text-white/90 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           Saved:{" "}
                           {new Date(
                             versions[currentVersionIndex].created_at,
@@ -915,9 +903,9 @@ const ProjectDashboard = ({
                   size="sm"
                   onClick={handleNextVersion}
                   disabled={currentVersionIndex === -1 || isLoadingVersion}
-                  className="flex items-center gap-1 text-white hover:text-white border-white/30 hover:bg-white/20 bg-white/10"
+                  className="flex items-center gap-1 text-foreground hover:text-foreground border-border hover:bg-muted bg-card"
                 >
-                  <span className="text-white font-medium">Newer</span>
+                  <span className="text-foreground font-medium">Newer</span>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -933,9 +921,6 @@ const ProjectDashboard = ({
                   formElement?.getAttribute("data-has-changes") === "true";
                 const formHasInteraction =
                   formElement?.getAttribute("data-user-interaction") === "true";
-                const isAddingMilestones =
-                  formElement?.getAttribute("data-adding-milestones") ===
-                  "true";
 
                 if (formHasChanges && formHasInteraction) {
                   // Show confirmation dialog

@@ -111,11 +111,11 @@ export function MilestoneSortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white rounded-md mb-2 p-2 ${isDragging ? "opacity-50" : ""}`}
+      className={`bg-card rounded-md mb-2 p-2 ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="grid grid-cols-[30px_1fr] gap-2">
         <button
-          className="flex items-center justify-center h-10 w-6 touch-none text-gray-400 hover:text-gray-600 transition-colors"
+          className="flex items-center justify-center h-10 w-6 touch-none text-muted-foreground hover:text-foreground transition-colors"
           {...attributes}
           {...listeners}
         >
@@ -163,6 +163,7 @@ export function MilestoneSortableItem({
                 }, 500); // Increased timeout to ensure milestone is saved
               }
             }}
+            className="bg-card border-border text-foreground"
           />
           <div className="flex items-center gap-2">
             <Button
@@ -183,10 +184,11 @@ export function MilestoneSortableItem({
                 placeholder="Milestone"
                 value={milestone.milestone}
                 onChange={(e) => onUpdate({ milestone: e.target.value })}
+                className="bg-card border-border text-foreground"
               />
               {milestone.tasks && milestone.tasks.length > 0 && (
                 <div
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-primary"
                   title={`${milestone.tasks.length} task${milestone.tasks.length > 1 ? "s" : ""}`}
                 >
                   <ListChecks className="h-4 w-4" />
@@ -199,7 +201,7 @@ export function MilestoneSortableItem({
             onChange={(value) => onUpdate({ owner: value })}
             placeholder="Click to select owner..."
             multiSelect={false}
-            className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+            className="bg-card/50 backdrop-blur-sm border-border"
           />
           <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
             <Input
@@ -209,6 +211,7 @@ export function MilestoneSortableItem({
               max="100"
               value={milestone.completion}
               onChange={(e) => onUpdate({ completion: Number(e.target.value) })}
+              className="bg-card border-border text-foreground"
             />
             <div className="relative">
               <select
@@ -220,7 +223,7 @@ export function MilestoneSortableItem({
                     weight: newWeight,
                   });
                 }}
-                className={`flex h-10 w-full rounded-md border border-input bg-background px-2 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${(milestone.weight || 3) >= 4 ? "font-semibold text-blue-600" : ""}`}
+                className={`flex h-10 w-full rounded-md border border-input bg-background px-2 py-2 text-sm text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${(milestone.weight || 3) >= 4 ? "font-semibold text-primary" : ""}`}
                 title="Milestone Weight (1-5)"
               >
                 <option value="1">1</option>
@@ -231,8 +234,8 @@ export function MilestoneSortableItem({
               </select>
               {(milestone.weight !== undefined ? milestone.weight : 3) >= 4 && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                 </span>
               )}
             </div>
@@ -243,7 +246,7 @@ export function MilestoneSortableItem({
                   status: e.target.value as "green" | "yellow" | "red",
                 })
               }
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="green">On Track</option>
               <option value="yellow">At Risk</option>

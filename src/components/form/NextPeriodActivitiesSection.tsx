@@ -67,7 +67,7 @@ const NextPeriodActivitiesSection: React.FC<
     <TooltipProvider>
       <div className="flex items-center justify-between mb-2 -mt-2">
         <div className="flex items-center gap-1">
-          <h3 className="text-2xl font-bold text-white">
+          <h3 className="text-2xl font-bold text-foreground">
             Next Period Activities
           </h3>
           <Tooltip>
@@ -85,7 +85,7 @@ const NextPeriodActivitiesSection: React.FC<
         <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <TextCursorInput className="h-4 w-4 text-white cursor-help" />
+              <TextCursorInput className="h-4 w-4 text-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent>
               <p className="max-w-xs">
@@ -101,18 +101,18 @@ const NextPeriodActivitiesSection: React.FC<
               onCheckedChange={updateTruncatePreference}
               className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300"
             />
-            <Label htmlFor="truncate-activities" className="text-sm text-white">
+            <Label htmlFor="truncate-activities" className="text-sm text-foreground">
               Truncate activities in status sheet
             </Label>
           </div>
         </div>
       </div>
-      <div className="space-y-2 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm mt-0">
+      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm mt-0">
         {/* Column Headers */}
         <div className="grid grid-cols-[140px_1fr_80px_150px_auto] gap-2 items-start">
-          <div className="font-medium text-sm text-blue-800">Date</div>
-          <div className="font-medium text-sm text-blue-800">Activity</div>
-          <div className="font-medium text-sm text-blue-800 flex items-center gap-1 -ml-4">
+          <div className="font-medium text-sm text-primary">Date</div>
+          <div className="font-medium text-sm text-primary">Activity</div>
+          <div className="font-medium text-sm text-primary flex items-center gap-1 -ml-4">
             <span>% Complete</span>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -144,7 +144,7 @@ const NextPeriodActivitiesSection: React.FC<
               </TooltipContent>
             </Tooltip>
           </div>
-          <div className="font-medium text-sm text-blue-800">Assignee</div>
+          <div className="font-medium text-sm text-primary">Assignee</div>
           <div></div>
         </div>
 
@@ -165,7 +165,7 @@ const NextPeriodActivitiesSection: React.FC<
           type="button"
           variant="outline"
           onClick={handleAddActivity}
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          className="bg-card/50 backdrop-blur-sm border-border"
         >
           Add Activity
         </Button>

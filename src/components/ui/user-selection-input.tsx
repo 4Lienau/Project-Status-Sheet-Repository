@@ -63,7 +63,7 @@ const UserSelectionInput: React.FC<UserSelectionInputProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-md">
+    <div className="bg-card rounded-md">
       <div className="relative">
         {/* Input Field */}
         <div
@@ -84,12 +84,12 @@ const UserSelectionInput: React.FC<UserSelectionInputProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
+            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
             onClick={handleInputClick}
             disabled={disabled}
             tabIndex={-1}
           >
-            <Users className="h-4 w-4 text-gray-500" />
+            <Users className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>
 

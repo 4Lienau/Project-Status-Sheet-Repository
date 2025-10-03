@@ -26,7 +26,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   return (
     <div className={className}>
       <div className="flex items-center gap-1">
-        <h3 className="text-2xl font-bold text-white">{title}</h3>
+        <h3 className="text-2xl font-bold text-foreground">{title}</h3>
         <Tooltip>
           <TooltipTrigger asChild>
             <Info className="h-4 w-4 text-muted-foreground cursor-help" />

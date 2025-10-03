@@ -24,6 +24,7 @@ import {
   calculateTimeRemainingPercentage,
   getTimeRemainingTooltipText,
 } from "@/lib/services/project";
+import { SectionHeader } from "./SectionHeader";
 
 interface HealthCalculationSectionProps {
   formData: any;
@@ -155,30 +156,22 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
 
   return (
     <TooltipProvider>
-      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-1 mb-4">
-          <h3 className="text-2xl font-bold text-blue-800">
-            Health Calculation
-          </h3>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs">
-                Choose how project health is calculated. Automatic uses
-                milestone completion percentages, while Manual allows you to set
-                a specific percentage.
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-
+      <SectionHeader
+        title="Health Calculation"
+        tooltip="Configure how the project health status is calculated based on milestones and other factors."
+      />
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
         {/* Current Health Status Display */}
-        <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
+        <div className="bg-muted/50 rounded-lg p-4 border border-border">
+          <h4 className="font-medium text-foreground mb-2">Calculation Method</h4>
+          <p className="text-sm text-muted-foreground">
+            The health status is calculated based on milestone completion and status.
+          </p>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-4 border border-border">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 Current Health Status
               </Label>
               <Tooltip>
@@ -203,7 +196,7 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
                       </li>
                       <li className="ml-4">
                         • Substantial time (&gt;60% remaining): Very lenient
-                        (≥10% = GREEN, 5-9% = YELLOW, &lt;5% = RED)
+                        (���10% = GREEN, 5-9% = YELLOW, &lt;5% = RED)
                       </li>
                       <li className="ml-4">
                         • Plenty of time (30-60% remaining): Lenient (≥20% =
@@ -261,7 +254,7 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
 
             return (
               <div className="space-y-2">
-                <p className="text-xs text-gray-600 leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {reasoningWithAsterisk}
                 </p>
                 {explanationText && (
@@ -283,7 +276,7 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
             }))
           }
         >
-          <SelectTrigger>
+          <SelectTrigger className="bg-card border-border text-foreground">
             <SelectValue placeholder="Select calculation type" />
           </SelectTrigger>
           <SelectContent>
@@ -295,9 +288,9 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
 
       {/* Health Status Section - Only show when manual calculation is selected */}
       {formData.health_calculation_type === "manual" && (
-        <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-md p-4 border border-gray-100 shadow-sm mt-4">
+        <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm mt-4">
           <div className="flex items-center gap-1 mb-4">
-            <h3 className="text-2xl font-bold text-blue-800">Health Status</h3>
+            <h3 className="text-2xl font-bold text-primary">Health Status</h3>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -312,7 +305,7 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-1">
-                <Label htmlFor="manual_health_percentage">
+                <Label htmlFor="manual_health_percentage" className="text-foreground">
                   Health Percentage
                 </Label>
                 <Tooltip>
@@ -340,11 +333,11 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
                     manual_health_percentage: Number(e.target.value),
                   }))
                 }
-                className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+                className="bg-card border-border text-foreground"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="manual_status_color">Status Color</Label>
+              <Label htmlFor="manual_status_color" className="text-foreground">Status Color</Label>
               <Select
                 value={formData.manual_status_color}
                 onValueChange={(value: "red" | "yellow" | "green") => {
@@ -355,7 +348,7 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
                   }));
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-card border-border text-foreground">
                   <SelectValue placeholder="Select color" />
                 </SelectTrigger>
                 <SelectContent>

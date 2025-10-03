@@ -319,7 +319,7 @@ const ProjectList = ({
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-semibold text-white">Projects</h2>
+          <h2 className="text-2xl font-semibold text-foreground">Projects</h2>
         </div>
         <ProjectListSkeleton />
       </div>
@@ -331,8 +331,8 @@ const ProjectList = ({
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-semibold text-white">Projects</h2>
-            <span className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white border border-white/30">
+            <h2 className="text-2xl font-semibold text-foreground">Projects</h2>
+            <span className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground border border-border">
               {totalProjectCount > 0 ? (
                 <>
                   {filteredProjects.length} of {totalProjectCount} (
@@ -356,15 +356,29 @@ const ProjectList = ({
             <Card
               key={project.id}
               onClick={() => onSelectProject(project)}
-              className="group p-6 pb-6 cursor-pointer bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+              className="group p-6 pb-6 cursor-pointer bg-card border border-border shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
               style={{
                 borderRadius: "1rem",
               }}
             >
+              {/* Diagonal Watermark for Completed Projects */}
+              {project.status === 'completed' && (
+                <div 
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  style={{
+                    transform: 'rotate(-45deg)',
+                  }}
+                >
+                  <div className="text-blue-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                    COMPLETED
+                  </div>
+                </div>
+              )}
+
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="relative">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-semibold">
+                  <h3 className="text-lg font-semibold text-foreground">
                     {project.title.replace(/<[^>]*>/g, "")}
                   </h3>
                   <span
@@ -388,7 +402,7 @@ const ProjectList = ({
                   </span>
                 </div>
                 {project.description && (
-                  <p className="text-sm text-blue-800 mb-3 line-clamp-2">
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                     {project.description.replace(/<[^>]*>/g, "")}
                   </p>
                 )}
@@ -397,7 +411,7 @@ const ProjectList = ({
                 {project.budget_total !== null &&
                   project.budget_total !== undefined && (
                     <div className="space-y-1 mb-3">
-                      <p className="text-sm text-blue-800 font-medium">
+                      <p className="text-sm text-foreground font-medium">
                         Total Budget:{" "}
                         {new Intl.NumberFormat("en-US", {
                           style: "currency",
@@ -409,25 +423,25 @@ const ProjectList = ({
                     </div>
                   )}
 
-                <p className="text-sm text-blue-800 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   Project Manager: {project.project_manager}
                 </p>
                 {(project.department || project.project_id) && (
                   <div className="space-y-2">
                     {project.department && (
-                      <p className="text-xs text-blue-600">
+                      <p className="text-xs text-muted-foreground">
                         Department: {project.department}
                       </p>
                     )}
                     {project.project_id && (
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                        <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-sm font-medium text-primary ring-1 ring-inset ring-primary/20">
                           ID: {project.project_id}
                         </span>
                       </div>
                     )}
-                    <div className="border-t border-gray-200 pt-2 w-3/4">
-                      <p className="text-[11px] text-gray-500">
+                    <div className="border-t border-border pt-2 w-3/4">
+                      <p className="text-[11px] text-muted-foreground">
                         Updated{" "}
                         {project.updated_at
                           ? (() => {
@@ -561,7 +575,7 @@ const ProjectList = ({
           ))}
 
           {filteredProjects.length === 0 && (
-            <div className="col-span-full text-center py-8 text-blue-800">
+            <div className="col-span-full text-center py-8 text-muted-foreground">
               {loading
                 ? "Loading projects..."
                 : allProjects.length === 0

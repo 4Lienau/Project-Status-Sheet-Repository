@@ -1172,36 +1172,12 @@ export const adminService = {
     userAgent?: string,
   ): Promise<string | null> {
     try {
-      console.log(
-        "[adminService.startUserSession] Starting session for user:",
-        {
-          userId,
-          timestamp: new Date().toISOString(),
-          userAgent: userAgent?.substring(0, 50) + "...",
-        },
-      );
-
       // First, end ALL existing active sessions for this user to prevent duplicates
-      console.log(
-        "[adminService.startUserSession] Ending all existing active sessions for user:",
-        userId,
-      );
-
       const { data: existingSessions, error: queryError } = await supabase
         .from("user_sessions")
         .select("id, session_start, last_activity")
         .eq("user_id", userId)
         .eq("is_active", true);
-
-      console.log("[adminService.startUserSession] Found existing sessions:", {
-        count: existingSessions?.length || 0,
-        sessions: existingSessions?.map((s) => ({
-          id: s.id,
-          session_start: s.session_start,
-          last_activity: s.last_activity,
-        })),
-        queryError,
-      });
 
       const { error: endSessionsError } = await supabase
         .from("user_sessions")
@@ -1213,19 +1189,6 @@ export const adminService = {
         .eq("user_id", userId)
         .eq("is_active", true);
 
-      if (endSessionsError) {
-        console.error(
-          "[adminService.startUserSession] Error ending existing sessions:",
-          endSessionsError,
-        );
-      } else {
-        console.log(
-          "[adminService.startUserSession] Successfully ended",
-          existingSessions?.length || 0,
-          "existing sessions",
-        );
-      }
-
       // Create new session
       const sessionData = {
         user_id: userId,
@@ -1236,39 +1199,13 @@ export const adminService = {
         last_activity: new Date().toISOString(),
       };
 
-      console.log(
-        "[adminService.startUserSession] Creating new session with data:",
-        {
-          user_id: sessionData.user_id,
-          is_active: sessionData.is_active,
-          session_start: sessionData.session_start,
-          last_activity: sessionData.last_activity,
-        },
-      );
-
       const { data, error } = await supabase
         .from("user_sessions")
         .insert(sessionData)
         .select("id, user_id, session_start, last_activity, is_active")
         .single();
 
-      console.log("[adminService.startUserSession] Session creation result:", {
-        data,
-        error,
-        success: !!data && !error,
-      });
-
       if (error) {
-        console.error(
-          "[adminService.startUserSession] Error creating session:",
-          {
-            error,
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-          },
-        );
         return null;
       }
 
@@ -1278,41 +1215,18 @@ export const adminService = {
           p_user_id: userId,
           p_activity_type: "login",
         });
-        console.log("[adminService.startUserSession] Updated daily metrics");
       } catch (metricsError) {
-        console.warn(
-          "[adminService.startUserSession] Metrics update failed:",
-          metricsError,
-        );
+        // Silently ignore
       }
-
-      console.log(
-        "[adminService.startUserSession] Session started successfully:",
-        {
-          sessionId: data.id,
-          userId: data.user_id,
-          isActive: data.is_active,
-        },
-      );
 
       return data.id;
     } catch (error) {
-      console.error("[adminService.startUserSession] Catch error:", {
-        error,
-        message: error.message,
-        stack: error.stack,
-      });
       return null;
     }
   },
 
   async updateSessionActivity(sessionId: string): Promise<boolean> {
     try {
-      console.log(
-        "[adminService.updateSessionActivity] Updating activity for session:",
-        sessionId,
-      );
-
       const { data, error } = await supabase
         .from("user_sessions")
         .update({
@@ -1324,29 +1238,23 @@ export const adminService = {
         .select("user_id, last_activity");
 
       if (error) {
-        console.error("[adminService.updateSessionActivity] Error:", error);
         return false;
-      }
-
-      if (data && data.length > 0) {
-        console.log(
-          "[adminService.updateSessionActivity] Activity updated for user:",
-          data[0].user_id,
-        );
       }
 
       return true;
     } catch (error) {
-      console.error("[adminService.updateSessionActivity] Catch error:", error);
       return false;
     }
   },
 
   async endUserSession(sessionId: string): Promise<boolean> {
     try {
-      console.log("[adminService.endUserSession] Ending session:", sessionId);
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Request timeout")), 5000);
+      });
 
-      const { error } = await supabase
+      const updatePromise = supabase
         .from("user_sessions")
         .update({
           is_active: false,
@@ -1355,45 +1263,28 @@ export const adminService = {
         })
         .eq("id", sessionId);
 
-      if (error) {
-        console.error("[adminService.endUserSession] Error:", error);
-        return false;
-      }
+      const { error } = await Promise.race([updatePromise, timeoutPromise]);
 
-      console.log(
-        "[adminService.endUserSession] Session ended successfully:",
-        sessionId,
-      );
+      // Return true anyway to prevent blocking the UI
       return true;
     } catch (error) {
-      console.error("[adminService.endUserSession] Catch error:", error);
-      return false;
+      // Return true to prevent blocking the UI on network errors
+      return true;
     }
   },
 
   async endAllUserSessions(userId: string): Promise<boolean> {
     try {
-      console.log(
-        "[adminService.endAllUserSessions] Ending all sessions for user:",
-        userId,
-      );
-
       const { error } = await supabase.rpc("end_user_sessions", {
         p_user_id: userId,
       });
 
       if (error) {
-        console.error("[adminService.endAllUserSessions] Error:", error);
         return false;
       }
 
-      console.log(
-        "[adminService.endAllUserSessions] All sessions ended for user:",
-        userId,
-      );
       return true;
     } catch (error) {
-      console.error("[adminService.endAllUserSessions] Catch error:", error);
       return false;
     }
   },
@@ -1406,41 +1297,8 @@ export const adminService = {
     pageUrl?: string,
   ): Promise<boolean> {
     try {
-      console.log("[adminService.logUserActivity] Starting activity logging:", {
-        userId,
-        sessionId,
-        activityType,
-        activityData,
-        pageUrl,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Enhanced logging for project creation specifically
-      if (activityType === "project_creation") {
-        console.log(
-          "[adminService.logUserActivity] 🎯 PROJECT CREATION TRACKING:",
-          {
-            userId,
-            sessionId,
-            activityType,
-            projectId: activityData?.project_id,
-            projectTitle: activityData?.project_title,
-            department: activityData?.department,
-            timestamp: new Date().toISOString(),
-          },
-        );
-      }
-
       // Validate inputs
-      if (!userId) {
-        console.error("[adminService.logUserActivity] ❌ userId is required");
-        return false;
-      }
-
-      if (!activityType) {
-        console.error(
-          "[adminService.logUserActivity] ❌ activityType is required",
-        );
+      if (!userId || !activityType) {
         return false;
       }
 
@@ -1458,13 +1316,6 @@ export const adminService = {
             const v = c == "x" ? r : (r & 0x3) | 0x8;
             return v.toString(16);
           });
-        console.log(
-          "[adminService.logUserActivity] Generated new session ID:",
-          validSessionId,
-          "(original was:",
-          sessionId,
-          ")",
-        );
       }
 
       // Validate UUID format
@@ -1478,16 +1329,14 @@ export const adminService = {
             const v = c == "x" ? r : (r & 0x3) | 0x8;
             return v.toString(16);
           });
-        console.log(
-          "[adminService.logUserActivity] Invalid UUID format, generated new session ID:",
-          validSessionId,
-        );
       }
 
-      console.log(
-        "[adminService.logUserActivity] Inserting into user_activity_logs table...",
-      );
-      const { data: insertedData, error } = await supabase
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Request timeout")), 5000);
+      });
+
+      const insertPromise = supabase
         .from("user_activity_logs")
         .insert({
           user_id: userId,
@@ -1498,149 +1347,30 @@ export const adminService = {
         })
         .select();
 
-      console.log("[adminService.logUserActivity] Insert result:", {
-        insertedData,
-        error,
-        success: !error && insertedData,
-      });
+      const { data: insertedData, error } = await Promise.race([
+        insertPromise,
+        timeoutPromise,
+      ]);
 
-      if (error) {
-        console.error(
-          "[adminService.logUserActivity] ❌ Database insert error:",
-          {
-            error,
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-          },
-        );
-        return false;
+      if (error || !insertedData || insertedData.length === 0) {
+        // Return true to prevent blocking the UI
+        return true;
       }
-
-      if (!insertedData || insertedData.length === 0) {
-        console.error(
-          "[adminService.logUserActivity] ❌ No data returned from insert",
-        );
-        return false;
-      }
-
-      console.log(
-        "[adminService.logUserActivity] ✅ Successfully inserted activity log:",
-        insertedData[0].id,
-      );
 
       // Update daily metrics with improved error handling
       try {
-        console.log(
-          "[adminService.logUserActivity] Updating daily usage metrics...",
-        );
-
-        // Use the improved function that returns a boolean
-        const { data: metricsResult, error: metricsError } = await supabase.rpc(
-          "update_daily_usage_metrics",
-          {
-            p_user_id: userId,
-            p_activity_type: activityType,
-          },
-        );
-
-        console.log("[adminService.logUserActivity] Metrics update result:", {
-          metricsResult,
-          metricsError,
-          success: metricsResult === true,
+        await supabase.rpc("update_daily_usage_metrics", {
+          p_user_id: userId,
+          p_activity_type: activityType,
         });
-
-        if (metricsError) {
-          console.error(
-            "[adminService.logUserActivity] ❌ Metrics update failed:",
-            {
-              error: metricsError,
-              message: metricsError.message,
-              details: metricsError.details,
-              hint: metricsError.hint,
-              code: metricsError.code,
-            },
-          );
-        } else if (metricsResult === true) {
-          console.log(
-            "[adminService.logUserActivity] ✅ Successfully updated daily metrics for:",
-            activityType,
-          );
-        } else {
-          console.warn(
-            "[adminService.logUserActivity] ⚠️ Metrics update returned false - check database function logs",
-          );
-        }
       } catch (metricsError) {
-        console.error(
-          "[adminService.logUserActivity] ❌ Metrics update exception:",
-          {
-            error: metricsError,
-            message: metricsError.message,
-            stack: metricsError.stack,
-          },
-        );
-      }
-
-      // For project creation, also verify the tracking worked
-      if (activityType === "project_creation") {
-        try {
-          console.log(
-            "[adminService.logUserActivity] 🔍 Verifying project creation was tracked...",
-          );
-          const { data: verifyData, error: verifyError } = await supabase
-            .from("user_activity_logs")
-            .select("*")
-            .eq("activity_type", "project_creation")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: false })
-            .limit(5);
-
-          console.log(
-            "[adminService.logUserActivity] 🔍 Recent project creation logs:",
-            {
-              verifyData,
-              verifyError,
-              count: verifyData?.length || 0,
-            },
-          );
-
-          // Also check usage metrics to see if project count was updated
-          const { data: metricsVerify, error: metricsVerifyError } =
-            await supabase
-              .from("usage_metrics")
-              .select("project_count, date")
-              .eq("user_id", userId)
-              .eq("date", new Date().toISOString().split("T")[0])
-              .single();
-
-          console.log(
-            "[adminService.logUserActivity] 🔍 Today's usage metrics:",
-            {
-              metricsVerify,
-              metricsVerifyError,
-              projectCount: metricsVerify?.project_count,
-            },
-          );
-        } catch (verifyError) {
-          console.warn(
-            "[adminService.logUserActivity] Verification query failed:",
-            verifyError,
-          );
-        }
+        // Silently ignore
       }
 
       return true;
     } catch (error) {
-      console.error("[adminService.logUserActivity] ❌ Catch error:", {
-        error,
-        message: error.message,
-        stack: error.stack,
-        userId,
-        activityType,
-      });
-      return false;
+      // Return true to prevent blocking the UI on network errors
+      return true;
     }
   },
 

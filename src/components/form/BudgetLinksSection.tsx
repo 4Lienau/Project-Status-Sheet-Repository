@@ -9,6 +9,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import UserSelectionInput from "@/components/ui/user-selection-input";
+import { SectionHeader } from "./SectionHeader";
 
 interface BudgetLinksSectionProps {
   formData: any;
@@ -21,25 +22,15 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
 }) => {
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-1 mb-4">
-        <h3 className="text-2xl font-bold text-white">Budget & Links</h3>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="max-w-xs">
-              Enter budget information and important links related to the
-              project.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
+      <SectionHeader
+        title="Budget & Links"
+        tooltip="Enter budget information and important links related to the project."
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label htmlFor="budget_total">Total Budget</Label>
+              <Label htmlFor="budget_total" className="text-foreground">Total Budget</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -53,7 +44,7 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
               </Tooltip>
             </div>
             <div className="relative max-w-xs">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-700 font-semibold z-10">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground font-semibold z-10">
                 $
               </span>
               <Input
@@ -97,14 +88,14 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                   }));
                 }}
                 placeholder="0.00"
-                className="bg-white border-gray-300 pl-8"
+                className="bg-card border-border text-foreground pl-8"
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label htmlFor="budget_actuals">Actuals</Label>
+              <Label htmlFor="budget_actuals" className="text-foreground">Actuals</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -118,7 +109,7 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
               </Tooltip>
             </div>
             <div className="relative max-w-xs">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-700 font-semibold z-10">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground font-semibold z-10">
                 $
               </span>
               <Input
@@ -162,14 +153,14 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                   }));
                 }}
                 placeholder="0.00"
-                className="bg-white border-gray-300 pl-8"
+                className="bg-card border-border text-foreground pl-8"
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label htmlFor="budget_forecast">Forecast</Label>
+              <Label htmlFor="budget_forecast" className="text-foreground">Forecast</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -183,7 +174,7 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
               </Tooltip>
             </div>
             <div className="relative max-w-xs">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-700 font-semibold z-10">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground font-semibold z-10">
                 $
               </span>
               <Input
@@ -227,14 +218,14 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                   }));
                 }}
                 placeholder="0.00"
-                className="bg-white border-gray-300 pl-8"
+                className="bg-card border-border text-foreground pl-8"
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label htmlFor="budget_remaining">Budget Remaining</Label>
+              <Label htmlFor="budget_remaining" className="text-foreground">Budget Remaining</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -271,7 +262,7 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                   });
                 })()}
                 readOnly
-                className="bg-gray-100 border-gray-300 text-gray-700 font-medium"
+                className="bg-muted border-border text-foreground font-medium"
               />
             </div>
           </div>
@@ -280,7 +271,7 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label htmlFor="charterLink">Charter Link</Label>
+              <Label htmlFor="charterLink" className="text-foreground">Charter Link</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -303,13 +294,13 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
                 }))
               }
               placeholder="Enter charter link"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+              className="bg-card/50 backdrop-blur-sm border-border text-foreground"
             />
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label htmlFor="sponsors">Sponsors</Label>
+              <Label htmlFor="sponsors" className="text-foreground">Sponsors</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -333,13 +324,13 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
               }
               placeholder="Click to select sponsors..."
               multiSelect={true}
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+              className="bg-card/50 backdrop-blur-sm border-border"
             />
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label htmlFor="businessLeads">Business Leads</Label>
+              <Label htmlFor="businessLeads" className="text-foreground">Business Leads</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -363,13 +354,13 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
               }
               placeholder="Click to select business leads..."
               multiSelect={true}
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+              className="bg-card/50 backdrop-blur-sm border-border"
             />
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label htmlFor="projectManager">Project Manager</Label>
+              <Label htmlFor="projectManager" className="text-foreground">Project Manager</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -393,7 +384,7 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
               }
               placeholder="Click to select project manager..."
               multiSelect={false}
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+              className="bg-card/50 backdrop-blur-sm border-border"
             />
           </div>
         </div>

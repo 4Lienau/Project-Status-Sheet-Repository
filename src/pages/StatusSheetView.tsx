@@ -27,12 +27,14 @@ import { projectVersionsService } from "@/lib/services/projectVersions";
 import { useToast } from "@/components/ui/use-toast";
 import html2canvas from "html2canvas";
 import { supabase } from "@/lib/supabase";
+import Layout from "@/components/layout/Layout";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 /**
  * StatusSheetView component
  * Displays a project status sheet with version navigation
  */
-const StatusSheetView = () => {
+const StatusSheetView: React.FC = () => {
   const { toast } = useToast();
   const [versions, setVersions] = useState([]);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1); // -1 means current (non-versioned)
@@ -409,20 +411,39 @@ const StatusSheetView = () => {
   });
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-[1850px] mx-auto p-8">
+    <Layout>
+      <div className="container mx-auto p-6 bg-background">
+        <div className="mb-6">
+          <Breadcrumb
+            items={[
+              { label: "Projects", href: "/" },
+              { label: project.title || "Status Sheet", current: true },
+            ]}
+          />
+        </div>
+
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/")}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to Projects
+              </Button>
+              
+              <Button
+                variant="default"
+                onClick={() => navigate(`/project/${id}`)}
+                className="flex items-center gap-2"
+              >
+                Edit Project
+              </Button>
+            </div>
 
             <div className="flex items-center gap-2">
-              {/* Version Navigation - Always visible */}
+              {/* Version Navigation */}
               <div className="flex items-center gap-2 mr-4">
                 <Button
                   variant="outline"
@@ -466,13 +487,11 @@ const StatusSheetView = () => {
                       return "Invalid Version";
                     }
 
-                    // Calculate position in available versions (1-based)
                     const positionInAvailable =
                       versions.length - currentVersionIndex;
                     const totalAvailable = versions.length;
                     const actualVersionNumber = currentVersion.version_number;
 
-                    // Get the highest version number to show total saves
                     const highestVersionNumber =
                       versions.length > 0
                         ? Math.max(...versions.map((v) => v.version_number))
@@ -526,11 +545,13 @@ const StatusSheetView = () => {
             </div>
           </div>
         </div>
+        
+        {/* StatusSheet component - forced to light mode */}
         <div className="bg-white shadow-none">
           <StatusSheet data={formattedData} />
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

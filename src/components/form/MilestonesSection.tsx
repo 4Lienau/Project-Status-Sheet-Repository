@@ -71,26 +71,26 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
           type="button"
           variant="outline"
           onClick={() => handleGenerateContent("milestones")}
-          className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
+          className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
         >
           <Wand2 className="h-4 w-4 mr-2" />
           Use AI to Generate
         </Button>
       </SectionHeader>
 
-      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
         {/* Column Headers */}
-        <div className="grid grid-cols-[30px_1fr] gap-2 mb-3 pb-2 border-b border-gray-200">
+        <div className="grid grid-cols-[30px_1fr] gap-2 mb-3 pb-2 border-b border-border">
           <div></div>
           <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
-            <div className="font-semibold text-sm text-gray-800">Date</div>
-            <div className="font-semibold text-sm text-gray-800">Milestone</div>
-            <div className="font-semibold text-sm text-gray-800">Owner</div>
+            <div className="font-semibold text-sm text-foreground">Date</div>
+            <div className="font-semibold text-sm text-foreground">Milestone</div>
+            <div className="font-semibold text-sm text-foreground">Owner</div>
             <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
-              <div className="font-semibold text-sm text-gray-800">
+              <div className="font-semibold text-sm text-foreground">
                 % Complete
               </div>
-              <div className="font-semibold text-sm text-gray-800 flex items-center gap-1">
+              <div className="font-semibold text-sm text-foreground flex items-center gap-1">
                 Weight
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -107,7 +107,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <div className="font-semibold text-sm text-gray-800">Status</div>
+              <div className="font-semibold text-sm text-foreground">Status</div>
               <div></div>
             </div>
           </div>
@@ -124,7 +124,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
             setFormData((prev) => ({
               ...prev,
               milestones: prev.milestones.map((m, i) =>
-                i === index ? { ...m, ...values } : m,
+                i === index ? { ...m, ...values } : m
               ),
             }))
           }
@@ -151,12 +151,12 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
                   owner: "",
                   completion: 0,
                   status: "green",
-                  tasks: [], // Initialize with empty tasks array
+                  tasks: [],
                 },
               ],
             }))
           }
-          className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 font-medium mt-4"
+          className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 font-medium mt-4"
         >
           Add Milestone
         </Button>

@@ -7,6 +7,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SectionHeader } from "@/components/form/SectionHeader";
+import { ListItemRow } from "@/components/form/ListItemRow";
+
+// Force re-parse
 
 interface ChangesSectionProps {
   formData: any;
@@ -17,108 +22,70 @@ const ChangesSection: React.FC<ChangesSectionProps> = ({
   formData,
   setFormData,
 }) => {
+  const handleChangeUpdate = (index: number, field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      changes: prev.changes.map((c, i) =>
+        i === index ? { ...c, [field]: value } : c,
+      ),
+    }));
+  };
+
+  const handleChangeDelete = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      changes: prev.changes.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddChange = () => {
+    setFormData((prev) => ({
+      ...prev,
+      changes: [
+        ...prev.changes,
+        { change: "", impact: "", disposition: "" },
+      ],
+    }));
+  };
+
   return (
-    <>
-      <div className="flex items-center gap-1 mb-4">
-        <h3 className="text-2xl font-bold text-white">Changes</h3>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="max-w-xs">
-              Document any changes to the project scope, timeline, or
-              requirements, along with their impact and disposition.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
+    <TooltipProvider>
+      <SectionHeader
+        title="Changes"
+        tooltip="Document any significant changes to the project scope, timeline, or resources."
+      />
+      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
         {/* Column Headers */}
-        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-start">
-          <div className="font-medium text-sm text-blue-800">Change</div>
-          <div className="font-medium text-sm text-blue-800">Impact</div>
-          <div className="font-medium text-sm text-blue-800">Disposition</div>
+        <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-start">
+          <div className="font-medium text-sm text-primary">Change</div>
+          <div className="font-medium text-sm text-primary">Impact</div>
+          <div className="font-medium text-sm text-primary">Disposition</div>
           <div></div>
         </div>
+
+        {/* Change Rows */}
         {formData.changes.map((item, index) => (
-          <div
+          <ListItemRow
             key={index}
-            className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-start"
-          >
-            <Input
-              value={item.change}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  changes: prev.changes.map((c, i) =>
-                    i === index ? { ...c, change: e.target.value } : c,
-                  ),
-                }))
-              }
-              placeholder="Enter change"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
-            <Input
-              value={item.impact}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  changes: prev.changes.map((c, i) =>
-                    i === index ? { ...c, impact: e.target.value } : c,
-                  ),
-                }))
-              }
-              placeholder="Enter impact"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
-            <Input
-              value={item.disposition}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  changes: prev.changes.map((c, i) =>
-                    i === index ? { ...c, disposition: e.target.value } : c,
-                  ),
-                }))
-              }
-              placeholder="Enter disposition"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() =>
-                setFormData((prev) => ({
-                  ...prev,
-                  changes: prev.changes.filter((_, i) => i !== index),
-                }))
-              }
-              className="h-9 w-9 p-0"
-            >
-              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-            </Button>
-          </div>
+            item={item}
+            index={index}
+            onUpdate={(field, value) => handleChangeUpdate(index, field, value)}
+            onDelete={() => handleChangeDelete(index)}
+            showImpact={true}
+            showDisposition={true}
+          />
         ))}
+
         <Button
           type="button"
           variant="outline"
-          onClick={() =>
-            setFormData((prev) => ({
-              ...prev,
-              changes: [
-                ...prev.changes,
-                { change: "", impact: "", disposition: "" },
-              ],
-            }))
-          }
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          onClick={handleAddChange}
+          className="bg-card/50 backdrop-blur-sm border-border"
         >
           Add Change
         </Button>
       </div>
-    </>
+    </TooltipProvider>
   );
 };
 

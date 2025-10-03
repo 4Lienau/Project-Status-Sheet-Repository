@@ -110,10 +110,10 @@ export function TaskList({
     <div className="pl-8 space-y-3 mt-2">
       {/* Column Headers */}
       <div className="grid grid-cols-[1fr_150px_140px_100px_auto] gap-2 items-start">
-        <div className="font-medium text-sm text-blue-800">Task</div>
-        <div className="font-medium text-sm text-blue-800">Assignee</div>
-        <div className="font-medium text-sm text-blue-800">Date</div>
-        <div className="font-medium text-sm text-blue-800">Completion %</div>
+        <div className="font-medium text-sm text-primary">Task</div>
+        <div className="font-medium text-sm text-primary">Assignee</div>
+        <div className="font-medium text-sm text-primary">Date</div>
+        <div className="font-medium text-sm text-primary">Completion %</div>
         <div></div>
       </div>
 
@@ -128,7 +128,7 @@ export function TaskList({
               handleUpdateTask(originalIndex, "description", e.target.value)
             }
             placeholder="Enter task description"
-            className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+            className="bg-card/50 backdrop-blur-sm border-border text-foreground"
           />
           <UserSelectionInput
             value={task.assignee}
@@ -137,7 +137,7 @@ export function TaskList({
             }
             placeholder="Click to select assignee..."
             multiSelect={false}
-            className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+            className="bg-card/50 backdrop-blur-sm border-border"
           />
           <Input
             type="date"
@@ -145,7 +145,7 @@ export function TaskList({
             onChange={(e) =>
               handleUpdateTask(originalIndex, "date", e.target.value)
             }
-            className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+            className="bg-card/50 backdrop-blur-sm border-border text-foreground"
           />
           <Input
             type="number"
@@ -159,14 +159,14 @@ export function TaskList({
                 Number(e.target.value),
               )
             }
-            className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+            className="bg-card/50 backdrop-blur-sm border-border text-foreground"
           />
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={() => handleDeleteTask(originalIndex)}
-            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -177,7 +177,7 @@ export function TaskList({
         type="button"
         variant="outline"
         onClick={handleAddTask}
-        className="bg-white/50 backdrop-blur-sm border-gray-200/50 text-sm"
+        className="bg-card/50 backdrop-blur-sm border-border text-foreground text-sm"
       >
         Add Task
       </Button>

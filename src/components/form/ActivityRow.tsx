@@ -35,13 +35,13 @@ export const ActivityRow: React.FC<ActivityRowProps> = ({
         type="date"
         value={item.date}
         onChange={(e) => onUpdate("date", e.target.value)}
-        className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+        className="bg-card/50 backdrop-blur-sm border-border text-foreground"
       />
       <Input
         value={item.description}
         onChange={(e) => onUpdate("description", e.target.value)}
         placeholder="Enter activity"
-        className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+        className="bg-card/50 backdrop-blur-sm border-border text-foreground"
       />
       <div className="flex flex-row items-center">
         <div className="flex-1">
@@ -57,16 +57,16 @@ export const ActivityRow: React.FC<ActivityRowProps> = ({
         onChange={(value) => onUpdate("assignee", value)}
         placeholder="Click to select assignee..."
         multiSelect={false}
-        className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+        className="bg-card/50 backdrop-blur-sm border-border"
       />
       <Button
         type="button"
         variant="ghost"
         size="icon"
         onClick={onDelete}
-        className="h-9 w-9 p-0"
+        className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
       >
-        <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+        <Trash2 className="h-4 w-4" />
       </Button>
     </div>
   );

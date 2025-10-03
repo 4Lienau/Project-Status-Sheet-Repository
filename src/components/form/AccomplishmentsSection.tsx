@@ -18,7 +18,7 @@ const AccomplishmentsSection: React.FC<AccomplishmentsSectionProps> = ({
         title="Accomplishments"
         tooltip="List key accomplishments or completed deliverables for the project to date."
       />
-      <div className="space-y-2 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm mb-0">
+      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm mb-0">
         {formData.accomplishments.map((item, index) => (
           <ListItemRow
             key={index}
@@ -52,7 +52,7 @@ const AccomplishmentsSection: React.FC<AccomplishmentsSectionProps> = ({
               accomplishments: [...prev.accomplishments, ""],
             }))
           }
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          className="bg-card/50 backdrop-blur-sm border-border"
         >
           Add Accomplishment
         </Button>

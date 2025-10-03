@@ -188,7 +188,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           <ChangesSection formData={formData} setFormData={setFormData} />
 
           {/* Form Actions - Now floating */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 z-10 flex justify-center items-center">
+          <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-lg p-4 z-10 flex justify-center items-center">
             <div className="container mx-auto flex justify-between max-w-4xl">
               <Button
                 type="button"
@@ -207,10 +207,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
               <div className="flex items-center gap-2">
                 {hasChanges && (
-                  <div className="bg-orange-100 border-l-4 border-orange-500 shadow-md rounded-l-lg p-2 animate-pulse">
+                  <div className="bg-orange-100 dark:bg-orange-900/30 border-l-4 border-orange-500 shadow-md rounded-l-lg p-2 animate-pulse">
                     <div className="flex items-center gap-2">
                       <span className="animate-pulse h-3 w-3 rounded-full bg-orange-500"></span>
-                      <span className="text-orange-600 font-bold text-sm">
+                      <span className="text-orange-600 dark:text-orange-400 font-bold text-sm">
                         Unsaved changes
                       </span>
                     </div>
@@ -218,7 +218,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 )}
                 <Button
                   type="submit"
-                  className={`${hasChanges ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-600 hover:bg-blue-700"}`}
+                  className={`${hasChanges ? "bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700" : "bg-primary hover:bg-primary/90"}`}
                 >
                   Save Project
                 </Button>

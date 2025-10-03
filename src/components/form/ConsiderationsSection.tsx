@@ -7,6 +7,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SectionHeader } from "@/components/form/SectionHeader";
+import { ListItemRow } from "@/components/form/ListItemRow";
+
+// Force re-parse
 
 interface ConsiderationsSectionProps {
   formData: any;
@@ -17,82 +22,76 @@ const ConsiderationsSection: React.FC<ConsiderationsSectionProps> = ({
   formData,
   setFormData,
 }) => {
+  const handleConsiderationUpdate = (index: number, field: string, value: string) => {
+    setFormData((prev) => {
+      const newConsiderations = [...prev.considerations];
+      newConsiderations[index] = value;
+      console.log(
+        `Updating consideration at index ${index} to: '${value}'`,
+      );
+      console.log("New considerations array:", newConsiderations);
+      return {
+        ...prev,
+        considerations: newConsiderations,
+      };
+    });
+  };
+
+  const handleConsiderationDelete = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      considerations: prev.considerations.filter(
+        (_, i) => i !== index,
+      ),
+    }));
+  };
+
+  const handleAddConsideration = () => {
+    // Always add a simple string, never an object
+    setFormData((prev) => {
+      return {
+        ...prev,
+        considerations: [...prev.considerations, ""],
+      };
+    });
+  };
+
   return (
-    <>
-      <div className="flex items-center gap-1 mb-4">
-        <h3 className="text-2xl font-bold text-white">
-          Questions/Items for Consideration
-        </h3>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="max-w-xs">
-              List any additional considerations, dependencies, or factors that
-              should be taken into account.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
+    <TooltipProvider>
+      <SectionHeader
+        title="Considerations"
+        tooltip="List important considerations, dependencies, or factors that may affect the project."
+      />
+      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+        {/* Column Headers */}
+        <div className="grid grid-cols-[1fr_auto] gap-2 items-start">
+          <div className="font-medium text-sm text-primary">Consideration</div>
+          <div></div>
+        </div>
+
+        {/* Consideration Rows */}
         {formData.considerations.map((item, index) => (
-          <div key={index} className="flex gap-2">
-            <Input
-              value={typeof item === "string" ? item : item?.description || ""}
-              onChange={(e) =>
-                setFormData((prev) => {
-                  const newConsiderations = [...prev.considerations];
-                  newConsiderations[index] = e.target.value;
-                  console.log(
-                    `Updating consideration at index ${index} to: '${e.target.value}'`,
-                  );
-                  console.log("New considerations array:", newConsiderations);
-                  return {
-                    ...prev,
-                    considerations: newConsiderations,
-                  };
-                })
-              }
-              placeholder="Enter consideration"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() =>
-                setFormData((prev) => ({
-                  ...prev,
-                  considerations: prev.considerations.filter(
-                    (_, i) => i !== index,
-                  ),
-                }))
-              }
-              className="h-9 w-9 p-0"
-            >
-              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-            </Button>
-          </div>
+          <ListItemRow
+            key={index}
+            item={item}
+            index={index}
+            onUpdate={(field, value) =>
+              handleConsiderationUpdate(index, field, value)
+            }
+            onDelete={() => handleConsiderationDelete(index)}
+          />
         ))}
+
         <Button
           type="button"
           variant="outline"
-          onClick={() =>
-            setFormData((prev) => {
-              // Always add a simple string, never an object
-              return {
-                ...prev,
-                considerations: [...prev.considerations, ""],
-              };
-            })
-          }
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          onClick={handleAddConsideration}
+          className="bg-card/50 backdrop-blur-sm border-border"
         >
           Add Consideration
         </Button>
       </div>
-    </>
+    </TooltipProvider>
   );
 };
 

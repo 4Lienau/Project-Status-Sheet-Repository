@@ -809,7 +809,6 @@ export const projectService = {
         .order("updated_at", { ascending: false });
 
       if (projectsError) {
-        console.error("[DEBUG] Error fetching projects:", projectsError);
         return [];
       }
 

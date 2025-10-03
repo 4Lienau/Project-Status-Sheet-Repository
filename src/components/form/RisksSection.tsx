@@ -7,118 +7,82 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SectionHeader } from "@/components/form/SectionHeader";
+import { ListItemRow } from "@/components/form/ListItemRow";
+
+// Force re-parse
 
 interface RisksSectionProps {
   formData: any;
   setFormData: (updater: (prev: any) => any) => void;
 }
 
-const RisksSection: React.FC<RisksSectionProps> = ({
-  formData,
-  setFormData,
-}) => {
+const RisksSection: React.FC<RisksSectionProps> = ({ formData, setFormData }) => {
+  const handleRiskUpdate = (index: number, field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      risks: prev.risks.map((r, i) =>
+        i === index
+          ? {
+              ...r,
+              [field]: value,
+            }
+          : r,
+      ),
+    }));
+  };
+
+  const handleRiskDelete = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      risks: prev.risks.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddRisk = () => {
+    setFormData((prev) => ({
+      ...prev,
+      risks: [...prev.risks, { description: "", impact: "" }],
+    }));
+  };
+
   return (
-    <>
-      <div className="flex items-center gap-1 mb-4">
-        <h3 className="text-2xl font-bold text-white">Risks</h3>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="max-w-xs">
-              List any risks or challenges that could impact the project's
-              success.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="space-y-4 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
+    <TooltipProvider>
+      <SectionHeader
+        title="Risks"
+        tooltip="Identify and track potential risks to the project, including their impact level and mitigation strategies."
+      />
+      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
         {/* Column Headers */}
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start">
-          <div className="font-medium text-sm text-blue-800">
-            Risk Description
-          </div>
-          <div className="font-medium text-sm text-blue-800">Impact</div>
+        <div className="grid grid-cols-[2fr_1fr_auto] gap-2 items-start">
+          <div className="font-medium text-sm text-primary">Risk</div>
+          <div className="font-medium text-sm text-primary">Impact</div>
           <div></div>
         </div>
+
+        {/* Risk Rows */}
         {formData.risks.map((item, index) => (
-          <div
+          <ListItemRow
             key={index}
-            className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start"
-          >
-            <Input
-              value={typeof item === "string" ? item : item.description || ""}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  risks: prev.risks.map((r, i) =>
-                    i === index
-                      ? {
-                          description: e.target.value,
-                          impact: typeof r === "object" ? r.impact : "",
-                        }
-                      : r,
-                  ),
-                }))
-              }
-              placeholder="Enter risk description"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
-            <Input
-              value={typeof item === "object" ? item.impact || "" : ""}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  risks: prev.risks.map((r, i) =>
-                    i === index
-                      ? {
-                          description:
-                            typeof r === "object"
-                              ? r.description
-                              : typeof r === "string"
-                                ? r
-                                : "",
-                          impact: e.target.value,
-                        }
-                      : r,
-                  ),
-                }))
-              }
-              placeholder="Enter impact"
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() =>
-                setFormData((prev) => ({
-                  ...prev,
-                  risks: prev.risks.filter((_, i) => i !== index),
-                }))
-              }
-              className="h-9 w-9 p-0"
-            >
-              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-            </Button>
-          </div>
+            item={item}
+            index={index}
+            onUpdate={(field, value) => handleRiskUpdate(index, field, value)}
+            onDelete={() => handleRiskDelete(index)}
+            showImpact={true}
+          />
         ))}
+
         <Button
           type="button"
           variant="outline"
-          onClick={() =>
-            setFormData((prev) => ({
-              ...prev,
-              risks: [...prev.risks, { description: "", impact: "" }],
-            }))
-          }
-          className="bg-white/50 backdrop-blur-sm border-gray-200/50"
+          onClick={handleAddRisk}
+          className="bg-card/50 backdrop-blur-sm border-border"
         >
           Add Risk
         </Button>
       </div>
-    </>
+    </TooltipProvider>
   );
 };
 

@@ -12,6 +12,7 @@
  * - Supabase client
  * - Lucide icons
  * - Confetti animation library
+ * - Theme provider
  *
  * Called by: src/components/layout/Layout.tsx (likely)
  */
@@ -31,13 +32,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Shield, LogOut } from "lucide-react";
+import { User, Shield, LogOut, Sun, Moon, Monitor, Check } from "lucide-react";
 import confetti from "canvas-confetti";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [profile, setProfile] = React.useState<{
     full_name: string | null;
     department: string | null;
@@ -194,12 +197,12 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-none bg-white shadow-md">
+    <nav className="sticky top-0 z-50 w-full border-none bg-card shadow-md">
       <div className="container flex h-16 items-center">
         <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center">
             <span 
-              className="text-xl font-bold text-blue-800 cursor-pointer hover:text-blue-600 transition-colors"
+              className="text-xl font-bold text-primary cursor-pointer hover:text-primary/80 transition-colors"
               onClick={handleTitleClick}
             >
               ReWa Project Status Sheet Repository
@@ -209,7 +212,7 @@ const Navbar = () => {
           {user && (
             <div className="flex items-center space-x-4">
               <div className="flex flex-col">
-                <span className="text-sm">
+                <span className="text-sm text-foreground">
                   {profile.full_name || user.email?.split("@")[0]}
                 </span>
                 {profile.department && (
@@ -243,6 +246,29 @@ const Navbar = () => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  
+                  {/* Theme Selection */}
+                  <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                    Theme
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => setTheme("light")}>
+                    <Sun className="mr-2 h-4 w-4" />
+                    <span>Light</span>
+                    {theme === "light" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    <Moon className="mr-2 h-4 w-4" />
+                    <span>Dark</span>
+                    {theme === "dark" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("system")}>
+                    <Monitor className="mr-2 h-4 w-4" />
+                    <span>System</span>
+                    {theme === "system" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
                   <DropdownMenuItem onClick={() => navigate("/profile")}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>

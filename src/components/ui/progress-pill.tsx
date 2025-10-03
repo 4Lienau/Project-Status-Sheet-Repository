@@ -126,7 +126,7 @@ export const ProgressPill: React.FC<ProgressPillProps> = ({
           onChange={(e) => setInputValue(e.target.value)}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
-          className="w-full h-7 px-2 py-0 text-xs text-center border border-blue-400 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full h-7 px-2 py-0 text-xs text-center border border-blue-400 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white dark:text-gray-900 dark:bg-white dark:focus:text-gray-900 dark:caret-gray-900"
           style={{ appearance: "textfield" }}
         />
       </div>

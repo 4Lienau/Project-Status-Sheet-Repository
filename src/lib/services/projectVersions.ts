@@ -62,27 +62,37 @@ export const projectVersionsService = {
       return [];
     }
 
-    const { data, error } = await supabase
-      .from("project_versions")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("version_number", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("project_versions")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("version_number", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching versions:", error);
+      if (error) {
+        console.warn("Error fetching versions (non-critical):", error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.warn("Failed to fetch versions (non-critical):", error);
       return [];
     }
-
-    return data || [];
   },
 
   async getVersion(versionId: string): Promise<ProjectVersion | null> {
-    const { data } = await supabase
-      .from("project_versions")
-      .select("*")
-      .eq("id", versionId)
-      .single();
+    try {
+      const { data } = await supabase
+        .from("project_versions")
+        .select("*")
+        .eq("id", versionId)
+        .single();
 
-    return data;
+      return data;
+    } catch (error) {
+      console.warn("Failed to fetch version:", error);
+      return null;
+    }
   },
 };
