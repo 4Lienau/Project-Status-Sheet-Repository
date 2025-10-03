@@ -1662,4 +1662,70 @@ export const adminService = {
       };
     }
   },
+
+  // Reminder Email Management
+  async triggerReminderEmails(options: {
+    dryRun?: boolean;
+    minDaysSinceUpdate?: number;
+    cooldownDays?: number;
+    testEmail?: string; // Add test email parameter
+  } = {}) {
+    try {
+      console.log('[adminService.triggerReminderEmails] Invoking edge function with options:', options);
+      
+      const { data, error } = await supabase.functions.invoke(
+        'supabase-functions-send-reminder-emails',
+        {
+          body: {
+            manual: true,
+            dryRun: options.dryRun ?? false,
+            minDaysSinceUpdate: options.minDaysSinceUpdate ?? 14,
+            cooldownDays: options.cooldownDays ?? 7,
+            testEmail: options.testEmail, // Pass test email if provided
+          },
+        }
+      );
+
+      console.log('[adminService.triggerReminderEmails] Edge function response:', { data, error });
+
+      if (error) {
+        console.error('[adminService.triggerReminderEmails] Edge function error:', error);
+        throw new Error(error.message || 'Failed to trigger reminder emails');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[adminService.triggerReminderEmails] Catch error:', error);
+      throw error;
+    }
+  },
+
+  async getReminderEmailLogs(limit: number = 50) {
+    const { data, error } = await supabase
+      .from('reminder_emails')
+      .select('*')
+      .order('sent_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data;
+  },
+
+  async getReminderEmailStats() {
+    const { data, error } = await supabase
+      .from('reminder_emails')
+      .select('status, sent_at')
+      .gte('sent_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+
+    if (error) throw error;
+
+    const stats = {
+      total: data.length,
+      sent: data.filter(r => r.status === 'sent').length,
+      failed: data.filter(r => r.status === 'failed').length,
+      last30Days: data.length,
+    };
+
+    return stats;
+  },
 };

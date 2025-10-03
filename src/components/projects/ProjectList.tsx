@@ -369,8 +369,50 @@ const ProjectList = ({
                     transform: 'rotate(-45deg)',
                   }}
                 >
-                  <div className="text-blue-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                  <div className="text-green-500/10 text-7xl font-bold whitespace-nowrap select-none">
                     COMPLETED
+                  </div>
+                </div>
+              )}
+
+              {/* Diagonal Watermark for On Hold Projects */}
+              {project.status === 'on_hold' && (
+                <div 
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  style={{
+                    transform: 'rotate(-45deg)',
+                  }}
+                >
+                  <div className="text-yellow-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                    ON HOLD
+                  </div>
+                </div>
+              )}
+
+              {/* Diagonal Watermark for Cancelled Projects */}
+              {project.status === 'cancelled' && (
+                <div 
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  style={{
+                    transform: 'rotate(-45deg)',
+                  }}
+                >
+                  <div className="text-red-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                    CANCELLED
+                  </div>
+                </div>
+              )}
+
+              {/* Diagonal Watermark for Draft Projects */}
+              {project.status === 'draft' && (
+                <div 
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  style={{
+                    transform: 'rotate(-45deg)',
+                  }}
+                >
+                  <div className="text-yellow-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                    DRAFT
                   </div>
                 </div>
               )}

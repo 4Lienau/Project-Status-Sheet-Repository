@@ -64,6 +64,7 @@ import {
   Building2,
   BookOpen,
   Palette,
+  Mail,
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { Breadcrumb, BreadcrumbItem } from "@/components/ui/breadcrumb";
@@ -95,6 +96,15 @@ const AdminPage: React.FC = () => {
   const [isCheckingDueSyncs, setIsCheckingDueSyncs] = useState(false);
   const [isTogglingSync, setIsTogglingSync] = useState(false);
   const [activeTab, setActiveTab] = useState("users");
+  
+  // Reminder emails state
+  const [reminderLogs, setReminderLogs] = useState([]);
+  const [reminderStats, setReminderStats] = useState(null);
+  const [isDryRunning, setIsDryRunning] = useState(false);
+  const [isSendingReminders, setIsSendingReminders] = useState(false);
+  const [dryRunResults, setDryRunResults] = useState(null);
+  const [testEmail, setTestEmail] = useState(''); // Add test email state
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false); // Add test email loading state
 
   // Pagination state for directory users
   const [currentPage, setCurrentPage] = useState(1);
@@ -212,6 +222,13 @@ const AdminPage: React.FC = () => {
         }
         setSyncLogs(syncLogsData);
         console.log("[AdminPage] State updated with sync logs");
+
+        // Load reminder email data
+        const reminderLogsData = await adminService.getReminderEmailLogs(20);
+        setReminderLogs(reminderLogsData);
+
+        const reminderStatsData = await adminService.getReminderEmailStats();
+        setReminderStats(reminderStatsData);
 
         // Ensure sync configuration exists and load it
         await adminService.ensureSyncConfiguration();
@@ -434,6 +451,116 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const handleDryRunReminders = async () => {
+    setIsDryRunning(true);
+    setDryRunResults(null);
+    try {
+      console.log('[AdminPage] Starting dry run...');
+      const result = await adminService.triggerReminderEmails({
+        dryRun: true,
+        minDaysSinceUpdate: 14,
+        cooldownDays: 7,
+      });
+
+      console.log('[AdminPage] Dry run result:', result);
+      setDryRunResults(result);
+
+      toast({
+        title: "Dry Run Complete",
+        description: `Evaluated ${result.evaluatedCount || 0} projects. Found ${result.dueCount || 0} that would receive reminders. Skipped ${result.skippedCount || 0}.`,
+        className: "bg-blue-50 border-blue-200",
+      });
+    } catch (error) {
+      console.error("[AdminPage] Error running dry run:", error);
+      console.error("[AdminPage] Error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      });
+      
+      toast({
+        title: "Error",
+        description: error.message || "Failed to run dry run",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDryRunning(false);
+    }
+  };
+
+  const handleSendReminders = async () => {
+    setIsSendingReminders(true);
+    try {
+      const result = await adminService.triggerReminderEmails({
+        dryRun: false,
+        minDaysSinceUpdate: 14,
+        cooldownDays: 7,
+      });
+
+      toast({
+        title: "Reminders Sent",
+        description: `Successfully sent ${result.sentCount || 0} reminder emails`,
+        className: "bg-green-50 border-green-200",
+      });
+
+      // Refresh logs after sending
+      setTimeout(async () => {
+        const reminderLogsData = await adminService.getReminderEmailLogs(20);
+        setReminderLogs(reminderLogsData);
+
+        const reminderStatsData = await adminService.getReminderEmailStats();
+        setReminderStats(reminderStatsData);
+      }, 2000);
+
+      setDryRunResults(null);
+    } catch (error) {
+      console.error("Error sending reminders:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send reminder emails",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingReminders(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!testEmail || !testEmail.includes('@')) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingTestEmail(true);
+    try {
+      console.log('[AdminPage] Sending test email to:', testEmail);
+      const result = await adminService.triggerReminderEmails({
+        testEmail: testEmail,
+      });
+
+      console.log('[AdminPage] Test email result:', result);
+
+      toast({
+        title: "Test Email Sent",
+        description: `A sample reminder email has been sent to ${testEmail}. Check your inbox!`,
+        className: "bg-green-50 border-green-200",
+      });
+    } catch (error) {
+      console.error("Error sending test email:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test email",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
+
   // Prepare chart data
   const projectStatusData = [
     { name: "Active", value: stats.activeProjects, color: "#4ade80" },
@@ -576,7 +703,7 @@ const AdminPage: React.FC = () => {
           <Button
             variant="outline"
             onClick={() => navigate("/")}
-            className="text-foreground border-border hover:bg-card"
+            className="text-foreground border-border hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Projects
@@ -592,6 +719,10 @@ const AdminPage: React.FC = () => {
             <TabsTrigger value="departments" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Building2 className="h-4 w-4 mr-2" />
               Departments
+            </TabsTrigger>
+            <TabsTrigger value="reminders" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Mail className="h-4 w-4 mr-2" />
+              Reminder Emails
             </TabsTrigger>
             <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <BarChart3 className="h-4 w-4 mr-2" />
@@ -617,41 +748,41 @@ const AdminPage: React.FC = () => {
 
           <TabsContent value="users" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+              <Card className="bg-card border border-border">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">
+                  <CardTitle className="text-sm font-medium text-foreground">
                     Total Projects
                   </CardTitle>
-                  <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+                  <FileSpreadsheet className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-800">
+                  <div className="text-2xl font-bold text-foreground">
                     {stats.totalProjects}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+              <Card className="bg-card border border-border">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">
+                  <CardTitle className="text-sm font-medium text-foreground">
                     Active Projects
                   </CardTitle>
-                  <Activity className="h-4 w-4 text-blue-600" />
+                  <Activity className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-800">
+                  <div className="text-2xl font-bold text-foreground">
                     {stats.activeProjects}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+              <Card className="bg-card border border-border">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">
+                  <CardTitle className="text-sm font-medium text-foreground">
                     Avg Milestones Per Project
                   </CardTitle>
-                  <BarChart3 className="h-4 w-4 text-blue-600" />
+                  <BarChart3 className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-800">
+                  <div className="text-2xl font-bold text-foreground">
                     {stats.totalProjects > 0
                       ? (stats.totalMilestones / stats.totalProjects).toFixed(1)
                       : 0}
@@ -662,9 +793,9 @@ const AdminPage: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Azure AD Sync Control */}
-              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+              <Card className="bg-card border border-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-800">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
                     <Cloud className="h-5 w-5" />
                     Azure AD Sync Control
                   </CardTitle>
@@ -680,19 +811,19 @@ const AdminPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                       <div>
-                        <h3 className="font-medium text-blue-900">
+                        <h3 className="font-medium text-foreground">
                           Manual Sync
                         </h3>
-                        <p className="text-sm text-blue-700">
+                        <p className="text-sm text-muted-foreground">
                           Trigger an immediate sync with Azure AD
                         </p>
                       </div>
                       <Button
                         onClick={handleAzureAdSync}
                         disabled={isSyncing}
-                        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                        className="flex items-center gap-2"
                       >
                         <RefreshCw
                           className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
@@ -701,19 +832,19 @@ const AdminPage: React.FC = () => {
                       </Button>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                       <div>
-                        <h3 className="font-medium text-green-900">
+                        <h3 className="font-medium text-foreground">
                           Check Due Syncs
                         </h3>
-                        <p className="text-sm text-green-700">
+                        <p className="text-sm text-muted-foreground">
                           Check if any scheduled syncs are due and trigger them
                         </p>
                       </div>
                       <Button
                         onClick={handleCheckDueSyncs}
                         disabled={isCheckingDueSyncs}
-                        className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                        variant="secondary"
                       >
                         <CheckCircle
                           className={`h-4 w-4 ${isCheckingDueSyncs ? "animate-spin" : ""}`}
@@ -722,13 +853,13 @@ const AdminPage: React.FC = () => {
                       </Button>
                     </div>
 
-                    <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <div className="p-4 bg-muted rounded-lg border border-border">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="font-medium text-amber-900">
+                          <h3 className="font-medium text-foreground">
                             Sync Frequency
                           </h3>
-                          <p className="text-sm text-amber-700">
+                          <p className="text-sm text-muted-foreground">
                             Configure how often the sync runs automatically
                           </p>
                         </div>
@@ -754,7 +885,6 @@ const AdminPage: React.FC = () => {
                               newFrequency === syncConfig?.frequency_hours
                             }
                             size="sm"
-                            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
                           >
                             {isUpdatingFrequency ? "Updating..." : "Update"}
                           </Button>
@@ -764,11 +894,11 @@ const AdminPage: React.FC = () => {
                   </div>
 
                   <div className="pt-4">
-                    <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                      <div className="text-2xl font-bold text-green-800">
+                    <div className="text-center p-3 bg-muted rounded-lg border border-border">
+                      <div className="text-2xl font-bold text-foreground">
                         {directoryUsers.length}
                       </div>
-                      <div className="text-sm text-green-600">
+                      <div className="text-sm text-muted-foreground">
                         Directory Users
                       </div>
                     </div>
@@ -777,9 +907,9 @@ const AdminPage: React.FC = () => {
               </Card>
 
               {/* Recent Sync Logs */}
-              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+              <Card className="bg-card border border-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-800">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
                     <Activity className="h-5 w-5" />
                     Recent Sync Activity
                   </CardTitle>
@@ -795,7 +925,7 @@ const AdminPage: React.FC = () => {
                         <p className="text-sm text-muted-foreground mb-2">
                           No sync logs available
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           Sync logs will appear here after running Azure AD
                           sync. Try triggering a manual sync to create the first
                           log entry.
@@ -803,29 +933,29 @@ const AdminPage: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        <div className="text-xs text-gray-500 mb-2">
+                        <div className="text-xs text-muted-foreground mb-2">
                           Showing {Math.min(5, syncLogs.length)} of{" "}
                           {syncLogs.length} recent logs
                         </div>
                         {syncLogs.slice(0, 5).map((log) => (
                           <div
                             key={log.id}
-                            className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                            className="flex items-center justify-between p-3 bg-muted rounded-lg border border-border"
                           >
                             <div>
                               <div className="flex items-center gap-2">
                                 <span
                                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                     log.sync_status === "completed"
-                                      ? "bg-green-100 text-green-800"
+                                      ? "bg-success/10 text-success"
                                       : log.sync_status === "failed"
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-yellow-100 text-yellow-800"
+                                        ? "bg-destructive/10 text-destructive"
+                                        : "bg-warning/10 text-warning"
                                   }`}
                                 >
                                   {log.sync_status}
                                 </span>
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm text-muted-foreground">
                                   {new Date(
                                     log.sync_started_at,
                                   ).toLocaleString()}
@@ -839,7 +969,7 @@ const AdminPage: React.FC = () => {
                                 </div>
                               )}
                               {log.error_message && (
-                                <div className="text-xs text-red-600 mt-1">
+                                <div className="text-xs text-destructive mt-1">
                                   {log.error_message}
                                 </div>
                               )}
@@ -854,9 +984,9 @@ const AdminPage: React.FC = () => {
             </div>
 
             {/* Directory Users Table */}
-            <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+            <Card className="bg-card border border-border">
               <CardHeader>
-                <CardTitle className="text-blue-800">Directory Users</CardTitle>
+                <CardTitle className="text-foreground">Directory Users</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -890,8 +1020,8 @@ const AdminPage: React.FC = () => {
                             <span
                               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                 user.sync_status === "active"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-gray-100 text-gray-800"
+                                  ? "bg-success/10 text-success"
+                                  : "bg-muted text-muted-foreground"
                               }`}
                             >
                               {user.sync_status}
@@ -945,11 +1075,7 @@ const AdminPage: React.FC = () => {
                                   onClick={() =>
                                     handlePageClick(page as number)
                                   }
-                                  className={`w-8 h-8 p-0 ${
-                                    currentPage === page
-                                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                                      : "hover:bg-gray-100"
-                                  }`}
+                                  className="w-8 h-8 p-0"
                                 >
                                   {page}
                                 </Button>
@@ -976,6 +1102,231 @@ const AdminPage: React.FC = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="reminders" className="space-y-4">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="bg-card border border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-foreground">Total Sent</CardTitle>
+                  <Mail className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {reminderStats?.total || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Last 30 days</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-foreground">Successful</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-success" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {reminderStats?.sent || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Delivered</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-foreground">Failed</CardTitle>
+                  <Activity className="h-4 w-4 text-destructive" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {reminderStats?.failed || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Errors</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-foreground">Success Rate</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {reminderStats?.total > 0
+                      ? Math.round((reminderStats.sent / reminderStats.total) * 100)
+                      : 0}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">Delivery rate</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Control Panel */}
+            <Card className="bg-card border border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Mail className="h-5 w-5" />
+                  Reminder Email Control
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Send reminder emails to project managers whose projects haven't been updated in 14+ days.
+                    The system enforces a 7-day cooldown to prevent duplicate reminders.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
+                    <div>
+                      <h3 className="font-medium text-foreground">Dry Run</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Preview which projects would receive reminders
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleDryRunReminders}
+                      disabled={isDryRunning}
+                    >
+                      <Activity className={`h-4 w-4 ${isDryRunning ? "animate-spin" : ""}`} />
+                      {isDryRunning ? "Running..." : "Dry Run"}
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
+                    <div>
+                      <h3 className="font-medium text-foreground">Send Reminders</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Send reminder emails to all eligible project managers
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleSendReminders}
+                      disabled={isSendingReminders}
+                      variant="secondary"
+                    >
+                      <Mail className={`h-4 w-4 ${isSendingReminders ? "animate-spin" : ""}`} />
+                      {isSendingReminders ? "Sending..." : "Send Now"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Test Email Section */}
+                <div className="p-4 bg-muted rounded-lg border border-border">
+                  <h3 className="font-medium text-foreground mb-3">Send Test Email</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Send a sample reminder email to your email address to preview the content and format.
+                    This will not affect any project managers or create any logs.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="your.email@example.com"
+                      value={testEmail}
+                      onChange={(e) => setTestEmail(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleSendTestEmail}
+                      disabled={isSendingTestEmail || !testEmail}
+                    >
+                      <Mail className={`h-4 w-4 ${isSendingTestEmail ? "animate-spin" : ""}`} />
+                      {isSendingTestEmail ? "Sending..." : "Send Test"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Dry Run Results */}
+                {dryRunResults && (
+                  <div className="p-4 bg-muted rounded-lg border border-border">
+                    <h3 className="font-medium text-foreground mb-2">Dry Run Results</h3>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Projects evaluated:</strong> {dryRunResults.evaluatedCount || 0}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Projects due for reminder:</strong> {dryRunResults.dueCount || 0}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Projects skipped (cooldown):</strong> {dryRunResults.skippedCount || 0}
+                      </p>
+                      {dryRunResults.targets && dryRunResults.targets.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-sm font-medium text-foreground mb-2">Projects that would receive reminders:</p>
+                          <div className="space-y-1 max-h-48 overflow-y-auto">
+                            {dryRunResults.targets.map((target, index) => (
+                              <div key={index} className="text-xs text-muted-foreground bg-card p-2 rounded border border-border">
+                                <strong>{target.projectTitle}</strong> → {target.managerEmail}
+                                <span className="text-muted-foreground ml-2">
+                                  (Last updated: {new Date(target.lastUpdated).toLocaleDateString()})
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Reminder Logs */}
+            <Card className="bg-card border border-border">
+              <CardHeader>
+                <CardTitle className="text-foreground">Recent Reminder Logs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project Manager</TableHead>
+                      <TableHead>Days Since Update</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Sent At</TableHead>
+                      <TableHead>Error</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reminderLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center">
+                          No reminder logs found. Run a dry run or send reminders to see logs.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      reminderLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell className="font-medium">
+                            {log.project_manager_email}
+                          </TableCell>
+                          <TableCell>{log.days_since_update || "-"}</TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                log.status === "sent"
+                                  ? "bg-success/10 text-success"
+                                  : "bg-destructive/10 text-destructive"
+                              }`}
+                            >
+                              {log.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(log.sent_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-xs text-destructive">
+                            {log.error_message || "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="departments" className="space-y-4">
             <DepartmentManager />
           </TabsContent>
@@ -998,46 +1349,46 @@ const AdminPage: React.FC = () => {
 
           <TabsContent value="status-colors" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-gradient-to-b from-gray-100/90 to-white/90 backdrop-blur-sm border border-gray-100/50 shadow-sm">
+              <Card className="bg-card border border-border">
                 <CardHeader>
-                  <CardTitle className="text-blue-800">Status Colors</CardTitle>
+                  <CardTitle className="text-foreground">Status Colors</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                       <div>
-                        <h3 className="font-medium text-blue-900">Active</h3>
-                        <p className="text-sm text-blue-700">Projects in active state</p>
+                        <h3 className="font-medium text-foreground">Active</h3>
+                        <p className="text-sm text-muted-foreground">Projects in active state</p>
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-blue-500" />
+                      <div className="w-8 h-8 rounded-full bg-primary" />
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                       <div>
-                        <h3 className="font-medium text-green-900">Completed</h3>
-                        <p className="text-sm text-green-700">Projects completed</p>
+                        <h3 className="font-medium text-foreground">Completed</h3>
+                        <p className="text-sm text-muted-foreground">Projects completed</p>
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-green-500" />
+                      <div className="w-8 h-8 rounded-full bg-success" />
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                       <div>
-                        <h3 className="font-medium text-yellow-900">On Hold</h3>
-                        <p className="text-sm text-yellow-700">Projects on hold</p>
+                        <h3 className="font-medium text-foreground">On Hold</h3>
+                        <p className="text-sm text-muted-foreground">Projects on hold</p>
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-yellow-500" />
+                      <div className="w-8 h-8 rounded-full bg-warning" />
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                       <div>
-                        <h3 className="font-medium text-red-900">Cancelled</h3>
-                        <p className="text-sm text-red-700">Cancelled projects</p>
+                        <h3 className="font-medium text-foreground">Cancelled</h3>
+                        <p className="text-sm text-muted-foreground">Cancelled projects</p>
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-red-500" />
+                      <div className="w-8 h-8 rounded-full bg-destructive" />
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                       <div>
-                        <h3 className="font-medium text-gray-900">Draft</h3>
-                        <p className="text-sm text-gray-700">Draft projects</p>
+                        <h3 className="font-medium text-foreground">Draft</h3>
+                        <p className="text-sm text-muted-foreground">Draft projects</p>
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-gray-500" />
+                      <div className="w-8 h-8 rounded-full bg-muted-foreground" />
                     </div>
                   </div>
                 </CardContent>

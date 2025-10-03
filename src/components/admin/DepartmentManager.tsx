@@ -245,10 +245,10 @@ const DepartmentManager: React.FC = () => {
   };
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-sm">
+    <Card className="bg-card border border-border">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="text-blue-800">Department Management</CardTitle>
+          <CardTitle className="text-foreground">Department Management</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
@@ -267,7 +267,7 @@ const DepartmentManager: React.FC = () => {
           </div>
           <Button
             onClick={handleAddDepartment}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+            className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             Add Department
@@ -276,10 +276,10 @@ const DepartmentManager: React.FC = () => {
 
         {loading ? (
           <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border border-border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -320,7 +320,7 @@ const DepartmentManager: React.FC = () => {
                               variant="ghost"
                               size="sm"
                               onClick={saveDepartment}
-                              className="text-green-500 hover:text-green-700 hover:bg-green-50"
+                              className="text-success hover:text-success hover:bg-success/10"
                             >
                               <Check className="h-4 w-4" />
                             </Button>
@@ -328,7 +328,7 @@ const DepartmentManager: React.FC = () => {
                               variant="ghost"
                               size="sm"
                               onClick={cancelEditing}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -339,7 +339,7 @@ const DepartmentManager: React.FC = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => startEditing(department)}
-                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                              className="text-primary hover:text-primary hover:bg-primary/10"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -350,7 +350,7 @@ const DepartmentManager: React.FC = () => {
                                 setSelectedDepartmentId(department.id);
                                 setIsDeleteDialogOpen(true);
                               }}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -383,7 +383,7 @@ const DepartmentManager: React.FC = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteDepartment}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
               Delete
             </AlertDialogAction>

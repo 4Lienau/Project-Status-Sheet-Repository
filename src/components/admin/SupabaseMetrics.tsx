@@ -693,7 +693,7 @@ const SupabaseMetrics: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h2 className="text-lg font-semibold">Supabase Project Metrics</h2>
+          <h2 className="text-lg font-semibold text-foreground">Supabase Project Metrics</h2>
         </div>
         <div className="flex gap-2">
           <Button
@@ -722,34 +722,34 @@ const SupabaseMetrics: React.FC = () => {
       </div>
 
       {!authFunctionStatus.exists && (
-        <Card className="bg-amber-50 border-amber-200 mb-4">
+        <Card className="bg-warning/10 border-warning/20">
           <CardContent className="pt-4">
             <div className="flex items-start gap-2">
-              <div className="bg-amber-100 p-2 rounded-full">
-                <Database className="h-5 w-5 text-amber-600" />
+              <div className="bg-warning/20 p-2 rounded-full">
+                <Database className="h-5 w-5 text-warning" />
               </div>
               <div>
-                <h3 className="font-medium text-amber-800">
+                <h3 className="font-medium text-foreground">
                   Auth Function Not Detected
                 </h3>
-                <p className="text-sm text-amber-700 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   The{" "}
-                  <code className="bg-amber-100 px-1 rounded">
+                  <code className="bg-muted px-1 rounded">
                     get_auth_users_data
                   </code>{" "}
                   function is not installed in your Supabase project. This
                   function is required to display accurate user creation dates
                   and last login times.
                 </p>
-                <p className="text-sm text-amber-700 mt-2">
+                <p className="text-sm text-muted-foreground mt-2">
                   Please run the SQL migration file{" "}
-                  <code className="bg-amber-100 px-1 rounded">
+                  <code className="bg-muted px-1 rounded">
                     supabase/migrations/20240613000001_fix_auth_users_function_return_type.sql
                   </code>{" "}
                   in your Supabase SQL Editor.
                 </p>
                 {authFunctionStatus.error && (
-                  <p className="text-sm text-red-700 mt-2 bg-red-50 p-2 rounded border border-red-100">
+                  <p className="text-sm text-destructive mt-2 bg-destructive/10 p-2 rounded border border-destructive/20">
                     <strong>Error:</strong> {authFunctionStatus.error}
                   </p>
                 )}
@@ -761,33 +761,33 @@ const SupabaseMetrics: React.FC = () => {
 
       {/* Show sync timing information */}
       {syncConfig && (
-        <Card className="bg-blue-50 border-blue-200 mb-4">
+        <Card className="bg-primary/10 border-primary/20">
           <CardContent className="pt-4">
             <div className="flex items-start gap-2">
-              <div className="bg-blue-100 p-2 rounded-full">
-                <Database className="h-5 w-5 text-blue-600" />
+              <div className="bg-primary/20 p-2 rounded-full">
+                <Database className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-blue-800">
+                <h3 className="font-medium text-foreground">
                   Azure AD Sync Status
                 </h3>
                 <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="font-medium">Last Sync:</span>
-                    <span>
+                    <span className="font-medium text-foreground">Last Sync:</span>
+                    <span className="text-muted-foreground">
                       {syncConfig.last_run_at
                         ? new Date(syncConfig.last_run_at).toLocaleString()
                         : "Never"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="font-medium">Next Sync Due:</span>
+                    <span className="font-medium text-foreground">Next Sync Due:</span>
                     <span
                       className={
                         syncConfig.next_run_at &&
                         new Date(syncConfig.next_run_at) <= new Date()
-                          ? "text-red-600 font-semibold"
-                          : ""
+                          ? "text-destructive font-semibold"
+                          : "text-muted-foreground"
                       }
                     >
                       {syncConfig.next_run_at
@@ -796,16 +796,16 @@ const SupabaseMetrics: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="font-medium">Frequency:</span>
-                    <span>{syncConfig.frequency_hours} hours</span>
+                    <span className="font-medium text-foreground">Frequency:</span>
+                    <span className="text-muted-foreground">{syncConfig.frequency_hours} hours</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="font-medium">Status:</span>
+                    <span className="font-medium text-foreground">Status:</span>
                     <span
                       className={
                         syncConfig.is_enabled
-                          ? "text-green-600"
-                          : "text-red-600"
+                          ? "text-success"
+                          : "text-destructive"
                       }
                     >
                       {syncConfig.is_enabled ? "Enabled" : "Disabled"}
@@ -814,7 +814,7 @@ const SupabaseMetrics: React.FC = () => {
                 </div>
                 {syncConfig.next_run_at &&
                   new Date(syncConfig.next_run_at) <= new Date() && (
-                    <div className="text-red-600 font-medium text-center mt-3 p-2 bg-red-50 rounded border border-red-200">
+                    <div className="text-destructive font-medium text-center mt-3 p-2 bg-destructive/10 rounded border border-destructive/20">
                       ⚠️ Sync is overdue! Click "Check Sync" to trigger it.
                     </div>
                   )}
@@ -825,13 +825,13 @@ const SupabaseMetrics: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-card border border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-foreground">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">
+            <div className="text-2xl font-bold text-foreground">
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -841,15 +841,15 @@ const SupabaseMetrics: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-card border border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium text-foreground">
               Total Projects
             </CardTitle>
-            <FileText className="h-4 w-4 text-blue-600" />
+            <FileText className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">
+            <div className="text-2xl font-bold text-foreground">
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -859,47 +859,47 @@ const SupabaseMetrics: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-card border border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Tables</CardTitle>
-            <Database className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-foreground">Total Tables</CardTitle>
+            <Database className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">
+            <div className="text-2xl font-bold text-foreground">
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 metrics.totalTables
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Database tables</p>
+            <p className="text-xs text-muted-foreground mt-1">Database tables</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-card border border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium text-foreground">
               Database Tables
             </CardTitle>
-            <Database className="h-4 w-4 text-blue-600" />
+            <Database className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">
+            <div className="text-2xl font-bold text-foreground">
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 `${metrics.totalDatabaseSize.toFixed(2)} MB`
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Application data only</p>
+            <p className="text-xs text-muted-foreground mt-1">Application data only</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-card border border-border">
           <CardHeader>
-            <CardTitle className="text-blue-800">
+            <CardTitle className="text-foreground">
               Daily Active Users (Last 30 Days)
             </CardTitle>
           </CardHeader>
@@ -907,10 +907,10 @@ const SupabaseMetrics: React.FC = () => {
             <div className="h-80">
               {loading ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : metrics.dailyActiveUsers.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="flex items-center justify-center h-full text-muted-foreground">
                   <div className="text-center">
                     <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
                     <p>No daily active user data available</p>
@@ -922,7 +922,7 @@ const SupabaseMetrics: React.FC = () => {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={metrics.dailyActiveUsers}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis
                       dataKey="date"
                       angle={-45}
@@ -931,8 +931,9 @@ const SupabaseMetrics: React.FC = () => {
                       interval={Math.floor(
                         metrics.dailyActiveUsers.length / 10,
                       )}
+                      className="text-muted-foreground"
                     />
-                    <YAxis />
+                    <YAxis className="text-muted-foreground" />
                     <Tooltip
                       labelFormatter={(label, payload) => {
                         const item = payload?.[0]?.payload;
@@ -941,16 +942,21 @@ const SupabaseMetrics: React.FC = () => {
                           : `Date: ${label}`;
                       }}
                       formatter={(value) => [value, "Active Users"]}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "6px",
+                      }}
                     />
                     <Legend />
                     <Line
                       type="monotone"
                       dataKey="count"
-                      stroke="#3b82f6"
+                      stroke="hsl(var(--primary))"
                       name="Active Users"
                       strokeWidth={2}
-                      dot={{ fill: "#3b82f6", strokeWidth: 2, r: 3 }}
-                      activeDot={{ r: 5, stroke: "#3b82f6", strokeWidth: 2 }}
+                      dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 3 }}
+                      activeDot={{ r: 5, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -959,9 +965,9 @@ const SupabaseMetrics: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-card border border-border">
           <CardHeader>
-            <CardTitle className="text-blue-800">
+            <CardTitle className="text-foreground">
               Application Data Breakdown
             </CardTitle>
           </CardHeader>
@@ -969,26 +975,32 @@ const SupabaseMetrics: React.FC = () => {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={metrics.databaseSize}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis
                     dataKey="displayName"
                     angle={-45}
                     textAnchor="end"
                     height={80}
                     interval={0}
+                    className="text-muted-foreground"
                   />
-                  <YAxis />
+                  <YAxis className="text-muted-foreground" />
                   <Tooltip
                     formatter={(value, name, props) => [
                       `${value} MB (${props.payload?.rows || 0} rows)`,
                       "Size",
                     ]}
                     labelFormatter={(label) => `Table: ${label}`}
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "6px",
+                    }}
                   />
                   <Legend />
                   <Bar
                     dataKey="size"
-                    fill="#3b82f6"
+                    fill="hsl(var(--primary))"
                     name="Size (MB)"
                     radius={[4, 4, 0, 0]}
                   />

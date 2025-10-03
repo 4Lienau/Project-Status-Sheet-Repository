@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -573,6 +573,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          auto_populate_enabled: boolean
           budget_actuals: number
           budget_forecast: number
           budget_total: number | null
@@ -602,6 +603,7 @@ export type Database = {
           working_days_remaining: number | null
         }
         Insert: {
+          auto_populate_enabled?: boolean
           budget_actuals: number
           budget_forecast: number
           budget_total?: number | null
@@ -631,6 +633,7 @@ export type Database = {
           working_days_remaining?: number | null
         }
         Update: {
+          auto_populate_enabled?: boolean
           budget_actuals?: number
           budget_forecast?: number
           budget_total?: number | null
@@ -660,6 +663,47 @@ export type Database = {
           working_days_remaining?: number | null
         }
         Relationships: []
+      }
+      reminder_emails: {
+        Row: {
+          created_at: string | null
+          days_since_update: number | null
+          error_message: string | null
+          id: string
+          project_id: string | null
+          project_manager_email: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          days_since_update?: number | null
+          error_message?: string | null
+          id?: string
+          project_id?: string | null
+          project_manager_email: string
+          sent_at?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          days_since_update?: number | null
+          error_message?: string | null
+          id?: string
+          project_id?: string | null
+          project_manager_email?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_emails_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       risks: {
         Row: {
@@ -952,34 +996,34 @@ export type Database = {
       get_active_users: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
           email: string
           full_name: string
-          session_start: string
           last_activity: string
           session_duration_minutes: number
+          session_start: string
+          user_id: string
         }[]
       }
       get_ai_adoption_overview: {
         Args: Record<PropertyKey, never>
         Returns: {
-          total_ai_events: number
-          unique_ai_users: number
-          total_users: number
           adoption_rate: number
-          most_popular_feature: string
           daily_average_usage: number
+          most_popular_feature: string
+          total_ai_events: number
+          total_users: number
+          unique_ai_users: number
         }[]
       }
       get_ai_usage_analytics: {
         Args: Record<PropertyKey, never>
         Returns: {
+          avg_daily_usage: number
           feature_type: string
           total_usage: number
           unique_users: number
-          usage_last_7_days: number
           usage_last_30_days: number
-          avg_daily_usage: number
+          usage_last_7_days: number
         }[]
       }
       get_ai_usage_trends: {
@@ -993,36 +1037,36 @@ export type Database = {
       get_auth_users_data: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          email: string
           created_at: string
+          email: string
+          id: string
           last_sign_in_at: string
         }[]
       }
       get_auth_users_login_data: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
+          account_created: string
           email: string
           full_name: string
-          total_logins: number
           last_login: string
+          total_logins: number
           total_session_time_minutes: number
-          account_created: string
+          user_id: string
         }[]
       }
       get_comprehensive_user_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
+          account_created: string
           email: string
           full_name: string
-          total_logins: number
-          last_login: string
-          total_session_time_minutes: number
-          total_page_views: number
-          account_created: string
           last_activity: string
+          last_login: string
+          total_logins: number
+          total_page_views: number
+          total_session_time_minutes: number
+          user_id: string
         }[]
       }
       get_database_size: {
@@ -1032,68 +1076,68 @@ export type Database = {
       get_project_creation_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
+          projects_created_last_30_days: number
+          projects_created_last_7_days: number
           total_projects_created: number
           unique_project_creators: number
-          projects_created_last_7_days: number
-          projects_created_last_30_days: number
         }[]
       }
       get_session_statistics: {
         Args: Record<PropertyKey, never>
         Returns: {
-          total_sessions: number
+          active_sessions: number
           avg_session_minutes: number
           total_session_minutes: number
-          active_sessions: number
+          total_sessions: number
         }[]
       }
       get_table_sizes: {
         Args: Record<PropertyKey, never>
         Returns: {
-          table_name: string
+          row_count: number
           size_bytes: number
           size_mb: number
-          row_count: number
+          table_name: string
         }[]
       }
       get_top_ai_users: {
         Args: { limit_count?: number }
         Returns: {
-          user_id: string
+          description_usage: number
           email: string
           full_name: string
-          total_ai_usage: number
-          description_usage: number
-          value_statement_usage: number
+          last_ai_usage: string
           milestones_usage: number
           project_pilot_usage: number
-          last_ai_usage: string
+          total_ai_usage: number
+          user_id: string
+          value_statement_usage: number
         }[]
       }
       get_user_activity_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
+          account_created: string
           email: string
           full_name: string
-          total_session_time: number
+          last_login: string
+          login_count: number
           total_page_views: number
           total_projects: number
-          login_count: number
-          last_login: string
-          account_created: string
+          total_session_time: number
+          user_id: string
         }[]
       }
       get_user_login_statistics: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
+          account_created: string
           email: string
           full_name: string
-          total_logins: number
           last_login: string
+          total_logins: number
           total_session_time_minutes: number
-          account_created: string
+          user_id: string
         }[]
       }
       get_version_count: {
@@ -1138,12 +1182,12 @@ export type Database = {
       }
       http_delete: {
         Args:
+          | { content: string; content_type: string; uri: string }
           | { uri: string }
-          | { uri: string; content: string; content_type: string }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
       http_get: {
-        Args: { uri: string } | { uri: string; data: Json }
+        Args: { data: Json; uri: string } | { uri: string }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
       http_head: {
@@ -1162,17 +1206,17 @@ export type Database = {
         }[]
       }
       http_patch: {
-        Args: { uri: string; content: string; content_type: string }
+        Args: { content: string; content_type: string; uri: string }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
       http_post: {
         Args:
-          | { uri: string; content: string; content_type: string }
-          | { uri: string; data: Json }
+          | { content: string; content_type: string; uri: string }
+          | { data: Json; uri: string }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
       http_put: {
-        Args: { uri: string; content: string; content_type: string }
+        Args: { content: string; content_type: string; uri: string }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
       http_reset_curlopt: {
@@ -1184,7 +1228,7 @@ export type Database = {
         Returns: boolean
       }
       insert_daily_note_direct: {
-        Args: { p_project_id: string; p_date: string; p_note: string }
+        Args: { p_date: string; p_note: string; p_project_id: string }
         Returns: string
       }
       ivfflat_bit_support: {
@@ -1209,16 +1253,16 @@ export type Database = {
       }
       match_pm_knowledge: {
         Args: {
-          query_embedding: string
-          match_threshold: number
           match_count: number
+          match_threshold: number
+          query_embedding: string
         }
         Returns: {
-          id: string
-          title: string
-          content: string
           category: string
+          content: string
+          id: string
           similarity: number
+          title: string
         }[]
       }
       recalculate_all_computed_status_colors: {
@@ -1238,7 +1282,7 @@ export type Database = {
         Returns: number
       }
       test_project_creation_tracking: {
-        Args: { p_user_id: string; p_test_project_id?: string }
+        Args: { p_test_project_id?: string; p_user_id: string }
         Returns: Json
       }
       text_to_bytea: {
@@ -1254,7 +1298,7 @@ export type Database = {
         Returns: Json
       }
       update_daily_usage_metrics: {
-        Args: { p_user_id: string; p_activity_type: string }
+        Args: { p_activity_type: string; p_user_id: string }
         Returns: boolean
       }
       update_project_computed_status_color: {

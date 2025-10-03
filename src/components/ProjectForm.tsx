@@ -94,6 +94,35 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   return (
     <TooltipProvider>
       <div className="relative">
+        {/* Status Watermark - Show for all project statuses */}
+        <div className="relative w-full h-24 mb-4 overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div 
+              className={`text-8xl font-bold whitespace-nowrap select-none ${
+                formData.status === 'completed' 
+                  ? 'text-green-500/20' 
+                  : formData.status === 'on_hold' 
+                  ? 'text-yellow-500/20' 
+                  : formData.status === 'cancelled' 
+                  ? 'text-red-500/20' 
+                  : formData.status === 'draft' 
+                  ? 'text-yellow-500/20'
+                  : 'text-blue-500/20'
+              }`}
+            >
+              {formData.status === 'completed' 
+                ? 'COMPLETED' 
+                : formData.status === 'on_hold' 
+                ? 'ON HOLD' 
+                : formData.status === 'cancelled' 
+                ? 'CANCELLED' 
+                : formData.status === 'draft' 
+                ? 'DRAFT'
+                : 'ACTIVE'}
+            </div>
+          </div>
+        </div>
+
         <ProjectPilot
           projectId={projectId}
           projectTitle={
