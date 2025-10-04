@@ -47,19 +47,20 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
         title="Project Details"
         tooltip="Enter the basic information about your project including title, description, and identification."
       />
-      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {/* Project Title */}
         <div className="space-y-2">
           <Label htmlFor="title" className="text-foreground">
             Project Title *
           </Label>
-          <RichTextEditor
+          <Input
+            id="title"
             value={formData.title}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, title: value }))
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, title: e.target.value }))
             }
             placeholder="Enter project title..."
-            className="bg-card border-border"
+            className="bg-card border-border text-foreground"
           />
         </div>
 
@@ -70,11 +71,11 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
           </Label>
           <Input
             id="project_id"
-            value={formData.project_id || ""}
+            value={formData.projectId || ""}
             onChange={(e) =>
               setFormData((prev) => ({
                 ...prev,
-                project_id: e.target.value,
+                projectId: e.target.value,
               }))
             }
             placeholder="e.g., PROJ-2024-001"
@@ -105,6 +106,33 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
               setFormData((prev) => ({ ...prev, description: value }))
             }
             placeholder="Enter project description..."
+            className="bg-card border-border"
+          />
+        </div>
+
+        {/* Value Statement */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="valueStatement" className="text-foreground">
+              Value Statement
+            </Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleGenerateContent("value")}
+              className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              Generate with AI
+            </Button>
+          </div>
+          <RichTextEditor
+            value={formData.valueStatement}
+            onChange={(value) =>
+              setFormData((prev) => ({ ...prev, valueStatement: value }))
+            }
+            placeholder="Enter the value this project brings to the organization..."
             className="bg-card border-border"
           />
         </div>

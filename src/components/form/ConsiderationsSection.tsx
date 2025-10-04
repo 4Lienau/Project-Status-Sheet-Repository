@@ -62,7 +62,7 @@ const ConsiderationsSection: React.FC<ConsiderationsSectionProps> = ({
         title="Considerations"
         tooltip="List important considerations, dependencies, or factors that may affect the project."
       />
-      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {/* Column Headers */}
         <div className="grid grid-cols-[1fr_auto] gap-2 items-start">
           <div className="font-medium text-sm text-primary">Consideration</div>

@@ -26,7 +26,7 @@ const BudgetLinksSection: React.FC<BudgetLinksSectionProps> = ({
         title="Budget & Links"
         tooltip="Enter budget information and important links related to the project."
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center gap-1">

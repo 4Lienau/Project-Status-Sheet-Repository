@@ -809,6 +809,7 @@ export const projectService = {
         .order("updated_at", { ascending: false });
 
       if (projectsError) {
+        console.error("[DEBUG] Error fetching projects:", projectsError);
         return [];
       }
 
@@ -824,48 +825,33 @@ export const projectService = {
       // Get all project IDs
       const projectIds = projects.map((p) => p.id);
 
-      // Fetch all related data in parallel
-      const [
-        { data: milestones, error: milestonesError },
-        { data: tasks, error: tasksError },
-        { data: accomplishments, error: accomplishmentsError },
-        { data: activities, error: activitiesError },
-        { data: risks, error: risksError },
-        { data: considerations, error: considerationsError },
-        { data: changes, error: changesError },
-      ] = await Promise.all([
-        supabase.from("milestones").select("*").in("project_id", projectIds),
-        supabase.from("tasks").select("*").in("project_id", projectIds),
-        supabase
-          .from("accomplishments")
-          .select("*")
-          .in("project_id", projectIds),
-        supabase
-          .from("next_period_activities")
-          .select("*")
-          .in("project_id", projectIds),
-        supabase.from("risks").select("*").in("project_id", projectIds),
-        supabase
-          .from("considerations")
-          .select("*")
-          .in("project_id", projectIds),
-        supabase.from("changes").select("*").in("project_id", projectIds),
-      ]);
-
-      // Log any errors
-      [
-        milestonesError,
-        tasksError,
-        accomplishmentsError,
-        activitiesError,
-        risksError,
-        considerationsError,
-        changesError,
-      ].forEach((error, index) => {
-        if (error) {
-          console.error(`[DEBUG] Error fetching relation ${index}:`, error);
+      // Fetch all related data with better error handling
+      const fetchWithRetry = async (tableName: string, projectIds: string[]) => {
+        try {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select("*")
+            .in("project_id", projectIds);
+          
+          if (error) {
+            console.error(`[DEBUG] Error fetching ${tableName}:`, error);
+            return [];
+          }
+          return data || [];
+        } catch (err) {
+          console.error(`[DEBUG] Exception fetching ${tableName}:`, err);
+          return [];
         }
-      });
+      };
+
+      // Fetch all related data sequentially to avoid overwhelming the connection
+      const milestones = await fetchWithRetry("milestones", projectIds);
+      const tasks = await fetchWithRetry("tasks", projectIds);
+      const accomplishments = await fetchWithRetry("accomplishments", projectIds);
+      const activities = await fetchWithRetry("next_period_activities", projectIds);
+      const risks = await fetchWithRetry("risks", projectIds);
+      const considerations = await fetchWithRetry("considerations", projectIds);
+      const changes = await fetchWithRetry("changes", projectIds);
 
       // Map tasks to milestones
       const milestonesWithTasks = (milestones || []).map((milestone) => ({

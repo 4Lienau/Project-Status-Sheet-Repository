@@ -58,8 +58,8 @@ export const useProjectForm = (
       // Ensure summary metadata is included
       summaryCreatedAt: initialData?.summaryCreatedAt || null,
       summaryIsStale: initialData?.summaryIsStale || false,
-      // Normalize projectId to prevent false change detection - handle null/undefined/empty string
-      projectId: (initialData?.projectId ?? "").toString(),
+      // Preserve projectId as-is, don't normalize to empty string
+      projectId: initialData?.projectId || "",
     };
 
     // PROJECT ID DEBUG: Log initial Project ID setup
@@ -111,7 +111,7 @@ export const useProjectForm = (
     if (!initialData) return;
 
     // Deep comparison function for nested objects
-    const isEqual = (obj1: any, obj2: any): boolean => {
+    const isEqual = (obj1: any, obj2: any, path: string = ""): boolean => {
       if (obj1 === obj2) return true;
       if (
         typeof obj1 !== "object" ||
@@ -124,43 +124,178 @@ export const useProjectForm = (
       const keys1 = Object.keys(obj1);
       const keys2 = Object.keys(obj2);
 
-      if (keys1.length !== keys2.length) return false;
+      // Define auto-calculated fields once at the top
+      const autoCalculatedFields = [
+        "start_date",
+        "end_date",
+        "total_days",
+        "working_days",
+        "total_days_remaining",
+        "working_days_remaining",
+        "calculated_start_date",
+        "calculated_end_date",
+        "computed_status_color",
+        "summaryCreatedAt",
+        "summaryIsStale",
+        "projectAnalysis",
+        "isAnalysisExpanded",
+        "datesOverridden"
+      ];
+
+      if (keys1.length !== keys2.length) {
+        const missingInObj2 = keys1.filter(k => !keys2.includes(k));
+        const missingInObj1 = keys2.filter(k => !keys1.includes(k));
+        console.log(`[CHANGE_DEBUG] Key count mismatch at ${path}:`, {
+          keys1Length: keys1.length,
+          keys2Length: keys2.length,
+          missingInObj2,
+          missingInObj1
+        });
+        
+        // If the only missing keys are auto-calculated fields, ignore the mismatch
+        const nonAutoCalculatedMissing = missingInObj2.filter(
+          key => !autoCalculatedFields.includes(key)
+        );
+        
+        if (nonAutoCalculatedMissing.length === 0) {
+          // All missing keys are auto-calculated, so we can continue comparison
+          // by only comparing keys that exist in both objects
+          const commonKeys = keys1.filter(k => keys2.includes(k));
+          for (const key of commonKeys) {
+            const currentPath = path ? `${path}.${key}` : key;
+            
+            if (autoCalculatedFields.includes(key)) {
+              continue;
+            }
+
+            // Special handling for projectId field to normalize null/undefined/empty string
+            if (key === "projectId") {
+              const val1 = obj1[key] || "";
+              const val2 = obj2[key] || "";
+              if (val1 !== val2) {
+                console.log(`[CHANGE_DEBUG] projectId mismatch:`, {
+                  formData: val1,
+                  initialData: val2,
+                  formDataRaw: obj1[key],
+                  initialDataRaw: obj2[key]
+                });
+                return false;
+              }
+              continue;
+            }
+
+            // Handle arrays specially
+            if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
+              if (obj1[key].length !== obj2[key].length) {
+                console.log(`[CHANGE_DEBUG] Array length mismatch at ${currentPath}:`, {
+                  formDataLength: obj1[key].length,
+                  initialDataLength: obj2[key].length
+                });
+                return false;
+              }
+
+              // For simple arrays of primitives
+              if (typeof obj1[key][0] !== "object") {
+                const mismatch = !obj1[key].every(
+                  (item: any, index: number) => item === obj2[key][index]
+                );
+                if (mismatch) {
+                  console.log(`[CHANGE_DEBUG] Primitive array mismatch at ${currentPath}:`, {
+                    formData: obj1[key],
+                    initialData: obj2[key]
+                  });
+                  return false;
+                }
+              } else {
+                // For arrays of objects, we need to compare each object
+                for (let i = 0; i < obj1[key].length; i++) {
+                  if (!isEqual(obj1[key][i], obj2[key][i], `${currentPath}[${i}]`)) {
+                    return false;
+                  }
+                }
+              }
+            } else if (typeof obj1[key] === "object" && obj1[key] !== null) {
+              if (!isEqual(obj1[key], obj2[key], currentPath)) return false;
+            } else if (obj1[key] !== obj2[key]) {
+              console.log(`[CHANGE_DEBUG] Value mismatch at ${currentPath}:`, {
+                formData: obj1[key],
+                initialData: obj2[key],
+                formDataType: typeof obj1[key],
+                initialDataType: typeof obj2[key]
+              });
+              return false;
+            }
+          }
+          return true; // If we get here, only auto-calculated fields differ
+        }
+        
+        return false;
+      }
 
       for (const key of keys1) {
         if (!keys2.includes(key)) return false;
 
+        const currentPath = path ? `${path}.${key}` : key;
+
+        if (autoCalculatedFields.includes(key)) {
+          continue;
+        }
+
         // Special handling for projectId field to normalize null/undefined/empty string
         if (key === "projectId") {
-          const val1 = (obj1[key] ?? "").toString();
-          const val2 = (obj2[key] ?? "").toString();
-          if (val1 !== val2) return false;
+          const val1 = obj1[key] || "";
+          const val2 = obj2[key] || "";
+          if (val1 !== val2) {
+            console.log(`[CHANGE_DEBUG] projectId mismatch:`, {
+              formData: val1,
+              initialData: val2,
+              formDataRaw: obj1[key],
+              initialDataRaw: obj2[key]
+            });
+            return false;
+          }
           continue;
         }
 
         // Handle arrays specially
         if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
-          if (obj1[key].length !== obj2[key].length) return false;
+          if (obj1[key].length !== obj2[key].length) {
+            console.log(`[CHANGE_DEBUG] Array length mismatch at ${currentPath}:`, {
+              formDataLength: obj1[key].length,
+              initialDataLength: obj2[key].length
+            });
+            return false;
+          }
 
           // For simple arrays of primitives
           if (typeof obj1[key][0] !== "object") {
-            if (
-              !obj1[key].every(
-                (item: any, index: number) => item === obj2[key][index],
-              )
-            )
+            const mismatch = !obj1[key].every(
+              (item: any, index: number) => item === obj2[key][index]
+            );
+            if (mismatch) {
+              console.log(`[CHANGE_DEBUG] Primitive array mismatch at ${currentPath}:`, {
+                formData: obj1[key],
+                initialData: obj2[key]
+              });
               return false;
+            }
           } else {
             // For arrays of objects, we need to compare each object
-            if (
-              !obj1[key].every((item: any, index: number) =>
-                isEqual(item, obj2[key][index]),
-              )
-            )
-              return false;
+            for (let i = 0; i < obj1[key].length; i++) {
+              if (!isEqual(obj1[key][i], obj2[key][i], `${currentPath}[${i}]`)) {
+                return false;
+              }
+            }
           }
         } else if (typeof obj1[key] === "object" && obj1[key] !== null) {
-          if (!isEqual(obj1[key], obj2[key])) return false;
+          if (!isEqual(obj1[key], obj2[key], currentPath)) return false;
         } else if (obj1[key] !== obj2[key]) {
+          console.log(`[CHANGE_DEBUG] Value mismatch at ${currentPath}:`, {
+            formData: obj1[key],
+            initialData: obj2[key],
+            formDataType: typeof obj1[key],
+            initialDataType: typeof obj2[key]
+          });
           return false;
         }
       }
@@ -171,19 +306,12 @@ export const useProjectForm = (
     // Compare current form data with initial data
     const formHasChanges = !isEqual(formData, initialData);
 
-    // PROJECT ID DEBUG: Log Project ID comparison when changes detected
     if (formHasChanges) {
-      const projectIdChanged =
-        (formData.projectId ?? "").toString() !==
-        (initialData.projectId ?? "").toString();
-      if (projectIdChanged) {
-        console.log("[PROJECT_ID] Change detected:", {
-          formDataProjectId: formData.projectId,
-          initialDataProjectId: initialData.projectId,
-          formDataType: typeof formData.projectId,
-          initialDataType: typeof initialData.projectId,
-        });
-      }
+      console.log("[CHANGE_DEBUG] Changes detected! Full comparison:", {
+        formDataKeys: Object.keys(formData).sort(),
+        initialDataKeys: Object.keys(initialData).sort(),
+        timestamp: new Date().toISOString()
+      });
     }
 
     setHasChanges(formHasChanges);
@@ -216,8 +344,8 @@ export const useProjectForm = (
         summaryCreatedAt: initialData?.summaryCreatedAt || null,
         summaryIsStale: initialData?.summaryIsStale || false,
         projectAnalysis: initialData?.projectAnalysis || "",
-        // Normalize projectId to prevent false change detection - handle null/undefined/empty string
-        projectId: (initialData?.projectId ?? "").toString(),
+        // Preserve projectId as-is, don't normalize to empty string
+        projectId: initialData?.projectId || "",
       };
 
       // PROJECT ID DEBUG: Log Project ID during form reset

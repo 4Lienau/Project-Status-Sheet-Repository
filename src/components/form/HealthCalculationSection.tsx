@@ -160,7 +160,7 @@ const HealthCalculationSection: React.FC<HealthCalculationSectionProps> = ({
         title="Health Calculation"
         tooltip="Configure how the project health status is calculated based on milestones and other factors."
       />
-      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {/* Current Health Status Display */}
         <div className="bg-muted/50 rounded-lg p-4 border border-border">
           <h4 className="font-medium text-foreground mb-2">Calculation Method</h4>

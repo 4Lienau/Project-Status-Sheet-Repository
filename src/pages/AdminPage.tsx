@@ -106,6 +106,10 @@ const AdminPage: React.FC = () => {
   const [testEmail, setTestEmail] = useState(''); // Add test email state
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false); // Add test email loading state
 
+  // Scheduler logs state
+  const [schedulerLogs, setSchedulerLogs] = useState([]);
+  const [schedulerStats, setSchedulerStats] = useState(null);
+
   // Pagination state for directory users
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -129,7 +133,8 @@ const AdminPage: React.FC = () => {
             });
           }
         } catch (error) {
-          console.error("Error checking due syncs on admin page load:", error);
+          // Silently log the error without showing it to the user
+          console.warn("Sync check skipped:", error);
         }
       }
     };
@@ -141,6 +146,46 @@ const AdminPage: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [user, toast]);
+
+  // Auto-refresh scheduler logs and sync logs every 30 seconds when on Users tab
+  useEffect(() => {
+    if (activeTab !== "users" || !user || !ADMIN_EMAILS.includes(user.email)) {
+      return;
+    }
+
+    const refreshLogs = async () => {
+      try {
+        console.log("[AdminPage] Auto-refreshing logs...");
+        
+        // Refresh scheduler logs
+        const schedulerLogsData = await adminService.getSchedulerLogs(20);
+        setSchedulerLogs(schedulerLogsData);
+
+        const schedulerStatsData = await adminService.getSchedulerStats();
+        setSchedulerStats(schedulerStatsData);
+
+        // Refresh sync logs
+        const syncLogsData = await adminService.getAzureSyncLogs();
+        setSyncLogs(syncLogsData);
+
+        // Refresh sync configuration
+        const syncConfigData = await adminService.getSyncConfiguration();
+        setSyncConfig(syncConfigData);
+
+        console.log("[AdminPage] Logs refreshed successfully");
+      } catch (error) {
+        console.warn("[AdminPage] Error refreshing logs:", error);
+      }
+    };
+
+    // Initial refresh
+    refreshLogs();
+
+    // Set up auto-refresh every 30 seconds
+    const interval = setInterval(refreshLogs, 30 * 1000);
+
+    return () => clearInterval(interval);
+  }, [activeTab, user]);
 
   useEffect(() => {
     // Redirect if not admin
@@ -230,6 +275,13 @@ const AdminPage: React.FC = () => {
         const reminderStatsData = await adminService.getReminderEmailStats();
         setReminderStats(reminderStatsData);
 
+        // Load scheduler logs and stats
+        const schedulerLogsData = await adminService.getSchedulerLogs(20);
+        setSchedulerLogs(schedulerLogsData);
+
+        const schedulerStatsData = await adminService.getSchedulerStats();
+        setSchedulerStats(schedulerStatsData);
+
         // Ensure sync configuration exists and load it
         await adminService.ensureSyncConfiguration();
         const syncConfigData = await adminService.getSyncConfiguration();
@@ -279,6 +331,13 @@ const AdminPage: React.FC = () => {
           // Refresh sync configuration
           const syncConfigData = await adminService.getSyncConfiguration();
           setSyncConfig(syncConfigData);
+
+          // Refresh scheduler logs
+          const schedulerLogsData = await adminService.getSchedulerLogs(20);
+          setSchedulerLogs(schedulerLogsData);
+
+          const schedulerStatsData = await adminService.getSchedulerStats();
+          setSchedulerStats(schedulerStatsData);
         }, 2000);
       } else {
         toast({
@@ -810,6 +869,28 @@ const AdminPage: React.FC = () => {
                     </p>
                   </div>
 
+                  {/* Sync Schedule Info */}
+                  {syncConfig && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-muted rounded-lg border border-border">
+                        <div className="text-xs text-muted-foreground mb-1">Last Run</div>
+                        <div className="text-sm font-medium text-foreground">
+                          {syncConfig.last_run_at
+                            ? new Date(syncConfig.last_run_at).toLocaleString()
+                            : "Never"}
+                        </div>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg border border-border">
+                        <div className="text-xs text-muted-foreground mb-1">Next Scheduled Run</div>
+                        <div className="text-sm font-medium text-foreground">
+                          {syncConfig.next_run_at
+                            ? new Date(syncConfig.next_run_at).toLocaleString()
+                            : "Not scheduled"}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                       <div>
@@ -978,6 +1059,116 @@ const AdminPage: React.FC = () => {
                         ))}
                       </>
                     )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Scheduler Logs */}
+              <Card className="bg-card border border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-foreground">
+                    <Clock className="h-5 w-5" />
+                    Scheduler Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Stats Summary */}
+                    {schedulerStats && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-muted rounded-lg border border-border">
+                          <div className="text-xs text-muted-foreground">Total Runs</div>
+                          <div className="text-xl font-bold text-foreground">
+                            {schedulerStats.totalRuns}
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg border border-border">
+                          <div className="text-xs text-muted-foreground">Syncs Triggered</div>
+                          <div className="text-xl font-bold text-foreground">
+                            {schedulerStats.syncsTriggered}
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg border border-border">
+                          <div className="text-xs text-muted-foreground">Last Run</div>
+                          <div className="text-sm font-medium text-foreground">
+                            {schedulerStats.lastRun
+                              ? new Date(schedulerStats.lastRun).toLocaleString()
+                              : "Never"}
+                          </div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg border border-border">
+                          <div className="text-xs text-muted-foreground">Avg Time</div>
+                          <div className="text-xl font-bold text-foreground">
+                            {schedulerStats.avgExecutionTime}ms
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recent Logs */}
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">
+                        Recent Scheduler Executions
+                      </div>
+                      {loading ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Loading scheduler logs...
+                        </p>
+                      ) : schedulerLogs.length === 0 ? (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-muted-foreground mb-2">
+                            No scheduler logs yet
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Logs will appear here when the cron job runs (every 5 minutes)
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {schedulerLogs.slice(0, 10).map((log) => (
+                            <div
+                              key={log.id}
+                              className="p-3 bg-muted rounded-lg border border-border"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(log.run_at).toLocaleString()}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {log.sync_triggered && (
+                                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-success/10 text-success">
+                                      Sync Triggered
+                                    </span>
+                                  )}
+                                  {log.error_message && (
+                                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/10 text-destructive">
+                                      Error
+                                    </span>
+                                  )}
+                                  {log.execution_time_ms && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {log.execution_time_ms}ms
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {log.sync_was_due ? (
+                                  <span className="text-warning">Sync was due</span>
+                                ) : (
+                                  <span>No sync due</span>
+                                )}
+                                {log.error_message && (
+                                  <div className="text-destructive mt-1">
+                                    Error: {log.error_message}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -740,6 +740,39 @@ export type Database = {
           },
         ]
       }
+      scheduler_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          run_at: string
+          sync_result: Json | null
+          sync_triggered: boolean
+          sync_was_due: boolean
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          run_at?: string
+          sync_result?: Json | null
+          sync_triggered?: boolean
+          sync_was_due?: boolean
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          run_at?: string
+          sync_result?: Json | null
+          sync_triggered?: boolean
+          sync_was_due?: boolean
+        }
+        Relationships: []
+      }
       sync_configurations: {
         Row: {
           created_at: string | null
@@ -964,6 +997,10 @@ export type Database = {
       bytea_to_text: {
         Args: { data: string }
         Returns: string
+      }
+      check_and_log_sync_status: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       check_and_trigger_due_syncs: {
         Args: Record<PropertyKey, never>
@@ -1230,6 +1267,10 @@ export type Database = {
       insert_daily_note_direct: {
         Args: { p_date: string; p_note: string; p_project_id: string }
         Returns: string
+      }
+      invoke_sync_scheduler: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       ivfflat_bit_support: {
         Args: { "": unknown }

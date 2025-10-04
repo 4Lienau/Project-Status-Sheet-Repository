@@ -13,6 +13,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import ProjectPilot from "@/components/chat/ProjectPilot";
+import { Badge } from "@/components/ui/badge";
+import { calculateProjectHealthStatusColor, calculateWeightedCompletion } from "@/lib/services/project";
 
 // Import refactored form components
 import ProjectDetailsSection from "@/components/form/ProjectDetailsSection";
@@ -91,9 +93,81 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     handleToggleAnalysis,
   } = useProjectForm(initialData, onSubmit, projectId, onBack);
 
+  // Calculate current health status color
+  const healthStatusColor = calculateProjectHealthStatusColor(
+    { ...formData, id: projectId },
+    formData.milestones || []
+  );
+
+  // Calculate weighted completion percentage
+  const completionPercentage = calculateWeightedCompletion(formData.milestones || []);
+
+  // Get health status label
+  const getHealthStatusLabel = (color: "red" | "yellow" | "green") => {
+    switch (color) {
+      case "green":
+        return "Healthy";
+      case "yellow":
+        return "At Risk";
+      case "red":
+        return "Critical";
+      default:
+        return "Unknown";
+    }
+  };
+
   return (
     <TooltipProvider>
       <div className="relative">
+        {/* Project Health Badge and Completion Percentage */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">
+              Project Health:
+            </span>
+            <Badge
+              className={`text-sm font-semibold px-3 py-1 ${
+                healthStatusColor === "green"
+                  ? "bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/50"
+                  : healthStatusColor === "yellow"
+                  ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/50"
+                  : "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/50"
+              }`}
+            >
+              {getHealthStatusLabel(healthStatusColor)}
+            </Badge>
+            {formData.health_calculation_type === "manual" && (
+              <span className="text-xs text-muted-foreground italic">
+                (Manual)
+              </span>
+            )}
+          </div>
+
+          {/* Completion Percentage Badge */}
+          <div
+            className={`w-48 h-48 rounded-lg border-2 flex flex-col items-center justify-center shadow-lg ${ 
+              healthStatusColor === "green"
+                ? "bg-green-500/10 border-green-500/50"
+                : healthStatusColor === "yellow"
+                ? "bg-yellow-500/10 border-yellow-500/50"
+                : "bg-red-500/10 border-red-500/50"
+            }`}
+          >
+            <div
+              className={`text-6xl font-bold leading-none ${
+                healthStatusColor === "green"
+                  ? "text-green-600 dark:text-green-400"
+                  : healthStatusColor === "yellow"
+                  ? "text-yellow-600 dark:text-yellow-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {completionPercentage}%
+            </div>
+            <div className="text-sm text-muted-foreground mt-2 font-medium">Complete</div>
+          </div>
+        </div>
+
         {/* Status Watermark - Show for all project statuses */}
         <div className="relative w-full h-24 mb-4 overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -180,7 +254,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           />
 
           {/* Project Duration Section */}
-          <ProjectDurationSection formData={formData} />
+          <ProjectDurationSection formData={formData} setFormData={setFormData} />
 
           {/* Budget & Links Section */}
           <BudgetLinksSection formData={formData} setFormData={setFormData} />

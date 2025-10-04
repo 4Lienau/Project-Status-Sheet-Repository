@@ -107,7 +107,7 @@ const NextPeriodActivitiesSection: React.FC<
           </div>
         </div>
       </div>
-      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm mt-0">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {/* Column Headers */}
         <div className="grid grid-cols-[140px_1fr_80px_150px_auto] gap-2 items-start">
           <div className="font-medium text-sm text-primary">Date</div>

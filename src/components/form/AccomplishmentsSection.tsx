@@ -18,7 +18,7 @@ const AccomplishmentsSection: React.FC<AccomplishmentsSectionProps> = ({
         title="Accomplishments"
         tooltip="List key accomplishments or completed deliverables for the project to date."
       />
-      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm mb-0">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {formData.accomplishments.map((item, index) => (
           <ListItemRow
             key={index}

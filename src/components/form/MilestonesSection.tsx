@@ -78,7 +78,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
         </Button>
       </SectionHeader>
 
-      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {/* Column Headers */}
         <div className="grid grid-cols-[30px_1fr] gap-2 mb-3 pb-2 border-b border-border">
           <div></div>

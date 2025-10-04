@@ -53,7 +53,7 @@ const RisksSection: React.FC<RisksSectionProps> = ({ formData, setFormData }) =>
         title="Risks"
         tooltip="Identify and track potential risks to the project, including their impact level and mitigation strategies."
       />
-      <div className="space-y-2 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {/* Column Headers */}
         <div className="grid grid-cols-[2fr_1fr_auto] gap-2 items-start">
           <div className="font-medium text-sm text-primary">Risk</div>

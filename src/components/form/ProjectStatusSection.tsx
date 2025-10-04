@@ -32,7 +32,7 @@ const ProjectStatusSection: React.FC<ProjectStatusSectionProps> = ({
         title="Project Status"
         tooltip="Set the current status of the project and configure health indicators."
       />
-      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border shadow-sm">
+      <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Status */}
           <div className="space-y-2">
@@ -60,13 +60,13 @@ const ProjectStatusSection: React.FC<ProjectStatusSectionProps> = ({
 
           {/* Health Status */}
           <div className="space-y-2">
-            <Label htmlFor="status_health" className="text-foreground">
+            <Label htmlFor="manual_status_color" className="text-foreground">
               Health Status
             </Label>
             <Select
-              value={formData.status_health}
+              value={formData.manual_status_color || "green"}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, status_health: value }))
+                setFormData((prev) => ({ ...prev, manual_status_color: value }))
               }
             >
               <SelectTrigger className="bg-card border-border text-foreground">
