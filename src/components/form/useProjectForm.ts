@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast, toastStyles } from "@/components/ui/use-toast";
 import { aiService } from "@/lib/services/aiService";
 import { projectService } from "@/lib/services/project";
 import { ensureConsiderationsAreStrings } from "./FormUtils";
@@ -465,7 +465,7 @@ export const useProjectForm = (
           toast({
             title: "Project Saved",
             description: "Your project has been saved successfully.",
-            className: "bg-green-50 border-green-200",
+            className: toastStyles.success,
           });
         }
 
@@ -669,7 +669,7 @@ export const useProjectForm = (
             toast({
               title: "Milestones Generated Successfully",
               description: `Generated ${parsedMilestones.length} milestones including Project Kickoff and Closeout. Review and select the ones you want to add.`,
-              className: "bg-green-50 border-green-200",
+              className: toastStyles.success,
               duration: 5000,
             });
           } else {
@@ -715,7 +715,7 @@ export const useProjectForm = (
             toast({
               title: "Analysis Complete",
               description: "Executive summary has been generated and saved",
-              className: "bg-green-50 border-green-200",
+              className: toastStyles.success,
             });
           }, 100);
         } catch (error) {
@@ -835,7 +835,7 @@ export const useProjectForm = (
         toast({
           title: "Project Deleted",
           description: "The project has been successfully deleted.",
-          className: "bg-green-50 border-green-200",
+          className: toastStyles.success,
           duration: 3000,
         });
 
@@ -930,7 +930,7 @@ export const useProjectForm = (
     toast({
       title: "Milestones Added",
       description: `${formattedMilestones.length} milestones have been added to your project. Don't forget to save your changes!`,
-      className: "bg-blue-50 border-blue-200",
+      className: toastStyles.info,
       duration: 5000,
     });
 

@@ -47,14 +47,37 @@ export const useAuth = () => {
         setLoading(true);
         console.log("Checking initial authentication state...");
         const { data, error } = await supabase.auth.getSession();
+        
+        // Handle expired refresh token error
         if (error) {
           console.error("Error getting session:", error);
+          
+          // If it's an expired refresh token error, clear the session silently
+          if (error.message.includes('Invalid Refresh Token') || 
+              error.message.includes('Session Expired')) {
+            console.log("Session expired, clearing local storage");
+            await supabase.auth.signOut();
+            setUser(null);
+            setLoading(false);
+            
+            // Only redirect if not already on login or callback page
+            if (
+              window.location.pathname !== "/login" &&
+              !window.location.pathname.includes("/auth/callback")
+            ) {
+              navigate("/login");
+            }
+            return;
+          }
+          
+          // For other errors, show toast
           toast({
             title: "Authentication Error",
             description: error.message,
             variant: "destructive",
           });
           setUser(null);
+          
           // Redirect to login on error
           if (
             window.location.pathname !== "/login" &&
@@ -142,6 +165,12 @@ export const useAuth = () => {
           console.log("Redirecting to login after sign out");
           navigate("/login");
         }
+      }
+      
+      // Handle token refresh errors
+      if (event === "TOKEN_REFRESHED" && !session) {
+        console.log("Token refresh failed, signing out");
+        supabase.auth.signOut();
       }
     });
 
