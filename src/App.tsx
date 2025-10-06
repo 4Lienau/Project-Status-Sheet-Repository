@@ -33,6 +33,7 @@ import LoginPage from "./pages/LoginPage";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import ProjectKPIsPage from "./pages/ProjectKPIsPage";
 import ProjectsRoadmap from "./pages/ProjectsRoadmap";
+import ProjectTimeline from "./pages/ProjectTimeline";
 import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
 import { useSessionTracking } from "./lib/hooks/useSessionTracking";
@@ -201,6 +202,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ProjectDashboard initialEditMode={false} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:id/timeline"
+          element={
+            <ProtectedRoute>
+              <ProjectTimeline />
             </ProtectedRoute>
           }
         />

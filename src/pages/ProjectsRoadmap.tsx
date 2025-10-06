@@ -52,13 +52,13 @@ import {
 } from "date-fns";
 
 // Import GSTC library
-import GSTC from "gantt-schedule-timeline-calendar";
-import "gantt-schedule-timeline-calendar/dist/style.css";
+// import GSTC from "gantt-schedule-timeline-calendar";
+// import "gantt-schedule-timeline-calendar/dist/style.css";
 
 // Ensure GSTC is properly loaded
-if (typeof GSTC === "undefined") {
-  console.error("GSTC library not loaded properly");
-}
+// if (typeof GSTC === "undefined") {
+//   console.error("GSTC library not loaded properly");
+// }
 
 // Add custom GSTC styles
 const gstcStyles = `
@@ -792,256 +792,13 @@ const ProjectsRoadmap: React.FC = () => {
 
   // Initialize GSTC with proper guards and stability checks
   const initializeGstc = useCallback(async () => {
-    // Prevent multiple simultaneous initializations
-    if (isInitializing) {
-      console.log("GSTC: Already initializing, skipping...");
-      return;
-    }
-
-    // Validate prerequisites
-    if (!ganttRef.current || !gstcData) {
-      console.log("GSTC: Prerequisites not met, skipping initialization");
-      return;
-    }
-
-    // Prevent re-initialization if instance already exists and is working
-    if (
-      gstcInstance &&
-      ganttRef.current.querySelector(".gantt-schedule-timeline-calendar")
-    ) {
-      console.log("GSTC: Instance already exists and is rendered, skipping...");
-      return;
-    }
-
-    console.log(
-      "GSTC: Starting initialization with",
-      gstcData.validGanttItems.length,
-      "items",
-    );
-    setIsInitializing(true);
-
-    try {
-      // Clean up existing instance first
-      if (gstcInstance) {
-        console.log("GSTC: Cleaning up existing instance");
-        try {
-          if (typeof gstcInstance.destroy === "function") {
-            gstcInstance.destroy();
-          }
-        } catch (error) {
-          console.warn("GSTC: Error destroying previous instance:", error);
-        }
-        setGstcInstance(null);
-      }
-
-      // Verify GSTC is available
-      if (typeof GSTC === "undefined" || !GSTC) {
-        throw new Error("GSTC library not available");
-      }
-
-      // Ensure DOM element is stable with better checks
-      const element = ganttRef.current;
-      if (!element || !element.parentNode || !document.contains(element)) {
-        throw new Error("DOM element is not stable or not attached to DOM");
-      }
-
-      // Clear the container
-      element.innerHTML = "";
-
-      // Wait for DOM to stabilize
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // Double-check element is still available and stable
-      if (
-        !ganttRef.current ||
-        ganttRef.current !== element ||
-        !document.contains(element)
-      ) {
-        throw new Error("DOM element became unavailable during initialization");
-      }
-
-      console.log(
-        "GSTC: Creating new instance with",
-        gstcData.validGanttItems.length,
-        "items",
-      );
-
-      // Create GSTC configuration
-      const config = {
-        licenseKey: `====BEGIN LICENSE KEY====
-ra9Wnk2wRlJtQ9+zOdNq+DuFjVi7cTqH05Z2pTObOw1ALBOotustNyZkVtrWgkGFMtp7KzIxKRjxR6An9rTsmiEglSds8Fq+4S9nbGcIHPwTN20eKrIM0k8J+9FU2FSCbO0l61z+9BHa+ZsB+HhgkJhpcO7J9jEW8jXUGnkF3Z49z180CiZes5+h4bbN9PHiSJ5sXa1w9fATpR3wAr27NLTaEwEEzZisx4qzMoG4/gZwTPmAA+nSQ1Aboynw7VwCF8353lEZaqDtXVZDAVRXaQNVvEtm8dd95VoW4fj66cmVrN5rJ1aq1g0PETp+P3yY5fX7cxsnvnq06NsJVJm/lA==||U2FsdGVkX18EhpMEj12ND3UFjwqajD3oAWBofjfQOxRibSz9lMKnJRTfAH1w1NfECW2bpNZMDKsupfygWkOyku5gAN1HPZL1365V8zadQsU=
-nYksVN0dQaep5446pih16PEW64CdBwcEqh79Ub77WW3zw+MMpiTSH2vdUnDXFMnf6r77GZaBUa44kuWLcYvr5PQkB6b+yq0mT/ro6zizHTmqlWvzqmzaHEHnkuCvsbOsQmoZqmTKvS9TRgkeDC22TgESL9/U4ksdexRXZynwnrqZP22zBoa4TfiXmbC5X0uOoz8fdtZ1hIc6g7G1MYBSzhOBVGS+jU5aYVoMsxXsy+xLSRAemtHHVpafWx+bA695eb6gNHjzmBy7iiMIDDnW7zsPD9ZrCID75bi0ZbGk2PZ6N8pMwa8/4y27gFEar30tUP5dcBYa6DFltPr3HGDT/Q==
-====END LICENSE KEY====`,
-        height: 600,
-        list: {
-          rows: gstcData.rowsData,
-          columns: {
-            data: {
-              label: {
-                id: "label",
-                data: "label",
-                width: 250,
-                header: {
-                  content: "Project",
-                },
-              },
-            },
-          },
-        },
-        chart: {
-          time: {
-            from: gstcData.timelineStartTime,
-            to: gstcData.timelineEndTime,
-            zoom: debouncedZoomLevel, // Use debounced zoom level
-          },
-          items: gstcData.itemsData,
-        },
-        plugins: {
-          ItemHold: {
-            enabled: false,
-          },
-          ItemMovement: {
-            enabled: false,
-          },
-          ItemResizing: {
-            enabled: false,
-          },
-          Selection: {
-            enabled: false,
-          },
-        },
-        locale: {
-          name: "en",
-        },
-      };
-
-      const state = GSTC.api.stateFromConfig(config);
-      if (!state) {
-        throw new Error("Failed to create GSTC state");
-      }
-
-      // Create GSTC instance with error handling for ResizeObserver
-      let instance;
-      try {
-        instance = GSTC({
-          element: ganttRef.current,
-          state: state,
-        });
-      } catch (resizeError) {
-        if (resizeError.message.includes("ResizeObserver")) {
-          console.warn("GSTC: ResizeObserver error caught, retrying...");
-          // Wait a bit longer and retry
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          if (!ganttRef.current || !document.contains(ganttRef.current)) {
-            throw new Error("DOM element became unavailable during retry");
-          }
-          instance = GSTC({
-            element: ganttRef.current,
-            state: state,
-          });
-        } else {
-          throw resizeError;
-        }
-      }
-
-      if (!instance) {
-        throw new Error("Failed to create GSTC instance");
-      }
-
-      console.log("GSTC: Instance created successfully");
-      setGstcInstance(instance);
-
-      // Verify chart rendered after a short delay
-      setTimeout(() => {
-        if (
-          ganttRef.current &&
-          ganttRef.current.querySelector(".gantt-schedule-timeline-calendar")
-        ) {
-          console.log("GSTC: Chart rendered and stable");
-        } else {
-          console.warn("GSTC: Chart may not have rendered properly");
-        }
-      }, 1000);
-    } catch (error) {
-      console.error("GSTC: Error initializing:", error);
-
-      // Show error in the UI only if element is still available
-      if (ganttRef.current && document.contains(ganttRef.current)) {
-        ganttRef.current.innerHTML = `
-          <div class="flex items-center justify-center h-full text-red-500" style="height: 600px;">
-            <div class="text-center">
-              <div class="font-semibold">Gantt Chart Error</div>
-              <div class="text-sm mt-2">${error.message}</div>
-              <div class="text-xs mt-1 text-gray-500">Check console for details</div>
-            </div>
-          </div>
-        `;
-      }
-
-      // Only show toast for non-ResizeObserver errors to avoid spam
-      if (!error.message.includes("ResizeObserver")) {
-        toast({
-          title: "Gantt Chart Error",
-          description: `Failed to initialize the Gantt chart: ${error.message}`,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsInitializing(false);
-    }
+    // GSTC implementation removed
+    return;
   }, [gstcData, debouncedZoomLevel, gstcInstance, toast]);
 
   // Effect to initialize GSTC when data changes - with stability controls
   useEffect(() => {
-    // Clear any existing timeout
-    if (initTimeoutRef.current) {
-      clearTimeout(initTimeoutRef.current);
-    }
-
-    if (!gstcData) {
-      // Handle empty state - cleanup existing instance
-      if (gstcInstance) {
-        try {
-          if (typeof gstcInstance.destroy === "function") {
-            gstcInstance.destroy();
-          }
-        } catch (error) {
-          console.warn(
-            "GSTC: Error destroying instance during cleanup:",
-            error,
-          );
-        }
-        setGstcInstance(null);
-      }
-
-      if (ganttRef.current && document.contains(ganttRef.current)) {
-        ganttRef.current.innerHTML = `
-          <div class="flex items-center justify-center h-full text-gray-500" style="height: 600px;">
-            <div class="text-center">
-              <div>No projects to display</div>
-              <div class="text-sm mt-1">Select departments to view their projects</div>
-            </div>
-          </div>
-        `;
-      }
-      return;
-    }
-
-    // Only initialize if we don't already have a working instance
-    if (
-      !gstcInstance ||
-      !ganttRef.current?.querySelector(".gantt-schedule-timeline-calendar")
-    ) {
-      console.log("GSTC: Scheduling initialization...");
-      initTimeoutRef.current = setTimeout(() => {
-        initializeGstc();
-      }, 500); // Increased delay for better stability
-    } else {
-      console.log(
-        "GSTC: Instance already exists and is working, skipping initialization",
-      );
-    }
-
+    // GSTC removed: no-op
     return () => {
       if (initTimeoutRef.current) {
         clearTimeout(initTimeoutRef.current);

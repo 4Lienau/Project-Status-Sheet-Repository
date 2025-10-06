@@ -912,38 +912,56 @@ const ProjectDashboard: React.FC = () => {
             )}
           </div>
 
-          <Button
-            onClick={async () => {
-              if (isEditing) {
-                // Check for unsaved changes before switching to Status Sheet view
-                const formElement = document.querySelector("form");
-                const formHasChanges =
-                  formElement?.getAttribute("data-has-changes") === "true";
-                const formHasInteraction =
-                  formElement?.getAttribute("data-user-interaction") === "true";
+          <div className="flex flex-col items-end gap-2">
+            <Button
+              onClick={async () => {
+                if (isEditing) {
+                  // Check for unsaved changes before switching to Status Sheet view
+                  const formElement = document.querySelector("form");
+                  const formHasChanges =
+                    formElement?.getAttribute("data-has-changes") === "true";
+                  const formHasInteraction =
+                    formElement?.getAttribute("data-user-interaction") === "true";
 
-                if (formHasChanges && formHasInteraction) {
-                  // Show confirmation dialog
-                  const confirmLeave = window.confirm(
-                    "You have unsaved changes. Are you sure you want to leave without saving?",
-                  );
-                  if (confirmLeave) {
+                  if (formHasChanges && formHasInteraction) {
+                    // Show confirmation dialog
+                    const confirmLeave = window.confirm(
+                      "You have unsaved changes. Are you sure you want to leave without saving?",
+                    );
+                    if (confirmLeave) {
+                      // Navigate to view mode
+                      navigate(`/project/${id}/view`);
+                    }
+                  } else {
                     // Navigate to view mode
                     navigate(`/project/${id}/view`);
                   }
                 } else {
-                  // Navigate to view mode
-                  navigate(`/project/${id}/view`);
+                  // Navigate to edit mode
+                  navigate(`/project/${id}`);
                 }
-              } else {
-                // Navigate to edit mode
-                navigate(`/project/${id}`);
-              }
-            }}
-            variant="outline"
-          >
-            {isEditing ? "View Status Sheet" : "Edit Project"}
-          </Button>
+              }}
+              variant="outline"
+            >
+              {isEditing ? "View Status Sheet" : "Edit Project"}
+            </Button>
+
+            {isEditing && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Only allow if project id exists
+                  if (id) {
+                    navigate(`/project/${id}/timeline`);
+                  } else {
+                    alert("Please save the project first to view the timeline.");
+                  }
+                }}
+              >
+                View Timeline
+              </Button>
+            )}
+          </div>
         </div>
 
         {isEditing ? (
