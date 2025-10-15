@@ -7,6 +7,7 @@
  * and manages navigation between different views.
  *
  * Last Updated: February 11, 2025
+ * Azure AD Secret Key Updated: February 11, 2025
  *
  * Imports from:
  * - React core libraries
