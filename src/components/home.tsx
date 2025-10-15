@@ -6,6 +6,8 @@
  * creation form, project details view, and projects overview. It also handles user profile setup
  * and manages navigation between different views.
  *
+ * Last Updated: February 11, 2025
+ *
  * Imports from:
  * - React core libraries
  * - Layout and various project-related components
