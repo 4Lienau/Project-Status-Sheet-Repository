@@ -825,33 +825,90 @@ export const projectService = {
       // Get all project IDs
       const projectIds = projects.map((p) => p.id);
 
-      // Fetch all related data with better error handling
-      const fetchWithRetry = async (tableName: string, projectIds: string[]) => {
-        try {
-          const { data, error } = await supabase
-            .from(tableName)
-            .select("*")
-            .in("project_id", projectIds);
-          
-          if (error) {
-            console.error(`[DEBUG] Error fetching ${tableName}:`, error);
+      // Improved fetch with retry logic and better error handling
+      const fetchWithRetry = async (
+        tableName: string,
+        projectIds: string[],
+        maxRetries = 3,
+      ) => {
+        let lastError = null;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`[DEBUG] Fetching ${tableName} (attempt ${attempt}/${maxRetries})`);
+            
+            const { data, error } = await supabase
+              .from(tableName)
+              .select("*")
+              .in("project_id", projectIds);
+
+            if (error) {
+              console.error(`[DEBUG] Error fetching ${tableName}:`, {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code,
+              });
+              lastError = error;
+              
+              // If it's a network error, wait before retrying
+              if (attempt < maxRetries) {
+                const waitTime = attempt * 1000; // Exponential backoff
+                console.log(`[DEBUG] Waiting ${waitTime}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue;
+              }
+              
+              return [];
+            }
+            
+            console.log(`[DEBUG] Successfully fetched ${data?.length || 0} ${tableName} records`);
+            return data || [];
+          } catch (err) {
+            console.error(`[DEBUG] Exception fetching ${tableName}:`, {
+              message: err instanceof Error ? err.message : String(err),
+              details: err instanceof Error ? err.stack : undefined,
+            });
+            lastError = err;
+            
+            // If it's a network error, wait before retrying
+            if (attempt < maxRetries) {
+              const waitTime = attempt * 1000;
+              console.log(`[DEBUG] Waiting ${waitTime}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+            
             return [];
           }
-          return data || [];
-        } catch (err) {
-          console.error(`[DEBUG] Exception fetching ${tableName}:`, err);
-          return [];
         }
+        
+        console.error(`[DEBUG] Failed to fetch ${tableName} after ${maxRetries} attempts:`, lastError);
+        return [];
       };
 
-      // Fetch all related data sequentially to avoid overwhelming the connection
-      const milestones = await fetchWithRetry("milestones", projectIds);
-      const tasks = await fetchWithRetry("tasks", projectIds);
-      const accomplishments = await fetchWithRetry("accomplishments", projectIds);
-      const activities = await fetchWithRetry("next_period_activities", projectIds);
-      const risks = await fetchWithRetry("risks", projectIds);
-      const considerations = await fetchWithRetry("considerations", projectIds);
-      const changes = await fetchWithRetry("changes", projectIds);
+      // Fetch all related data with retry logic
+      console.log("[DEBUG] Starting to fetch related data...");
+      const [milestones, tasks, accomplishments, activities, risks, considerations, changes] = 
+        await Promise.all([
+          fetchWithRetry("milestones", projectIds),
+          fetchWithRetry("tasks", projectIds),
+          fetchWithRetry("accomplishments", projectIds),
+          fetchWithRetry("next_period_activities", projectIds),
+          fetchWithRetry("risks", projectIds),
+          fetchWithRetry("considerations", projectIds),
+          fetchWithRetry("changes", projectIds),
+        ]);
+
+      console.log("[DEBUG] Finished fetching related data:", {
+        milestones: milestones.length,
+        tasks: tasks.length,
+        accomplishments: accomplishments.length,
+        activities: activities.length,
+        risks: risks.length,
+        considerations: considerations.length,
+        changes: changes.length,
+      });
 
       // Map tasks to milestones
       const milestonesWithTasks = (milestones || []).map((milestone) => ({
