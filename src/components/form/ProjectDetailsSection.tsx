@@ -40,13 +40,26 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
   formData,
   setFormData,
   handleGenerateContent,
+  handleShowDeleteDialog,
 }) => {
   return (
     <TooltipProvider>
-      <SectionHeader
-        title="Project Details"
-        tooltip="Enter the basic information about your project including title, description, and identification."
-      />
+      <div className="flex items-center justify-between mb-2">
+        <SectionHeader
+          title="Project Details"
+          tooltip="Enter the basic information about your project including title, description, and identification."
+        />
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          onClick={handleShowDeleteDialog}
+          className="flex items-center gap-2"
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete Project
+        </Button>
+      </div>
       <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {/* Project Title */}
         <div className="space-y-2">
