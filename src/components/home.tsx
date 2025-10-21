@@ -741,6 +741,20 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                           <BarChart3 className="h-4 w-4" />
                           KPIs Dashboard
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate("/projects-timeline")}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Calendar className="h-4 w-4" />
+                          Projects Timeline
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate("/roadmap")}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Calendar className="h-4 w-4" />
+                          Roadmap
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

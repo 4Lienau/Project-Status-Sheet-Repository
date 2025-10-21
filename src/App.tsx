@@ -33,6 +33,7 @@ import LoginPage from "./pages/LoginPage";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import ProjectKPIsPage from "./pages/ProjectKPIsPage";
 import ProjectsRoadmap from "./pages/ProjectsRoadmap";
+import ProjectsTimeline from "./pages/ProjectsTimeline";
 import ProjectTimeline from "./pages/ProjectTimeline";
 import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
@@ -234,6 +235,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ProjectKPIsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/projects-timeline"
+          element={
+            <ProtectedRoute>
+              <ProjectsTimeline />
             </ProtectedRoute>
           }
         />

@@ -802,14 +802,30 @@ export const projectService = {
     try {
       console.log("[DEBUG] Fetching all projects with relations");
 
-      // Fetch all projects first
-      const { data: projects, error: projectsError } = await supabase
+      // Fetch all projects first with timeout
+      const projectsPromise = supabase
         .from("projects")
         .select("*")
         .order("updated_at", { ascending: false });
 
+      // Add a timeout wrapper
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Request timeout")), 30000)
+      );
+
+      const { data: projects, error: projectsError } = await Promise.race([
+        projectsPromise,
+        timeoutPromise
+      ]).catch((err) => {
+        console.log("[DEBUG] Error fetching projects:", {
+          message: err?.message || String(err),
+          type: err?.constructor?.name,
+        });
+        return { data: null, error: err };
+      });
+
       if (projectsError) {
-        console.error("[DEBUG] Error fetching projects:", projectsError);
+        console.log("[DEBUG] Error fetching projects:", projectsError);
         return [];
       }
 
@@ -829,7 +845,7 @@ export const projectService = {
       const fetchWithRetry = async (
         tableName: string,
         projectIds: string[],
-        maxRetries = 3,
+        maxRetries = 2,
       ) => {
         let lastError = null;
         
@@ -837,53 +853,71 @@ export const projectService = {
           try {
             console.log(`[DEBUG] Fetching ${tableName} (attempt ${attempt}/${maxRetries})`);
             
-            const { data, error } = await supabase
+            // Add timeout to each fetch
+            const fetchPromise = supabase
               .from(tableName)
               .select("*")
               .in("project_id", projectIds);
 
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error("Fetch timeout")), 15000)
+            );
+
+            const { data, error } = await Promise.race([
+              fetchPromise,
+              timeoutPromise
+            ]).catch((err) => {
+              return { data: null, error: err };
+            });
+
             if (error) {
-              console.error(`[DEBUG] Error fetching ${tableName}:`, {
-                message: error.message,
+              console.log(`[DEBUG] Error fetching ${tableName}:`, {
+                message: error.message || String(error),
                 details: error.details,
                 hint: error.hint,
                 code: error.code,
+                attempt,
               });
               lastError = error;
               
-              // If it's a network error, wait before retrying
+              // If it's a network error and we have retries left, wait before retrying
               if (attempt < maxRetries) {
-                const waitTime = attempt * 1000; // Exponential backoff
+                const waitTime = attempt * 500; // Shorter backoff
                 console.log(`[DEBUG] Waiting ${waitTime}ms before retry...`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 continue;
               }
               
+              // Return empty array on final failure
+              console.log(`[DEBUG] Returning empty array for ${tableName} after ${maxRetries} attempts`);
               return [];
             }
             
             console.log(`[DEBUG] Successfully fetched ${data?.length || 0} ${tableName} records`);
             return data || [];
           } catch (err) {
-            console.error(`[DEBUG] Exception fetching ${tableName}:`, {
+            console.log(`[DEBUG] Exception fetching ${tableName}:`, {
               message: err instanceof Error ? err.message : String(err),
               details: err instanceof Error ? err.stack : undefined,
+              attempt,
             });
             lastError = err;
             
-            // If it's a network error, wait before retrying
+            // If we have retries left, wait before retrying
             if (attempt < maxRetries) {
-              const waitTime = attempt * 1000;
+              const waitTime = attempt * 500;
               console.log(`[DEBUG] Waiting ${waitTime}ms before retry...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
               continue;
             }
             
+            // Return empty array on final failure
+            console.log(`[DEBUG] Returning empty array for ${tableName} after exception`);
             return [];
           }
         }
         
-        console.error(`[DEBUG] Failed to fetch ${tableName} after ${maxRetries} attempts:`, lastError);
+        console.log(`[DEBUG] Failed to fetch ${tableName} after ${maxRetries} attempts:`, lastError);
         return [];
       };
 
@@ -960,7 +994,8 @@ export const projectService = {
       );
       return projectsWithRelations;
     } catch (error) {
-      console.error("[DEBUG] Unexpected error in getAllProjects:", error);
+      console.log("[DEBUG] Unexpected error in getAllProjects:", error);
+      // Return empty array instead of throwing to prevent app crashes
       return [];
     }
   },

@@ -21,16 +21,16 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-const ProjectsRoadmap: React.FC = () => {
+const ProjectsTimeline: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
-  const [zoom, setZoom] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("quarterly");
+  const [zoom, setZoom] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("monthly");
 
   useEffect(() => {
     const load = async () => {
@@ -55,6 +55,9 @@ const ProjectsRoadmap: React.FC = () => {
     )
   ).sort();
 
+  // Get list of projects with valid dates for the selection dropdown
+  const selectableProjects = projects.filter((p) => p.calculated_start_date && p.calculated_end_date);
+
   // Filter projects by status, department, selected projects, and ensure they have dates
   const filteredProjects = projects.filter((p) => {
     const hasValidDates = p.calculated_start_date && p.calculated_end_date;
@@ -64,50 +67,11 @@ const ProjectsRoadmap: React.FC = () => {
     return hasValidDates && matchesStatus && matchesDepartment && matchesSelection;
   });
 
-  // Get list of projects with valid dates for the selection dropdown
-  const selectableProjects = projects.filter((p) => p.calculated_start_date && p.calculated_end_date);
-
-  // Calculate overall timeline range
-  const getTimelineRange = () => {
-    if (filteredProjects.length === 0) return { start: null, end: null };
-
-    const dates = filteredProjects.flatMap((p) => [
-      new Date(p.calculated_start_date!),
-      new Date(p.calculated_end_date!),
-    ]);
-
-    return {
-      start: new Date(Math.min(...dates.map((d) => d.getTime()))),
-      end: new Date(Math.max(...dates.map((d) => d.getTime()))),
-    };
-  };
-
-  const { start: overallStart, end: overallEnd } = getTimelineRange();
-
-  // Create unified milestones array - ONE milestone per project with start and end dates
-  const unifiedMilestones: TimelineMilestone[] = filteredProjects.map((project) => {
-    const title = project.title ? project.title.replace(/<[^>]*>/g, "") : "Untitled Project";
-    const statusColor = 
-      (project as any)?.computed_status_color ||
-      (project as any)?.manual_status_color ||
-      "green";
-
-    return {
-      date: project.calculated_start_date!,
-      endDate: project.calculated_end_date!, // NEW: Include end date
-      milestone: title,
-      status: statusColor as "green" | "yellow" | "red",
-      completion: 50, // Show as 50% for visual balance
-      owner: project.project_manager || "",
-      tasksCount: 0,
-    };
-  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
   if (loading) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="text-muted-foreground">Loading roadmap…</div>
+          <div className="text-muted-foreground">Loading projects timeline…</div>
         </div>
       </Layout>
     );
@@ -131,9 +95,9 @@ const ProjectsRoadmap: React.FC = () => {
       <div className="w-full p-6 bg-background">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Roadmap</h1>
+            <h1 className="text-2xl font-bold text-foreground">Projects Timeline</h1>
             <p className="text-sm text-muted-foreground">
-              View all projects on a single unified timeline. Each project is shown as a single bar from start to end.
+              View individual project timelines. Filter by status, department, and specific projects.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -141,7 +105,7 @@ const ProjectsRoadmap: React.FC = () => {
               <span className="text-sm text-muted-foreground">Status</span>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Active" />
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
@@ -288,7 +252,7 @@ const ProjectsRoadmap: React.FC = () => {
               <span className="text-sm text-muted-foreground">Zoom</span>
               <Select value={zoom} onValueChange={(v) => setZoom(v as any)}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Quarterly" />
+                  <SelectValue placeholder="Monthly" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="weekly">Weekly</SelectItem>
@@ -317,50 +281,51 @@ const ProjectsRoadmap: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm text-muted-foreground">
-              <strong>Note:</strong> Each project is shown as a single bar spanning from start to end date. 
-              The color indicates the project's health status.
-            </div>
-            <ProjectGantt
-              projectTitle="All Projects Timeline"
-              startDate={overallStart?.toISOString() || null}
-              endDate={overallEnd?.toISOString() || null}
-              zoom={zoom}
-              overallStatusColor="green"
-              healthCalculationType={null}
-              milestones={unifiedMilestones}
-              rowLabelText="Project"
-            />
-            <div className="mt-4 bg-card border border-border rounded-lg p-4">
-              <h3 className="text-sm font-semibold mb-2">Projects Included ({filteredProjects.length})</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {filteredProjects.map((project) => {
-                  const title = project.title ? project.title.replace(/<[^>]*>/g, "") : "Untitled Project";
-                  const statusColor = 
-                    (project as any)?.computed_status_color ||
-                    (project as any)?.manual_status_color ||
-                    "green";
-                  const colorClass = statusColor === "red" 
-                    ? "bg-red-500" 
-                    : statusColor === "yellow" 
-                    ? "bg-yellow-500" 
-                    : "bg-green-500";
-                  
-                  return (
-                    <div 
-                      key={project.id} 
-                      className="flex items-center gap-2 text-sm p-2 hover:bg-muted/50 rounded cursor-pointer"
-                      onClick={() => navigate(`/project/${project.id}`)}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${colorClass}`} />
-                      <span className="truncate flex-1">{title}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{project.status}</span>
+          <div className="space-y-6">
+            {filteredProjects.map((project) => {
+              const title = project.title ? project.title.replace(/<[^>]*>/g, "") : "Untitled Project";
+              const milestones: TimelineMilestone[] = (project.milestones || []).map((m) => ({
+                date: m.date,
+                milestone: m.milestone,
+                status: (m.status as any) || "green",
+                completion: m.completion,
+                owner: m.owner,
+                tasksCount: (m as any)?.tasks?.length ?? 0,
+              }));
+
+              return (
+                <div key={project.id} className="relative">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {project.status}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/project/${project.id}`)}
+                      >
+                        View Project
+                      </Button>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                  </div>
+                  <ProjectGantt
+                    projectTitle={title}
+                    startDate={project.calculated_start_date}
+                    endDate={project.calculated_end_date}
+                    zoom={zoom}
+                    overallStatusColor={
+                      (project as any)?.computed_status_color ||
+                      (project as any)?.manual_status_color ||
+                      "green"
+                    }
+                    healthCalculationType={(project as any)?.health_calculation_type}
+                    milestones={milestones}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -368,4 +333,4 @@ const ProjectsRoadmap: React.FC = () => {
   );
 };
 
-export default ProjectsRoadmap;
+export default ProjectsTimeline;

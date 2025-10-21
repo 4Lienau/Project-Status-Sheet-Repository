@@ -48,15 +48,17 @@ export const useAuth = () => {
         console.log("Checking initial authentication state...");
         const { data, error } = await supabase.auth.getSession();
         
-        // Handle expired refresh token error
+        // Handle expired refresh token error silently
         if (error) {
-          console.error("Error getting session:", error);
+          console.log("Session error detected:", error.message);
           
           // If it's an expired refresh token error, clear the session silently
           if (error.message.includes('Invalid Refresh Token') || 
-              error.message.includes('Session Expired')) {
+              error.message.includes('Session Expired') ||
+              error.message.includes('refresh_token_not_found')) {
             console.log("Session expired, clearing local storage");
-            await supabase.auth.signOut();
+            // Clear session silently without showing error
+            await supabase.auth.signOut({ scope: 'local' });
             setUser(null);
             setLoading(false);
             
@@ -113,7 +115,7 @@ export const useAuth = () => {
           }
         }
       } catch (err) {
-        console.error("Unexpected auth error:", err);
+        console.log("Unexpected auth error:", err);
         setUser(null);
         // Redirect to login on error
         if (
@@ -132,7 +134,7 @@ export const useAuth = () => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(
         "Auth state changed:",
         event,
@@ -167,10 +169,18 @@ export const useAuth = () => {
         }
       }
       
-      // Handle token refresh errors
+      // Handle token refresh errors silently
       if (event === "TOKEN_REFRESHED" && !session) {
-        console.log("Token refresh failed, signing out");
-        supabase.auth.signOut();
+        console.log("Token refresh failed, signing out silently");
+        await supabase.auth.signOut({ scope: 'local' });
+        setUser(null);
+        setProfile(null);
+        setIsApproved(null);
+        setIsPendingApproval(false);
+        
+        if (window.location.pathname !== "/login") {
+          navigate("/login");
+        }
       }
     });
 

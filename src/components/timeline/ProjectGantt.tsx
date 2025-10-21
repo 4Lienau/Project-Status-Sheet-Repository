@@ -3,6 +3,7 @@ import { format, addDays } from "date-fns";
 
 export interface TimelineMilestone {
   date: string;
+  endDate?: string; // NEW: Optional end date for single-line display
   milestone: string;
   status?: "green" | "yellow" | "red";
   completion?: number;
@@ -18,6 +19,7 @@ interface ProjectGanttProps {
   zoom?: "weekly" | "monthly" | "quarterly" | "yearly";
   overallStatusColor?: "green" | "yellow" | "red";
   healthCalculationType?: string | null;
+  rowLabelText?: string; // NEW: Customizable label for the left column header
 }
 
 // Lightweight, dependency-free timeline visualization
@@ -52,6 +54,7 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
   zoom = "weekly",
   overallStatusColor = "green",
   healthCalculationType = null,
+  rowLabelText = "Milestone", // NEW: Default to "Milestone"
 }) => {
   // Scale per zoom level (px per day)
   const dayWidth = zoom === "weekly" ? 24 : zoom === "monthly" ? 8 : zoom === "quarterly" ? 3 : 1.5;
@@ -198,7 +201,12 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
   const minBarPx = Math.max(10, dayWidth); // ensure visibility for same-day ranges
 
   const validMilestones = [...milestones]
-    .map((m) => ({ ...m, _date: new Date(m.date), _tasksCount: (m as any)?.tasksCount ?? 0 }))
+    .map((m) => ({ 
+      ...m, 
+      _date: new Date(m.date), 
+      _endDate: m.endDate ? new Date(m.endDate) : null, // NEW: Preserve endDate
+      _tasksCount: (m as any)?.tasksCount ?? 0 
+    }))
     .filter((m) => !isNaN(m._date.getTime()))
     .sort((a, b) => a._date.getTime() - b._date.getTime());
 
@@ -212,7 +220,8 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
   };
 
   const rows: Row[] = validMilestones.map((m, i) => {
-    const next = validMilestones[i + 1]?._date || end || m._date; // fallback to project end or same day
+    // NEW: Use explicit endDate if provided, otherwise calculate from next milestone
+    const next = m._endDate || validMilestones[i + 1]?._date || end || m._date;
     let rowStart = new Date(m._date);
     let rowEnd = new Date(next);
     if (rowEnd < rowStart) rowEnd = new Date(rowStart);
@@ -267,70 +276,87 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
         </div>
       </div>
 
-      <div className="overflow-x-auto relative">
-        {/* Grid header + rows */}
-        <div className="grid" style={{ gridTemplateColumns: `${leftColWidth}px max(${gridWidth}px, 100%)` }}>
+      {/* FIXED: New layout with fixed left column and scrollable right section */}
+      <div className="flex border border-border rounded-lg overflow-hidden">
+        {/* Fixed left column */}
+        <div className="flex-shrink-0 bg-card" style={{ width: leftColWidth }}>
           {/* Left header */}
-          <div className="sticky left-0 z-20 bg-card border border-border h-14 flex items-center px-3 text-xs text-muted-foreground">
-            Milestone
+          <div className="h-14 flex items-center px-3 text-xs text-muted-foreground border-b border-border bg-card">
+            {rowLabelText}
           </div>
-          {/* Right header with hierarchical ticks and today marker */}
-          <div className="relative h-14 border border-border bg-background">
-            {/* Primary lines */}
-            {ticksPrimary.map((t, i) => (
-              <div key={`p-line-${i}`} className="absolute top-0 bottom-0 w-[1.5px] bg-border" style={{ left: t.left }} />
-            ))}
-            {/* Secondary lines */}
-            {ticksSecondary.map((t, i) => (
-              <div key={`s-line-${i}`} className="absolute top-0 bottom-0 w-px bg-border/70" style={{ left: t.left }} />
-            ))}
-            {/* Quarter marks (yearly) */}
-            {quarterLines.map((left, i) => (
-              <div key={`q-line-${i}`} className="absolute top-0 bottom-0 w-[2px] bg-foreground/30" style={{ left }} />
-            ))}
-            {/* Labels: primary (top) */}
-            {ticksPrimary.map((t, i) => (
-              <div key={`p-lbl-${i}`} className="absolute top-0 left-2 text-[11px] text-muted-foreground" style={{ left: t.left }}>
-                {t.label}
-              </div>
-            ))}
-            {/* Labels: secondary (bottom) */}
-            {ticksSecondary.map((t, i) => (
-              <div key={`s-lbl-${i}`} className="absolute bottom-0 left-2 text-[11px] text-muted-foreground" style={{ left: t.left }}>
-                {t.label}
-              </div>
-            ))}
-            {showToday && (
-              <div
-                className="absolute top-0 bottom-0 w-px bg-red-500/70"
-                style={{ left: todayLeft || 0 }}
-                title={`Today • ${format(today, "MMM d, yyyy")}`}
-              />
-            )}
-          </div>
-
-          {/* Rows: left labels + right timeline bars */}
+          {/* Left labels */}
           {rows.length > 0 ? (
             rows.map((r, idx) => {
-              // Inclusive right edge; clamp to grid bounds
-              const left = clamp(xForDate(r.start), 0, gridWidth);
-              const rightInclusive = clamp(xForDate(addDays(r.end, 1)), 0, gridWidth);
-              const width = Math.max(minBarPx, rightInclusive - left);
-              const color = statusColor(r.status);
-              const pct = clamp((r.completion ?? 0) / 100, 0, 1);
-              const progressWidth = Math.max(0, Math.floor(width * pct));
               const displayLabel = r.label.length > MAX_LABEL_CHARS ? `${r.label.slice(0, MAX_LABEL_CHARS - 1)}…` : r.label;
-              const durationDays = dateDiffInDays(r.start, r.end) + 1;
               return (
-                <React.Fragment key={idx}>
-                  {/* Left cell */}
-                  <div className="sticky left-0 z-20 bg-card border-l border-b border-r border-border h-[38px] px-3 flex items-center">
-                    <div className="truncate" title={`${r.label} (${format(r.start, "MMM d")} – ${format(r.end, "MMM d")})`}>
-                      {displayLabel}
-                    </div>
-                  </div>
-                  {/* Right cell */}
-                  <div className="relative border-r border-b border-border h-[38px] bg-background">
+                <div 
+                  key={idx} 
+                  className="h-[38px] px-3 flex items-center border-b border-border bg-card"
+                  title={`${r.label} (${format(r.start, "MMM d")} – ${format(r.end, "MMM d")})`}
+                >
+                  <div className="truncate">{displayLabel}</div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="h-[38px] px-3 flex items-center border-b border-border bg-card text-muted-foreground">
+              Project
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable right section */}
+        <div className="flex-1 overflow-x-auto">
+          <div style={{ width: gridWidth }}>
+            {/* Right header with hierarchical ticks and today marker */}
+            <div className="relative h-14 border-b border-border bg-background">
+              {/* Primary lines */}
+              {ticksPrimary.map((t, i) => (
+                <div key={`p-line-${i}`} className="absolute top-0 bottom-0 w-[1.5px] bg-border" style={{ left: t.left }} />
+              ))}
+              {/* Secondary lines */}
+              {ticksSecondary.map((t, i) => (
+                <div key={`s-line-${i}`} className="absolute top-0 bottom-0 w-px bg-border/70" style={{ left: t.left }} />
+              ))}
+              {/* Quarter marks (yearly) */}
+              {quarterLines.map((left, i) => (
+                <div key={`q-line-${i}`} className="absolute top-0 bottom-0 w-[2px] bg-foreground/30" style={{ left }} />
+              ))}
+              {/* Labels: primary (top) */}
+              {ticksPrimary.map((t, i) => (
+                <div key={`p-lbl-${i}`} className="absolute top-0 left-2 text-[11px] text-muted-foreground" style={{ left: t.left }}>
+                  {t.label}
+                </div>
+              ))}
+              {/* Labels: secondary (bottom) */}
+              {ticksSecondary.map((t, i) => (
+                <div key={`s-lbl-${i}`} className="absolute bottom-0 left-2 text-[11px] text-muted-foreground" style={{ left: t.left }}>
+                  {t.label}
+                </div>
+              ))}
+              {showToday && (
+                <div
+                  className="absolute top-0 bottom-0 w-[3px] bg-red-500"
+                  style={{ left: todayLeft || 0 }}
+                  title={`Today • ${format(today, "MMM d, yyyy")}`}
+                />
+              )}
+            </div>
+
+            {/* Timeline bars */}
+            {rows.length > 0 ? (
+              rows.map((r, idx) => {
+                // Inclusive right edge; clamp to grid bounds
+                const left = clamp(xForDate(r.start), 0, gridWidth);
+                const rightInclusive = clamp(xForDate(addDays(r.end, 1)), 0, gridWidth);
+                const width = Math.max(minBarPx, rightInclusive - left);
+                const color = statusColor(r.status);
+                const pct = clamp((r.completion ?? 0) / 100, 0, 1);
+                const progressWidth = Math.max(0, Math.floor(width * pct));
+                const displayLabel = r.label.length > MAX_LABEL_CHARS ? `${r.label.slice(0, MAX_LABEL_CHARS - 1)}…` : r.label;
+                const durationDays = dateDiffInDays(r.start, r.end) + 1;
+                return (
+                  <div key={idx} className="relative border-b border-border h-[38px] bg-background">
                     {/* Vertical primary/secondary grid lines */}
                     {ticksPrimary.map((t, i) => (
                       <div key={`row-${idx}-p-${i}`} className="absolute top-0 bottom-0 w-[1.5px] bg-border" style={{ left: t.left }} />
@@ -343,7 +369,7 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
                     ))}
                     {/* Today marker */}
                     {showToday && (
-                      <div className="absolute top-0 bottom-0 w-px bg-red-500/70" style={{ left: todayLeft || 0 }} />
+                      <div className="absolute top-0 bottom-0 w-[3px] bg-red-500" style={{ left: todayLeft || 0 }} />
                     )}
                     {/* Bar */}
                     <div
@@ -359,16 +385,11 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
                       <span className="truncate">{displayLabel}</span>
                     </div>
                   </div>
-                </React.Fragment>
-              );
-            })
-          ) : (
-            // Fallback: show a single project bar when no milestone rows are available
-            <>
-              <div className="sticky left-0 z-10 bg-card border-l border-b border-r border-border h-[38px] px-3 flex items-center text-muted-foreground">
-                Project
-              </div>
-              <div className="relative border-r border-b border-border h-[38px] bg-background">
+                );
+              })
+            ) : (
+              // Fallback: show a single project bar when no milestone rows are available
+              <div className="relative border-b border-border h-[38px] bg-background">
                 {ticksPrimary.map((t, i) => (
                   <div key={`p-tick-${i}`} className="absolute top-0 bottom-0 w-[1.5px] bg-border" style={{ left: t.left }} />
                 ))}
@@ -378,14 +399,14 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
                 {quarterLines.map((l, i) => (
                   <div key={`q-tick-${i}`} className="absolute top-0 bottom-0 w-[2px] bg-foreground/30" style={{ left: l }} />
                 ))}
-                {showToday && <div className="absolute top-0 bottom-0 w-px bg-red-500/70" style={{ left: todayLeft || 0 }} />}
+                {showToday && <div className="absolute top-0 bottom-0 w-[3px] bg-red-500" style={{ left: todayLeft || 0 }} />}
                 <div
                   className="absolute top-1.5 h-6 rounded-md bg-blue-500/80 border border-blue-600 shadow-sm"
                   style={{ left: projectBarLeft, width: projectBarWidth }}
                 />
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -395,7 +416,7 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500 border border-green-600" /> Green</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-yellow-500 border border-yellow-600" /> Yellow</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-500 border border-red-600" /> Red</div>
-        {showToday && <div className="flex items-center gap-2"><span className="w-px h-4 bg-red-500/70" /> Today</div>}
+        {showToday && <div className="flex items-center gap-2"><span className="w-[3px] h-4 bg-red-500" /> Today</div>}
       </div>
     </div>
   );
