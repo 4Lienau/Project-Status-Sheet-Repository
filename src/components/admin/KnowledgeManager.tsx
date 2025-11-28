@@ -97,6 +97,7 @@ const KnowledgeManager: React.FC = () => {
       if (error) throw error;
       setKnowledgeItems(data || []);
     } catch (error) {
+      // Expected error handler for failed knowledge items query
       console.error("Error loading knowledge items:", error);
       toast({
         title: "Error",
@@ -143,6 +144,7 @@ const KnowledgeManager: React.FC = () => {
       // Generate embedding
       await generateEmbedding(data.id);
     } catch (error) {
+      // Expected error handler for failed knowledge item insert
       console.error("Error adding knowledge item:", error);
       toast({
         title: "Error",
@@ -174,6 +176,7 @@ const KnowledgeManager: React.FC = () => {
       setSelectedItemId(null);
       setIsDeleteDialogOpen(false);
     } catch (error) {
+      // Expected error handler for failed knowledge item delete
       console.error("Error deleting knowledge item:", error);
       toast({
         title: "Error",
@@ -228,6 +231,7 @@ const KnowledgeManager: React.FC = () => {
       // Refresh the list to show the updated embedding status
       loadKnowledgeItems();
     } catch (error) {
+      // Expected error handler for failed embedding generation
       console.error("Error generating embedding:", error);
       toast({
         title: "Error",

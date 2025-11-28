@@ -49,6 +49,7 @@ const ComputedStatusColorManager = () => {
       // Clear debug results since we just fixed everything
       setDebugResults(null);
     } catch (error) {
+      // Expected error handler for failed status color recalculation
       console.error("Error recalculating computed status colors:", error);
       toast({
         title: "Recalculation Failed",
@@ -87,6 +88,7 @@ const ComputedStatusColorManager = () => {
         `Debug complete: ${results.totalProjects} projects, ${results.discrepancies} discrepancies`,
       );
     } catch (error) {
+      // Expected error handler for failed health status debug
       console.error("Error debugging health status:", error);
       toast({
         title: "Debug Failed",

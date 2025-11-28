@@ -76,6 +76,7 @@ const DepartmentManager: React.FC = () => {
       if (error) throw error;
       setDepartments(data || []);
     } catch (error) {
+      // Expected error handler for failed departments query
       console.error("Error loading departments:", error);
       toast({
         title: "Error",
@@ -131,6 +132,7 @@ const DepartmentManager: React.FC = () => {
       setDepartments([...departments, data]);
       setNewDepartmentName("");
     } catch (error) {
+      // Expected error handler for failed department insert
       console.error("Error adding department:", error);
       toast({
         title: "Error",
@@ -162,6 +164,7 @@ const DepartmentManager: React.FC = () => {
       setSelectedDepartmentId(null);
       setIsDeleteDialogOpen(false);
     } catch (error) {
+      // Expected error handler for failed department delete
       console.error("Error deleting department:", error);
       toast({
         title: "Error",
@@ -235,6 +238,7 @@ const DepartmentManager: React.FC = () => {
         description: "Department updated successfully",
       });
     } catch (error) {
+      // Expected error handler for failed department update
       console.error("Error updating department:", error);
       toast({
         title: "Error",
