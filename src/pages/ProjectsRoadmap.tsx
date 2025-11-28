@@ -26,7 +26,7 @@ const ProjectsRoadmap: React.FC = () => {
   const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);

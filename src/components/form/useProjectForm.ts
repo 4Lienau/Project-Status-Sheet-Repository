@@ -14,7 +14,7 @@ const defaultFormData = {
   summaryCreatedAt: null,
   summaryIsStale: false,
   isAnalysisExpanded: false,
-  status: "active" as const,
+  status: "draft" as const,
   health_calculation_type: "automatic" as const,
   manual_health_percentage: 0,
   manual_status_color: "green" as "green" | "yellow" | "red",
