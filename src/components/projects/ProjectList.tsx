@@ -51,6 +51,7 @@ interface ProjectListProps {
   filterStatus?: string;
   filterDepartment?: string;
   filterStatusHealth?: string;
+  filterSearch?: string;
   onFilteredCountChange?: (count: number) => void;
   onTotalCountChange?: (count: number) => void;
   totalProjectCount?: number;
@@ -63,6 +64,7 @@ const ProjectList = ({
   filterStatus = "all",
   filterDepartment = "all",
   filterStatusHealth = "all",
+  filterSearch = "",
   onFilteredCountChange,
   onTotalCountChange,
   totalProjectCount = 0,
@@ -291,6 +293,17 @@ const ProjectList = ({
           });
         }
 
+        // Apply search filter
+        if (filterSearch && filterSearch.trim() !== "") {
+          const searchLower = filterSearch.toLowerCase();
+          filtered = filtered.filter(
+            (project) =>
+              project.title.toLowerCase().includes(searchLower) ||
+              (project.description &&
+                project.description.toLowerCase().includes(searchLower)),
+          );
+        }
+
         console.log("Final filtered projects:", filtered.length);
         setFilteredProjects(filtered);
 
@@ -312,6 +325,7 @@ const ProjectList = ({
     filterStatus,
     filterDepartment,
     filterStatusHealth,
+    filterSearch,
     user?.id,
   ]);
 

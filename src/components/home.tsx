@@ -32,7 +32,8 @@ import { projectService, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, X, Check, BarChart3, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { FileSpreadsheet, X, Check, BarChart3, Download, Search } from "lucide-react";
 import ProfileSetupDialog from "./auth/ProfileSetupDialog";
 import { supabase } from "@/lib/supabase";
 import {
@@ -129,6 +130,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [selectedStatusHealth, setSelectedStatusHealth] =
     useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
   const [projectManagers, setProjectManagers] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -148,6 +150,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
     setSelectedStatus("all");
     setSelectedDepartment("all");
     setSelectedStatusHealth("all");
+    setSearchQuery("");
 
     // Save cleared filters to localStorage
     if (userId) {
@@ -402,7 +405,22 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
               </div>
 
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-4 flex-wrap">
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-muted-foreground mb-2">
+                      Search
+                    </label>
+                    <div className="relative w-[280px]">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search projects..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-8 bg-card/50 border-border"
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-muted-foreground mb-2">
                       Filter by Department
@@ -767,6 +785,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                 filterStatus={selectedStatus}
                 filterDepartment={selectedDepartment}
                 filterStatusHealth={selectedStatusHealth}
+                filterSearch={searchQuery}
                 onFilteredCountChange={setFilteredProjectCount}
                 onTotalCountChange={setTotalProjectCount}
                 totalProjectCount={totalProjectCount}

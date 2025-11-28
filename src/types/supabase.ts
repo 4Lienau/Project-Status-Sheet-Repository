@@ -950,7 +950,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           is_active: boolean | null
           last_activity: string | null
           session_end: string | null
@@ -962,7 +962,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_active?: boolean | null
           last_activity?: string | null
           session_end?: string | null
@@ -974,7 +974,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_active?: boolean | null
           last_activity?: string | null
           session_end?: string | null
@@ -990,48 +990,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
-      bytea_to_text: {
-        Args: { data: string }
-        Returns: string
-      }
-      check_and_log_sync_status: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      check_and_trigger_due_syncs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      check_azure_sync_due: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      cleanup_inactive_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_stale_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      bytea_to_text: { Args: { data: string }; Returns: string }
+      check_and_log_sync_status: { Args: never; Returns: undefined }
+      check_and_trigger_due_syncs: { Args: never; Returns: undefined }
+      check_azure_sync_due: { Args: never; Returns: boolean }
+      cleanup_inactive_sessions: { Args: never; Returns: number }
+      cleanup_stale_sessions: { Args: never; Returns: number }
       comprehensive_project_tracking_test: {
         Args: { p_user_id?: string }
         Returns: Json
       }
-      end_user_sessions: {
-        Args: { p_user_id: string }
-        Returns: undefined
-      }
-      execute_sql: {
-        Args: { sql_query: string }
-        Returns: Json
-      }
+      end_user_sessions: { Args: { p_user_id: string }; Returns: undefined }
+      execute_sql: { Args: { sql_query: string }; Returns: Json }
       get_active_users: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           email: string
           full_name: string
@@ -1042,7 +1014,7 @@ export type Database = {
         }[]
       }
       get_ai_adoption_overview: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           adoption_rate: number
           daily_average_usage: number
@@ -1053,7 +1025,7 @@ export type Database = {
         }[]
       }
       get_ai_usage_analytics: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           avg_daily_usage: number
           feature_type: string
@@ -1072,7 +1044,7 @@ export type Database = {
         }[]
       }
       get_auth_users_data: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           email: string
@@ -1081,7 +1053,7 @@ export type Database = {
         }[]
       }
       get_auth_users_login_data: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           account_created: string
           email: string
@@ -1093,7 +1065,7 @@ export type Database = {
         }[]
       }
       get_comprehensive_user_stats: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           account_created: string
           email: string
@@ -1106,12 +1078,9 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_database_size: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      get_database_size: { Args: never; Returns: number }
       get_project_creation_stats: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           projects_created_last_30_days: number
           projects_created_last_7_days: number
@@ -1120,7 +1089,7 @@ export type Database = {
         }[]
       }
       get_session_statistics: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active_sessions: number
           avg_session_minutes: number
@@ -1129,7 +1098,7 @@ export type Database = {
         }[]
       }
       get_table_sizes: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           row_count: number
           size_bytes: number
@@ -1152,7 +1121,7 @@ export type Database = {
         }[]
       }
       get_user_activity_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           account_created: string
           email: string
@@ -1166,7 +1135,7 @@ export type Database = {
         }[]
       }
       get_user_login_statistics: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           account_created: string
           email: string
@@ -1177,66 +1146,81 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_version_count: {
-        Args: { p_project_id: string }
-        Returns: number
-      }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
+      get_version_count: { Args: { p_project_id: string }; Returns: number }
       http: {
         Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "http_request"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      http_delete: {
-        Args:
-          | { content: string; content_type: string; uri: string }
-          | { uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_get: {
-        Args: { data: Json; uri: string } | { uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
+      http_delete:
+        | {
+            Args: { uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { content: string; content_type: string; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_get:
+        | {
+            Args: { uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { data: Json; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       http_head: {
         Args: { uri: string }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       http_header: {
         Args: { field: string; value: string }
         Returns: Database["public"]["CompositeTypes"]["http_header"]
+        SetofOptions: {
+          from: "*"
+          to: "http_header"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       http_list_curlopt: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           curlopt: string
           value: string
@@ -1245,21 +1229,45 @@ export type Database = {
       http_patch: {
         Args: { content: string; content_type: string; uri: string }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      http_post: {
-        Args:
-          | { content: string; content_type: string; uri: string }
-          | { data: Json; uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
+      http_post:
+        | {
+            Args: { content: string; content_type: string; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { data: Json; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       http_put: {
         Args: { content: string; content_type: string; uri: string }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      http_reset_curlopt: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      http_reset_curlopt: { Args: never; Returns: boolean }
       http_set_curlopt: {
         Args: { curlopt: string; value: string }
         Returns: boolean
@@ -1268,30 +1276,7 @@ export type Database = {
         Args: { p_date: string; p_note: string; p_project_id: string }
         Returns: string
       }
-      invoke_sync_scheduler: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
-      }
+      invoke_sync_scheduler: { Args: never; Returns: undefined }
       match_pm_knowledge: {
         Args: {
           match_count: number
@@ -1306,38 +1291,14 @@ export type Database = {
           title: string
         }[]
       }
-      recalculate_all_computed_status_colors: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
+      recalculate_all_computed_status_colors: { Args: never; Returns: number }
       test_project_creation_tracking: {
         Args: { p_test_project_id?: string; p_user_id: string }
         Returns: Json
       }
-      text_to_bytea: {
-        Args: { data: string }
-        Returns: string
-      }
-      trigger_azure_sync_if_due: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      trigger_sync_if_due: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      text_to_bytea: { Args: { data: string }; Returns: string }
+      trigger_azure_sync_if_due: { Args: never; Returns: undefined }
+      trigger_sync_if_due: { Args: never; Returns: Json }
       update_daily_usage_metrics: {
         Args: { p_activity_type: string; p_user_id: string }
         Returns: boolean
@@ -1346,34 +1307,20 @@ export type Database = {
         Args: { project_id: string }
         Returns: undefined
       }
-      urlencode: {
-        Args: { data: Json } | { string: string } | { string: string }
-        Returns: string
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
+      urlencode:
+        | { Args: { data: Json }; Returns: string }
+        | {
+            Args: { string: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { string: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
     }
     Enums: {
       milestone_status: "completed" | "on-schedule" | "at-risk" | "high-risk"
@@ -1384,7 +1331,7 @@ export type Database = {
         value: string | null
       }
       http_request: {
-        method: unknown | null
+        method: unknown
         uri: string | null
         headers: Database["public"]["CompositeTypes"]["http_header"][] | null
         content_type: string | null

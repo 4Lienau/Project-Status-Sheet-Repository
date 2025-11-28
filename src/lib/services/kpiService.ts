@@ -498,21 +498,23 @@ class KPIService {
           (milestoneDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
         );
 
-        if (daysUntilDue > 0 && daysUntilDue <= 30) {
+        const completion =
+          milestone.completion_percentage || milestone.completion || 0;
+
+        // Filter out completed milestones (100% completion)
+        if (daysUntilDue > 0 && daysUntilDue <= 30 && completion < 100) {
           upcomingMilestones.push({
             milestone: milestone.description || milestone.milestone,
             projectTitle: project.title,
             daysUntilDue,
-            completion:
-              milestone.completion_percentage || milestone.completion || 0,
+            completion,
           });
-        } else if (daysUntilDue < 0) {
+        } else if (daysUntilDue < 0 && completion < 100) {
           overdueMilestones.push({
             milestone: milestone.description || milestone.milestone,
             projectTitle: project.title,
             daysOverdue: Math.abs(daysUntilDue),
-            completion:
-              milestone.completion_percentage || milestone.completion || 0,
+            completion,
           });
         }
       });
