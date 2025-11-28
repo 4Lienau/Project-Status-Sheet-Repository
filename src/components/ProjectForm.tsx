@@ -35,6 +35,7 @@ import {
   OverwriteDialog,
   DeleteConfirmationDialog,
 } from "@/components/form/DialogComponents";
+import { AIPreviewDialog } from "@/components/form/AIPreviewDialog";
 import { SuggestedMilestones } from "@/components/SuggestedMilestones";
 
 // Import custom hook for form state management
@@ -72,6 +73,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     suggestedMilestones,
     showOverwriteDialog,
     setShowOverwriteDialog,
+    showPreviewDialog,
+    setShowPreviewDialog,
+    generatedContent,
     showDeleteDialog,
     setShowDeleteDialog,
     showGanttChart,
@@ -79,6 +83,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     pendingGenerationType,
     setPendingGenerationType,
     isGeneratingAnalysis,
+    isGeneratingDescription,
+    isGeneratingValue,
+    isGeneratingMilestones,
     isAnalysisExpanded,
     isAnalysisLoading,
     handleSubmit,
@@ -89,6 +96,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     handleApplyMilestones,
     handleConfirmOverwrite,
     handleCancelOverwrite,
+    handleConfirmPreview,
+    handleCancelPreview,
     generateContent,
     handleToggleAnalysis,
   } = useProjectForm(initialData, onSubmit, projectId, onBack);
@@ -238,6 +247,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             setFormData={setFormData}
             handleGenerateContent={handleGenerateContent}
             isGeneratingAnalysis={isGeneratingAnalysis}
+            isGeneratingDescription={isGeneratingDescription}
+            isGeneratingValue={isGeneratingValue}
             isAnalysisExpanded={isAnalysisExpanded}
             setIsAnalysisExpanded={handleToggleAnalysis}
             isAnalysisLoading={isAnalysisLoading}
@@ -264,6 +275,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             formData={formData}
             setFormData={setFormData}
             handleGenerateContent={handleGenerateContent}
+            isGeneratingMilestones={isGeneratingMilestones}
           />
 
           {/* Accomplishments Section */}
@@ -345,6 +357,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             generateContent={generateContent}
             onConfirm={handleConfirmOverwrite}
             onCancel={handleCancelOverwrite}
+          />
+
+          <AIPreviewDialog
+            isOpen={showPreviewDialog}
+            onClose={handleCancelPreview}
+            onConfirm={handleConfirmPreview}
+            content={generatedContent || ""}
+            type={pendingGenerationType}
           />
 
           <DeleteConfirmationDialog

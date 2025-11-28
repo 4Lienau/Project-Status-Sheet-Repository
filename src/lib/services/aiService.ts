@@ -60,6 +60,7 @@ export const aiService = {
     title: string,
     description?: string,
     projectData?: any,
+    additionalContext?: string,
   ) {
     try {
       console.log(
@@ -75,6 +76,7 @@ export const aiService = {
             title,
             description,
             projectData,
+            additionalContext,
           },
         }
       );

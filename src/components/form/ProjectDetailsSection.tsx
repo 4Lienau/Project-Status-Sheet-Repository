@@ -23,17 +23,22 @@ import {
 } from "@/lib/services/project";
 import { SectionHeader } from "./SectionHeader";
 
+import { AIContextDialog } from "./AIContextDialog";
+
 interface ProjectDetailsSectionProps {
   formData: any;
   setFormData: (updater: (prev: any) => any) => void;
   handleGenerateContent: (
     type: "description" | "value" | "milestones" | "analysis",
+    additionalContext?: string,
   ) => void;
   isGeneratingAnalysis: boolean;
   isAnalysisExpanded: boolean;
   setIsAnalysisExpanded: (expanded: boolean) => void;
   isAnalysisLoading: boolean;
   handleShowDeleteDialog: () => void;
+  isGeneratingDescription?: boolean;
+  isGeneratingValue?: boolean;
 }
 
 const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
@@ -41,9 +46,35 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
   setFormData,
   handleGenerateContent,
   handleShowDeleteDialog,
+  isGeneratingDescription = false,
+  isGeneratingValue = false,
 }) => {
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogType, setDialogType] = React.useState<
+    "description" | "value" | "milestones" | "analysis"
+  >("description");
+
+  const handleOpenDialog = (
+    type: "description" | "value" | "milestones" | "analysis",
+  ) => {
+    setDialogType(type);
+    setDialogOpen(true);
+  };
+
+  const handleDialogGenerate = (context: string) => {
+    setDialogOpen(false);
+    handleGenerateContent(dialogType, context);
+  };
+
   return (
     <TooltipProvider>
+      <AIContextDialog
+        isOpen={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onGenerate={handleDialogGenerate}
+        type={dialogType}
+        isGenerating={false}
+      />
       <div className="flex items-center justify-between mb-2">
         <SectionHeader
           title="Project Details"
@@ -106,11 +137,21 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => handleGenerateContent("description")}
+              onClick={() => handleOpenDialog("description")}
+              disabled={isGeneratingDescription}
               className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
             >
-              <Wand2 className="h-4 w-4 mr-2" />
-              Generate with AI
+              {isGeneratingDescription ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Help Me
+                </>
+              )}
             </Button>
           </div>
           <RichTextEditor
@@ -133,11 +174,21 @@ const ProjectDetailsSection: React.FC<ProjectDetailsSectionProps> = ({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => handleGenerateContent("value")}
+              onClick={() => handleOpenDialog("value")}
+              disabled={isGeneratingValue}
               className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
             >
-              <Wand2 className="h-4 w-4 mr-2" />
-              Generate with AI
+              {isGeneratingValue ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Help Me
+                </>
+              )}
             </Button>
           </div>
           <RichTextEditor

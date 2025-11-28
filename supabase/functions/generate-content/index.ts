@@ -29,7 +29,31 @@ const getPrompt = (type: string): string => {
     case "value":
       return "You are a professional project manager. Generate a clear value statement focusing on the project's business value, ROI, and strategic importance based on the project title. Return ONLY the value statement text, no other content or formatting.";
     case "milestones":
-      return `You are a professional project manager. Generate key milestones based on the project title and description. Return ONLY a JSON array of milestones with the following structure, no other text:
+      return `CRITICAL INSTRUCTION: You MUST generate a COMPLETE, COMPREHENSIVE milestone list for the project based on the project title and description. 
+
+YOUR TASK:
+1. Read the project title and description below
+2. Think about what a COMPLETE project plan would look like for this type of project
+3. Generate ALL the typical milestones from start to finish (at least 8 and up to 15 milestones)
+4. First milestone MUST be "Project Kickoff" 
+5. Last milestone MUST be "Project Closeout"
+
+THEN AND ONLY THEN:
+- If you see "Additional Context" at the bottom, add/modify specific milestones mentioned there
+- DO NOT REPLACE your comprehensive list - only ADD TO or ADJUST it, even if the user context includes many milestones
+- The additional context is SUPPLEMENTARY, not a replacement
+
+YOU WILL FAIL THIS TASK IF:
+- You generate ONLY the milestones mentioned in the additional context
+- You skip standard project milestones that should obviously be included
+- Your list is incomplete for the project type described
+
+YOU WILL SUCCEED IF:
+- Your milestone list would make sense even if there were NO additional context
+- You include all standard phases for this project type
+- The additional context (if any) enhances but doesn't replace your baseline
+
+Return ONLY a JSON array, no other text:
 [
   {
     "date": "YYYY-MM-DD",
@@ -40,14 +64,11 @@ const getPrompt = (type: string): string => {
   }
 ]
 
-CRITICAL REQUIREMENTS:
-- The FIRST milestone must ALWAYS be "Project Kickoff" with owner "Project Manager"
-- The LAST milestone must ALWAYS be "Project Closeout" with owner "Project Manager"
-- Generate 3-7 additional milestones between kickoff and closeout that are specific to the project
-- Ensure dates are realistic starting from current date, spaced appropriately
-- Status must ALWAYS be "green" for all milestones (representing "On Track" status)
-- Total milestones should be 5-9 (including mandatory kickoff and closeout)
-- NEVER use "yellow" or "red" status - ALL milestones should start as "green"`;
+REQUIREMENTS:
+- First: "Project Kickoff" (Project Manager)
+- Last: "Project Closeout" (Project Manager)
+- Status: ALWAYS "green"
+- Dates: Realistic from today, properly spaced`;
     case "analysis":
       return `You are a professional project manager creating a project status summary. Analyze the provided project data and generate a concise summary in paragraph form that highlights:
 
@@ -113,7 +134,7 @@ serve(async (req) => {
       );
     }
 
-    const { type, title, description, projectData } = requestBody;
+    const { type, title, description, projectData, additionalContext } = requestBody;
 
     // Validate required fields
     if (!type || !title) {
@@ -148,10 +169,30 @@ serve(async (req) => {
 
     // Get the appropriate prompt and token limit
     const prompt = getPrompt(type);
-    const maxTokens = type === "analysis" ? 1500 : type === "milestones" ? 1000 : 500;
+    const maxTokens = type === "analysis" ? 1500 : type === "milestones" ? 2000 : 500;
 
     // Prepare the content for the AI
-    let userContent = title + (description ? `\n\nProject Description: ${description}` : "");
+    let userContent = `Project Title: ${title}`;
+    
+    if (description) {
+      userContent += `\n\nProject Description: ${description}`;
+    }
+    
+    // For milestones, explicitly separate baseline info from additional context
+    if (type === "milestones") {
+      userContent += `\n\n=== STEP 1: ANALYZE THE ABOVE PROJECT INFORMATION FIRST ===\nGenerate your complete baseline milestone timeline based ONLY on the title and description above.\n`;
+      
+      if (additionalContext) {
+        userContent += `\n=== STEP 2: NOW REVIEW THIS ADDITIONAL CONTEXT ===\nAdditional Context/Instructions: ${additionalContext}\n\nIntegrate these specific requests into your baseline timeline from Step 1.`;
+      } else {
+        userContent += `\n=== STEP 2: NO ADDITIONAL CONTEXT PROVIDED ===\nProceed with your complete baseline milestone timeline from Step 1.`;
+      }
+    } else {
+      // For non-milestone types, use the original format
+      if (additionalContext) {
+        userContent += `\n\nAdditional Context/Instructions: ${additionalContext}`;
+      }
+    }
 
     // For analysis, include filtered project data with explanations
     if (type === "analysis" && projectData) {
@@ -190,7 +231,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: prompt },
           { role: 'user', content: userContent },

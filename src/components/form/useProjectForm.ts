@@ -92,12 +92,17 @@ export const useProjectForm = (
     [],
   );
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const [pendingGenerationType, setPendingGenerationType] = useState<
     "description" | "value" | null
   >(null);
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [isGeneratingValue, setIsGeneratingValue] = useState(false);
+  const [isGeneratingMilestones, setIsGeneratingMilestones] = useState(false);
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
 
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
@@ -525,6 +530,7 @@ export const useProjectForm = (
 
   const handleGenerateContent = async (
     type: "description" | "value" | "milestones" | "analysis",
+    additionalContext?: string,
   ) => {
     // If generating milestones, set the flag to prevent initialData from resetting the form
     if (type === "milestones") {
@@ -536,16 +542,19 @@ export const useProjectForm = (
     }
 
     // Check if we need to show the overwrite dialog
-    if (type === "description" && formData.description?.trim()) {
+    // REMOVED: We now check after generation
+    /*
+    if (type === "description" && formData.description?.trim() && !additionalContext) {
       setPendingGenerationType("description");
       setShowOverwriteDialog(true);
       return;
     }
-    if (type === "value" && formData.valueStatement?.trim()) {
+    if (type === "value" && formData.valueStatement?.trim() && !additionalContext) {
       setPendingGenerationType("value");
       setShowOverwriteDialog(true);
       return;
     }
+    */
 
     // For analysis, set loading state immediately
     if (type === "analysis") {
@@ -563,14 +572,25 @@ export const useProjectForm = (
     }
 
     // If no existing content or it's milestones or analysis, proceed with generation
-    await generateContent(type);
+    await generateContent(type, additionalContext);
   };
 
   const generateContent = async (
     type: "description" | "value" | "milestones" | "analysis",
+    additionalContext?: string,
   ) => {
+    // Set loading states
+    if (type === "description") setIsGeneratingDescription(true);
+    if (type === "value") setIsGeneratingValue(true);
+    if (type === "milestones") setIsGeneratingMilestones(true);
+
     try {
       if (!formData.title) {
+        // Clear loading states if returning early
+        if (type === "description") setIsGeneratingDescription(false);
+        if (type === "value") setIsGeneratingValue(false);
+        if (type === "milestones") setIsGeneratingMilestones(false);
+
         toast({
           title: "Error",
           description: "Please enter a project title first",
@@ -619,6 +639,7 @@ export const useProjectForm = (
             formData.title,
             formData.description,
             type === "analysis" ? formData : undefined,
+            additionalContext,
           );
 
           // If we got here, we have content
@@ -682,6 +703,8 @@ export const useProjectForm = (
             description: "Failed to generate milestones. Please try again.",
             variant: "destructive",
           });
+        } finally {
+          setIsGeneratingMilestones(false);
         }
       } else if (type === "analysis") {
         const analysisContent = content;
@@ -741,13 +764,31 @@ export const useProjectForm = (
           });
         }
       } else {
-        setFormData((prev) => ({
-          ...prev,
-          [type === "value" ? "valueStatement" : "description"]: content,
-        }));
+        const targetField = type === "value" ? "valueStatement" : "description";
+        const hasExistingContent = formData[targetField]?.trim().length > 0;
+
+        if (hasExistingContent) {
+          setGeneratedContent(content);
+          setPendingGenerationType(type as "description" | "value");
+          setShowPreviewDialog(true);
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            [targetField]: content,
+          }));
+        }
+        
+        if (type === "description") setIsGeneratingDescription(false);
+        if (type === "value") setIsGeneratingValue(false);
       }
     } catch (error) {
       console.error(`Error generating ${type}:`, error);
+      
+      // Clear loading states
+      if (type === "description") setIsGeneratingDescription(false);
+      if (type === "value") setIsGeneratingValue(false);
+      if (type === "milestones") setIsGeneratingMilestones(false);
+
       if (type === "analysis") {
         setIsGeneratingAnalysis(false);
         setIsAnalysisLoading(false);
@@ -961,6 +1002,24 @@ export const useProjectForm = (
     setPendingGenerationType(null);
   };
 
+  const handleConfirmPreview = () => {
+    if (generatedContent && pendingGenerationType) {
+      setFormData((prev) => ({
+        ...prev,
+        [pendingGenerationType === "value" ? "valueStatement" : "description"]: generatedContent,
+      }));
+      setShowPreviewDialog(false);
+      setGeneratedContent(null);
+      setPendingGenerationType(null);
+    }
+  };
+
+  const handleCancelPreview = () => {
+    setShowPreviewDialog(false);
+    setGeneratedContent(null);
+    setPendingGenerationType(null);
+  };
+
   const handleToggleAnalysis = () => {
     setIsAnalysisExpanded(!isAnalysisExpanded);
   };
@@ -988,12 +1047,18 @@ export const useProjectForm = (
     suggestedMilestones,
     showOverwriteDialog,
     setShowOverwriteDialog,
+    showPreviewDialog,
+    setShowPreviewDialog,
+    generatedContent,
     showDeleteDialog,
     setShowDeleteDialog,
 
     pendingGenerationType,
     setPendingGenerationType,
     isGeneratingAnalysis,
+    isGeneratingDescription,
+    isGeneratingValue,
+    isGeneratingMilestones,
     isAnalysisExpanded,
     isAnalysisLoading,
     hasUserInteracted,
@@ -1006,6 +1071,8 @@ export const useProjectForm = (
     handleCancelMilestones,
     handleConfirmOverwrite,
     handleCancelOverwrite,
+    handleConfirmPreview,
+    handleCancelPreview,
 
     handleToggleAnalysis,
     handleUserInteraction,

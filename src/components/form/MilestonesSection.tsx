@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Wand2, Info } from "lucide-react";
+import { Wand2, Info, Loader2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -11,12 +11,16 @@ import { MilestoneList } from "@/components/MilestoneList";
 import { ProgressPill } from "@/components/ui/progress-pill";
 import { SectionHeader } from "./SectionHeader";
 
+import { AIContextDialog } from "./AIContextDialog";
+
 interface MilestonesSectionProps {
   formData: any;
   setFormData: (updater: (prev: any) => any) => void;
   handleGenerateContent: (
     type: "description" | "value" | "milestones" | "analysis",
+    additionalContext?: string,
   ) => void;
+  isGeneratingMilestones?: boolean;
 }
 
 // Wrapper component to maintain compatibility with MilestoneList
@@ -34,7 +38,15 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
   formData,
   setFormData,
   handleGenerateContent,
+  isGeneratingMilestones = false,
 }) => {
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+
+  const handleDialogGenerate = (context: string) => {
+    setDialogOpen(false);
+    handleGenerateContent("milestones", context);
+  };
+
   // Helper function to calculate the date for a new milestone
   const getNewMilestoneDate = () => {
     if (!formData.milestones || formData.milestones.length === 0) {
@@ -62,6 +74,13 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
 
   return (
     <TooltipProvider>
+      <AIContextDialog
+        isOpen={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onGenerate={handleDialogGenerate}
+        type="milestones"
+        isGenerating={false}
+      />
       <SectionHeader
         title="Milestones"
         tooltip="Add key project milestones with dates, owners, and completion status. Drag to reorder, click Add Milestone to create new ones, or use AI to generate suggested milestones based on your project title and description."
@@ -70,11 +89,21 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
         <Button
           type="button"
           variant="outline"
-          onClick={() => handleGenerateContent("milestones")}
+          onClick={() => setDialogOpen(true)}
+          disabled={isGeneratingMilestones}
           className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
         >
-          <Wand2 className="h-4 w-4 mr-2" />
-          Use AI to Generate
+          {isGeneratingMilestones ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Wand2 className="h-4 w-4 mr-2" />
+              Help Me
+            </>
+          )}
         </Button>
       </SectionHeader>
 
