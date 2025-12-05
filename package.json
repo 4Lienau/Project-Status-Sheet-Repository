@@ -68,6 +68,7 @@
     "exceljs": "^4.4.0",
     "framer-motion": "^11.18.0",
     "html2canvas": "^1.4.1",
+    "linkifyjs": "^4.3.2",
     "lucide-react": "^0.394.0",
     "openai": "^4.85.3",
     "pptxgenjs": "^3.12.0",
@@ -99,7 +100,7 @@
     "postcss": "^8.5.2",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.7.3",
-    "vite": "^5.4.14"
+    "vite": "^5.4.21"
   },
   "overrides": {
     "glob": "^10.5.0"
