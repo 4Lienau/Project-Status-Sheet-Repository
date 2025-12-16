@@ -38,6 +38,7 @@ import { adminService } from "@/lib/services/adminService";
 import { useToast } from "@/components/ui/use-toast";
 import { format, subDays } from "date-fns";
 import { supabase } from "@/lib/supabase";
+import DailyLogins from "./DailyLogins";
 
 interface ActiveUser {
   user_id: string;
@@ -559,6 +560,9 @@ const UsageAnalytics = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Daily Logins Table */}
+      <DailyLogins />
 
       {/* User Login Statistics */}
       <Card>

@@ -193,7 +193,7 @@ export const adminService = {
         .select("*", { count: "exact", head: true });
 
       if (countError) {
-        console.error("Error accessing directory_users table:", countError);
+        console.warn("Error accessing directory_users table (expected if table missing):", countError);
         return [];
       }
 
@@ -207,13 +207,13 @@ export const adminService = {
         .order("last_synced", { ascending: false, nullsFirst: false });
 
       if (error) {
-        console.error("Error fetching directory users:", error);
+        console.warn("Error fetching directory users:", error);
         return [];
       }
 
       return data || [];
     } catch (error) {
-      console.error("Error in getDirectoryUsers:", error);
+      console.warn("Error in getDirectoryUsers:", error);
       return [];
     }
   },
@@ -238,11 +238,11 @@ export const adminService = {
       });
 
       if (countError) {
-        console.error(
-          "[adminService.getAzureSyncLogs] Count query failed:",
+        console.warn(
+          "[adminService.getAzureSyncLogs] Count query failed (expected if table missing):",
           countError,
         );
-        console.error("[adminService.getAzureSyncLogs] Count error details:", {
+        console.warn("[adminService.getAzureSyncLogs] Count error details:", {
           message: countError.message,
           details: countError.details,
           hint: countError.hint,
@@ -269,11 +269,11 @@ export const adminService = {
       });
 
       if (error) {
-        console.error(
+        console.warn(
           "[adminService.getAzureSyncLogs] Error fetching Azure sync logs:",
           error,
         );
-        console.error("[adminService.getAzureSyncLogs] Error details:", {
+        console.warn("[adminService.getAzureSyncLogs] Error details:", {
           message: error.message,
           details: error.details,
           hint: error.hint,
@@ -282,7 +282,7 @@ export const adminService = {
 
         // Check if it's an RLS policy issue
         if (error.code === "42501" || error.message?.includes("policy")) {
-          console.error(
+          console.warn(
             "[adminService.getAzureSyncLogs] RLS Policy Issue: The azure_sync_logs table may have Row Level Security enabled but no policy allows SELECT operations for the current user.",
           );
         }
@@ -316,7 +316,7 @@ export const adminService = {
 
       return data || [];
     } catch (error) {
-      console.error(
+      console.warn(
         "[adminService.getAzureSyncLogs] Catch block error:",
         error,
       );
@@ -333,8 +333,8 @@ export const adminService = {
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching sync configuration:", error);
-        console.error("Error details:", {
+        console.log("Error fetching sync configuration:", error);
+        console.log("Error details:", {
           message: error.message,
           details: error.details,
           hint: error.hint,
@@ -346,7 +346,7 @@ export const adminService = {
       console.log("Fetched sync configuration:", data);
       return data;
     } catch (error) {
-      console.error("Error fetching sync configuration:", error);
+      console.log("Error fetching sync configuration:", error);
       return null;
     }
   },
@@ -373,7 +373,7 @@ export const adminService = {
         .eq("sync_type", "azure_ad_sync");
 
       if (error) {
-        console.error("Error updating sync configuration:", error);
+        console.warn("Error updating sync configuration:", error);
         return false;
       }
 
@@ -384,7 +384,7 @@ export const adminService = {
 
       return true;
     } catch (error) {
-      console.error("Error updating sync configuration:", error);
+      console.warn("Error updating sync configuration:", error);
       return false;
     }
   },
@@ -422,8 +422,8 @@ export const adminService = {
         .select();
 
       if (error) {
-        console.error("Error enabling sync configuration:", error);
-        console.error("Error details:", {
+        console.warn("Error enabling sync configuration:", error);
+        console.warn("Error details:", {
           message: error.message,
           details: error.details,
           hint: error.hint,
@@ -435,7 +435,7 @@ export const adminService = {
       console.log("Sync configuration enabled successfully:", data);
       return true;
     } catch (error) {
-      console.error("Error enabling sync configuration:", error);
+      console.warn("Error enabling sync configuration:", error);
       return false;
     }
   },
@@ -458,8 +458,8 @@ export const adminService = {
         .select();
 
       if (error) {
-        console.error("Error disabling sync configuration:", error);
-        console.error("Error details:", {
+        console.warn("Error disabling sync configuration:", error);
+        console.warn("Error details:", {
           message: error.message,
           details: error.details,
           hint: error.hint,
@@ -471,7 +471,7 @@ export const adminService = {
       console.log("Sync configuration disabled successfully:", data);
       return true;
     } catch (error) {
-      console.error("Error disabling sync configuration:", error);
+      console.warn("Error disabling sync configuration:", error);
       return false;
     }
   },
@@ -504,8 +504,8 @@ export const adminService = {
           .select();
 
         if (error) {
-          console.error("Error creating sync configuration:", error);
-          console.error("Error details:", {
+          console.warn("Error creating sync configuration:", error);
+          console.warn("Error details:", {
             message: error.message,
             details: error.details,
             hint: error.hint,
@@ -514,10 +514,10 @@ export const adminService = {
 
           // If it's an RLS policy violation, provide specific guidance
           if (error.code === "42501") {
-            console.error(
+            console.warn(
               "RLS Policy Violation: The sync_configurations table has Row Level Security enabled but no policy allows INSERT operations for the current user.",
             );
-            console.error(
+            console.warn(
               "Please run the migration: supabase/migrations/20250208000001_fix_sync_configurations_rls_and_default.sql",
             );
           }
@@ -532,7 +532,7 @@ export const adminService = {
 
       return true;
     } catch (error) {
-      console.error("Error ensuring sync configuration:", error);
+      console.warn("Error ensuring sync configuration:", error);
       return false;
     }
   },
@@ -549,7 +549,7 @@ export const adminService = {
       const { data, error } = await supabase.rpc("trigger_sync_if_due");
 
       if (error) {
-        console.error("Error checking due syncs:", {
+        console.log("Error checking due syncs:", {
           message: error.message,
           details: error.details,
           hint: error.hint,
@@ -584,7 +584,7 @@ export const adminService = {
         syncTriggered: false,
       };
     } catch (error) {
-      console.error("Error in checkAndTriggerDueSyncs:", error);
+      console.log("Error in checkAndTriggerDueSyncs:", error);
       // Return success to prevent blocking the UI
       return {
         success: true,
@@ -695,6 +695,73 @@ export const adminService = {
   },
 
   // Usage Analytics Methods
+  async getUsersLoggedOnToday(): Promise<any[]> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Get sessions from today
+      const { data: sessions, error } = await supabase
+        .from('user_sessions')
+        .select(`
+          user_id,
+          session_start,
+          last_activity,
+          ip_address,
+          user_agent
+        `)
+        .gte('session_start', today.toISOString())
+        .order('session_start', { ascending: false });
+
+      if (error) throw error;
+
+      // Get user profiles
+      const userIds = [...new Set(sessions?.map(s => s.user_id) || [])];
+      
+      if (userIds.length === 0) return [];
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      // Combine data
+      const userMap = new Map();
+      
+      sessions?.forEach(session => {
+        if (!userMap.has(session.user_id)) {
+          const profile = profiles?.find(p => p.id === session.user_id);
+          userMap.set(session.user_id, {
+            user_id: session.user_id,
+            full_name: profile?.full_name || 'Unknown',
+            email: profile?.email || 'Unknown',
+            first_login: session.session_start,
+            last_activity: session.last_activity,
+            login_count: 1,
+            ip_address: session.ip_address,
+            user_agent: session.user_agent
+          });
+        } else {
+          const user = userMap.get(session.user_id);
+          user.login_count++;
+          // Keep the earliest login as first_login
+          if (new Date(session.session_start) < new Date(user.first_login)) {
+            user.first_login = session.session_start;
+          }
+          // Keep the latest activity
+          if (new Date(session.last_activity) > new Date(user.last_activity)) {
+            user.last_activity = session.last_activity;
+          }
+        }
+      });
+
+      return Array.from(userMap.values());
+    } catch (error) {
+      console.error('Error getting users logged on today:', error);
+      return [];
+    }
+  },
+
   async getActiveUsers(): Promise<any[]> {
     try {
       // Cleanup stale sessions more aggressively
@@ -904,23 +971,22 @@ export const adminService = {
           0,
         ) || 0;
 
-      // Get project creation count from activity logs
+      // Get project creation count from projects table (source of truth)
       let totalProjectsFromMetrics = 0;
       try {
         console.log(
-          "[adminService.getUsageMetrics] 🔍 Querying total project creation count...",
+          "[adminService.getUsageMetrics] 🔍 Querying total projects count from projects table...",
         );
 
-        const { count: projectCreationCount, error: countError } =
+        const { count: projectCount, error: countError } =
           await supabase
-            .from("user_activity_logs")
-            .select("*", { count: "exact", head: true })
-            .eq("activity_type", "project_creation");
+            .from("projects")
+            .select("*", { count: "exact", head: true });
 
         console.log(
-          "[adminService.getUsageMetrics] 🔍 Project creation count query result:",
+          "[adminService.getUsageMetrics] 🔍 Projects count query result:",
           {
-            projectCreationCount,
+            projectCount,
             countError,
           },
         );
@@ -933,37 +999,14 @@ export const adminService = {
           throw countError;
         }
 
-        totalProjectsFromMetrics = projectCreationCount || 0;
+        totalProjectsFromMetrics = projectCount || 0;
         console.log(
-          "[adminService.getUsageMetrics] ✅ Project creation count from activity logs:",
+          "[adminService.getUsageMetrics] ✅ Total projects count:",
           totalProjectsFromMetrics,
         );
-
-        // Additional debug: Get recent project creation entries
-        if (totalProjectsFromMetrics === 0) {
-          console.log(
-            "[adminService.getUsageMetrics] 🔍 Zero count detected, checking recent entries...",
-          );
-
-          const { data: recentEntries, error: recentError } = await supabase
-            .from("user_activity_logs")
-            .select("*")
-            .eq("activity_type", "project_creation")
-            .order("created_at", { ascending: false })
-            .limit(10);
-
-          console.log(
-            "[adminService.getUsageMetrics] 🔍 Recent project creation entries:",
-            {
-              recentEntries,
-              recentError,
-              count: recentEntries?.length || 0,
-            },
-          );
-        }
       } catch (error) {
         console.warn(
-          "[adminService.getUsageMetrics] ⚠️ Error getting project creation count:",
+          "[adminService.getUsageMetrics] ⚠️ Error getting project count:",
           error,
         );
         // Fallback to user activity data if available
@@ -972,10 +1015,6 @@ export const adminService = {
             (sum, user) => sum + (user.total_projects || 0),
             0,
           ) || 0;
-        console.log(
-          "[adminService.getUsageMetrics] 📊 Using fallback count:",
-          totalProjectsFromMetrics,
-        );
       }
 
       // Calculate average session time using improved database function
@@ -1758,14 +1797,16 @@ export const adminService = {
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
-        console.error('[adminService.getSchedulerLogs] Error fetching scheduler logs:', error);
+        // Expected network or Supabase error when fetching scheduler logs
+        console.warn('[adminService.getSchedulerLogs] Error fetching scheduler logs:', error);
         return [];
       }
 
       console.log(`[adminService.getSchedulerLogs] Fetched ${data?.length || 0} scheduler logs`);
       return data || [];
     } catch (error) {
-      console.error('[adminService.getSchedulerLogs] Catch error:', error);
+      // Expected catch-all error handler for scheduler logs
+      console.warn('[adminService.getSchedulerLogs] Catch error:', error);
       return [];
     }
   },
@@ -1791,7 +1832,8 @@ export const adminService = {
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
-        console.error('[adminService.getSchedulerStats] Error:', error);
+        // Expected network or Supabase error when fetching scheduler stats
+        console.warn('[adminService.getSchedulerStats] Error:', error);
         return {
           totalRuns: 0,
           syncsTriggered: 0,
@@ -1816,7 +1858,8 @@ export const adminService = {
         avgExecutionTime,
       };
     } catch (error) {
-      console.error('[adminService.getSchedulerStats] Catch error:', error);
+      // Expected catch-all error handler for scheduler stats
+      console.warn('[adminService.getSchedulerStats] Catch error:', error);
       return {
         totalRuns: 0,
         syncsTriggered: 0,

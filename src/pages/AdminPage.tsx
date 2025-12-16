@@ -290,11 +290,11 @@ const AdminPage: React.FC = () => {
           setNewFrequency(syncConfigData.frequency_hours);
         }
       } catch (error) {
-        console.error("Error loading admin data:", error);
+        console.warn("Error loading admin data:", error);
         toast({
-          title: "Error",
-          description: "Failed to load admin data",
-          variant: "destructive",
+          title: "Warning",
+          description: "Some admin data could not be loaded",
+          variant: "default",
         });
       } finally {
         setLoading(false);
@@ -786,6 +786,10 @@ const AdminPage: React.FC = () => {
             <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <BarChart3 className="h-4 w-4 mr-2" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="ai-usage" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Brain className="h-4 w-4 mr-2" />
+              AI Usage
             </TabsTrigger>
             <TabsTrigger value="knowledge" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <BookOpen className="h-4 w-4 mr-2" />
@@ -1524,6 +1528,10 @@ const AdminPage: React.FC = () => {
 
           <TabsContent value="analytics" className="space-y-4">
             <UsageAnalytics />
+          </TabsContent>
+
+          <TabsContent value="ai-usage" className="space-y-4">
+            <AIUsageAnalytics />
           </TabsContent>
 
           <TabsContent value="knowledge" className="space-y-4">
