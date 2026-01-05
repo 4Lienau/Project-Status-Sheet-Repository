@@ -34,7 +34,10 @@ export const chatService = {
         if (projectData.milestones && projectData.milestones.length > 0) {
           projectContext += `\nProject Milestones:\n`;
           projectData.milestones.forEach((milestone, index) => {
-            projectContext += `${index + 1}. ${milestone.milestone} (${milestone.date}) - ${milestone.completion}% complete, Status: ${milestone.status}\n`;
+            const dateRange = milestone.end_date 
+              ? `${milestone.date} to ${milestone.end_date}` 
+              : milestone.date;
+            projectContext += `${index + 1}. ${milestone.milestone} (${dateRange}) - ${milestone.completion}% complete, Status: ${milestone.status}\n`;
           });
         }
 

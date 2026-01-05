@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card";
 
 interface Milestone {
   date: string;
+  end_date?: string;
   milestone: string;
   owner: string;
   completion: number;
@@ -165,7 +166,11 @@ export const SuggestedMilestones: React.FC<SuggestedMilestonesProps> = ({
                       {milestone.milestone}
                     </Label>
                     <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
-                      <div>Date: {milestone.date}</div>
+                      <div>
+                        {milestone.end_date
+                          ? `${milestone.date} - ${milestone.end_date}`
+                          : `Date: ${milestone.date}`}
+                      </div>
                       <div>Owner: {milestone.owner}</div>
                       <div>Completion: {milestone.completion}%</div>
                     </div>

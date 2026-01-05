@@ -11,6 +11,7 @@ import GanttChart from "./GanttChart";
 interface Milestone {
   id?: string;
   date: string;
+  end_date?: string;
   milestone: string;
   owner: string;
   completion: number;

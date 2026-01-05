@@ -25,23 +25,32 @@ const ProjectDurationSection: React.FC<ProjectDurationSectionProps> = ({
   setFormData,
 }) => {
   // Calculate auto-populated dates from milestones
+  // Start date = earliest milestone date
+  // End date = latest milestone end_date (or date if no end_date)
   const autoCalculatedDates = useMemo(() => {
     if (!formData.milestones || formData.milestones.length === 0) {
       return { startDate: null, endDate: null };
     }
 
-    const dates = formData.milestones
+    // Get start dates (milestone start dates)
+    const startDates = formData.milestones
       .map((m: any) => new Date(m.date))
       .filter((date: Date) => !isNaN(date.getTime()))
       .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
-    if (dates.length === 0) {
+    // Get end dates (use end_date if available, otherwise fall back to date)
+    const endDates = formData.milestones
+      .map((m: any) => new Date(m.end_date || m.date))
+      .filter((date: Date) => !isNaN(date.getTime()))
+      .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+
+    if (startDates.length === 0) {
       return { startDate: null, endDate: null };
     }
 
     return {
-      startDate: dates[0].toISOString().split("T")[0],
-      endDate: dates[dates.length - 1].toISOString().split("T")[0],
+      startDate: startDates[0].toISOString().split("T")[0],
+      endDate: endDates[endDates.length - 1].toISOString().split("T")[0],
     };
   }, [formData.milestones]);
 

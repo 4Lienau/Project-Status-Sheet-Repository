@@ -44,6 +44,7 @@ interface Task {
 interface MilestoneItemProps {
   milestone: {
     date: string;
+    end_date?: string;
     milestone: string;
     owner: string;
     completion: number;
@@ -70,6 +71,7 @@ export function MilestoneItem({
 }: MilestoneItemProps) {
   const [showTasks, setShowTasks] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isEndDateCalendarOpen, setIsEndDateCalendarOpen] = useState(false);
 
   const handleTasksChange = (tasks: Task[]) => {
     console.log("[DEBUG] MilestoneItem - Tasks changed:", tasks);
@@ -99,7 +101,7 @@ export function MilestoneItem({
   return (
     <div className="border-b border-border py-1 bg-card rounded-md mb-2">
       <div className="grid grid-cols-[1fr] gap-2">
-        <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
+        <div className="grid grid-cols-[140px_140px_1fr_150px_auto] gap-2">
           <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -152,7 +154,17 @@ export function MilestoneItem({
                     // Simply format the date as YYYY-MM-DD without timezone adjustments
                     const formattedDate = format(date, "yyyy-MM-dd");
 
-                    onUpdate({ date: formattedDate });
+                    // Calculate default end date (1 week after start date)
+                    const endDate = new Date(date);
+                    endDate.setDate(endDate.getDate() + 7);
+                    const defaultEndDate = format(endDate, "yyyy-MM-dd");
+
+                    // Update start date and auto-populate end date if not already set
+                    const updates: any = { date: formattedDate };
+                    if (!milestone.end_date) {
+                      updates.end_date = defaultEndDate;
+                    }
+                    onUpdate(updates);
 
                     // Update project duration if projectId is provided
                     if (projectId) {
@@ -175,17 +187,82 @@ export function MilestoneItem({
                               "[MILESTONE_ITEM] Failed to update project duration",
                             );
                           }
-                        } catch (error) {
-                          console.error(
-                            "[MILESTONE_ITEM] Error updating project duration:",
-                            error,
-                          );
+                        } catch {
+                          // Silently fail - duration update is non-critical
                         }
                       }, 100);
                     }
 
                     // Close the popover after selection
                     setIsCalendarOpen(false);
+                  }
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          {/* End Date Calendar */}
+          <Popover open={isEndDateCalendarOpen} onOpenChange={setIsEndDateCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal h-10 bg-card border-border text-foreground"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {milestone.end_date ? (
+                  (() => {
+                    const [year, month, day] = milestone.end_date.split("-");
+                    return `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year}`;
+                  })()
+                ) : (
+                  <span className="text-muted-foreground">End date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={
+                  milestone.end_date
+                    ? (() => {
+                        const [year, month, day] = milestone.end_date.split("-");
+                        return new Date(
+                          parseInt(year),
+                          parseInt(month) - 1,
+                          parseInt(day),
+                        );
+                      })()
+                    : undefined
+                }
+                defaultMonth={
+                  milestone.end_date
+                    ? (() => {
+                        const [year, month, day] = milestone.end_date.split("-");
+                        return new Date(
+                          parseInt(year),
+                          parseInt(month) - 1,
+                          parseInt(day),
+                        );
+                      })()
+                    : undefined
+                }
+                onSelect={(date) => {
+                  if (date) {
+                    const formattedDate = format(date, "yyyy-MM-dd");
+                    onUpdate({ end_date: formattedDate });
+
+                    if (projectId) {
+                      setTimeout(async () => {
+                        try {
+                          await projectDurationService.updateProjectDuration(projectId);
+                        } catch {
+                          // Silently fail - duration update is non-critical
+                        }
+                      }, 100);
+                    }
+
+                    // Close the popover after selection
+                    setIsEndDateCalendarOpen(false);
                   }
                 }}
                 initialFocus

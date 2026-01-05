@@ -46,6 +46,7 @@ interface MilestoneSortableItemProps {
   id: string;
   milestone: {
     date: string;
+    end_date?: string;
     milestone: string;
     owner: string;
     completion: number;
@@ -121,13 +122,26 @@ export function MilestoneSortableItem({
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
+        <div className="grid grid-cols-[140px_140px_1fr_150px_auto] gap-2">
           <Input
-            placeholder="Date"
+            placeholder="Start Date"
+            title="Start Date"
             type="date"
             value={milestone.date}
             onChange={(e) => {
-              onUpdate({ date: e.target.value });
+              const newStartDate = e.target.value;
+              // Calculate default end date (1 week after start date)
+              const startDate = new Date(newStartDate);
+              const endDate = new Date(startDate);
+              endDate.setDate(endDate.getDate() + 7);
+              const defaultEndDate = endDate.toISOString().split('T')[0];
+              
+              // Update start date and auto-populate end date if not already set
+              const updates: any = { date: newStartDate };
+              if (!milestone.end_date) {
+                updates.end_date = defaultEndDate;
+              }
+              onUpdate(updates);
 
               // Update project duration if projectId is provided
               if (projectId) {
@@ -154,13 +168,31 @@ export function MilestoneSortableItem({
                         "[MILESTONE_SORTABLE] ✗ Failed to update project duration after date change",
                       );
                     }
-                  } catch (error) {
-                    console.error(
-                      "[MILESTONE_SORTABLE] ✗ Error updating project duration after date change:",
-                      error,
-                    );
+                  } catch {
+                    // Silently fail - duration update is non-critical
                   }
                 }, 500); // Increased timeout to ensure milestone is saved
+              }
+            }}
+            className="bg-card border-border text-foreground"
+          />
+          <Input
+            placeholder="End Date"
+            title="End Date"
+            type="date"
+            value={milestone.end_date || ''}
+            onChange={(e) => {
+              onUpdate({ end_date: e.target.value });
+
+              // Update project duration if projectId is provided
+              if (projectId) {
+                setTimeout(async () => {
+                  try {
+                    await projectDurationService.updateProjectDuration(projectId);
+                  } catch {
+                    // Silently fail - duration update is non-critical
+                  }
+                }, 500);
               }
             }}
             className="bg-card border-border text-foreground"

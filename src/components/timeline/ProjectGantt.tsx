@@ -3,7 +3,8 @@ import { format, addDays } from "date-fns";
 
 export interface TimelineMilestone {
   date: string;
-  endDate?: string; // NEW: Optional end date for single-line display
+  endDate?: string; // Optional end date for single-line display
+  end_date?: string; // Database field name for end date
   milestone: string;
   status?: "green" | "yellow" | "red";
   completion?: number;
@@ -60,13 +61,19 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
   const dayWidth = zoom === "weekly" ? 24 : zoom === "monthly" ? 8 : zoom === "quarterly" ? 3 : 1.5;
 
   // Derive range from milestones if not provided
-  const milestoneDates = milestones
+  const milestoneStartDates = milestones
     .map((m) => new Date(m.date))
     .filter((d) => !isNaN(d.getTime()))
     .sort((a, b) => a.getTime() - b.getTime());
+  
+  // Use end_date if available, otherwise fall back to date
+  const milestoneEndDates = milestones
+    .map((m) => new Date(m.endDate || m.end_date || m.date))
+    .filter((d) => !isNaN(d.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
 
-  let start = parseDate(startDate) || (milestoneDates[0] ? new Date(milestoneDates[0]) : null);
-  let end = parseDate(endDate) || (milestoneDates[milestoneDates.length - 1] ? new Date(milestoneDates[milestoneDates.length - 1]) : null);
+  let start = parseDate(startDate) || (milestoneStartDates[0] ? new Date(milestoneStartDates[0]) : null);
+  let end = parseDate(endDate) || (milestoneEndDates[milestoneEndDates.length - 1] ? new Date(milestoneEndDates[milestoneEndDates.length - 1]) : null);
 
   if (!start && !end) {
     return (
@@ -204,7 +211,7 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
     .map((m) => ({ 
       ...m, 
       _date: new Date(m.date), 
-      _endDate: m.endDate ? new Date(m.endDate) : null, // NEW: Preserve endDate
+      _endDate: m.endDate ? new Date(m.endDate) : (m.end_date ? new Date(m.end_date) : null), // Support both endDate and end_date
       _tasksCount: (m as any)?.tasksCount ?? 0 
     }))
     .filter((m) => !isNaN(m._date.getTime()))

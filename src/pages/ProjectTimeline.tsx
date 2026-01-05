@@ -94,6 +94,7 @@ const ProjectTimeline: React.FC = () => {
           healthCalculationType={(project as any)?.health_calculation_type}
           milestones={(project?.milestones || []).map(m => ({
             date: m.date,
+            endDate: m.end_date,
             milestone: m.milestone,
             status: (m.status as any) || "green",
             completion: m.completion,

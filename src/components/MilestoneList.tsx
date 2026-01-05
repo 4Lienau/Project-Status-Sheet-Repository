@@ -26,6 +26,7 @@ interface Task {
 interface Milestone {
   id?: string;
   date: string;
+  end_date?: string;
   milestone: string;
   owner: string;
   completion: number;
@@ -45,6 +46,7 @@ interface MilestoneListProps {
     status: string;
     onChange: (value: number) => void;
   }>;
+  projectId?: string;
 }
 
 export function MilestoneList({
@@ -53,6 +55,7 @@ export function MilestoneList({
   onUpdate,
   onDelete,
   ProgressPillComponent,
+  projectId,
 }: MilestoneListProps) {
   // Create a sorted view of milestones for display purposes only
   // This doesn't modify the original array, just creates a sorted reference to it
@@ -98,6 +101,7 @@ export function MilestoneList({
           onUpdate={(values) => onUpdate(originalIndex, values)}
           onDelete={() => onDelete(originalIndex)}
           ProgressPillComponent={ProgressPillComponent}
+          projectId={projectId}
         />
       ))}
     </div>

@@ -47,29 +47,38 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
     handleGenerateContent("milestones", context);
   };
 
-  // Helper function to calculate the date for a new milestone
-  const getNewMilestoneDate = () => {
+  // Helper function to calculate the dates for a new milestone
+  const getNewMilestoneDates = () => {
+    let startDate: Date;
+    
     if (!formData.milestones || formData.milestones.length === 0) {
       // If no milestones exist, use today's date
-      return new Date().toISOString().split("T")[0];
+      startDate = new Date();
+    } else {
+      // Find the latest end_date or date among existing milestones
+      const latestDate = formData.milestones
+        .map((milestone) => milestone.end_date || milestone.date)
+        .filter((date) => date && date.trim() !== "") // Filter out empty dates
+        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+
+      if (!latestDate) {
+        // If no valid dates found, use today's date
+        startDate = new Date();
+      } else {
+        // Start after the latest end date
+        startDate = new Date(latestDate);
+        startDate.setDate(startDate.getDate() + 1);
+      }
     }
 
-    // Find the latest date among existing milestones
-    const latestDate = formData.milestones
-      .map((milestone) => milestone.date)
-      .filter((date) => date && date.trim() !== "") // Filter out empty dates
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    // End date is 1 week (7 days) after start date
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 7);
 
-    if (!latestDate) {
-      // If no valid dates found, use today's date
-      return new Date().toISOString().split("T")[0];
-    }
-
-    // Add 7 days (1 week) to the latest date
-    const newDate = new Date(latestDate);
-    newDate.setDate(newDate.getDate() + 7);
-
-    return newDate.toISOString().split("T")[0];
+    return {
+      date: startDate.toISOString().split("T")[0],
+      end_date: endDate.toISOString().split("T")[0],
+    };
   };
 
   return (
@@ -111,8 +120,9 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
         {/* Column Headers */}
         <div className="grid grid-cols-[30px_1fr] gap-2 mb-3 pb-2 border-b border-border">
           <div></div>
-          <div className="grid grid-cols-[140px_1fr_150px_auto] gap-2">
-            <div className="font-semibold text-sm text-foreground">Date</div>
+          <div className="grid grid-cols-[140px_140px_1fr_150px_auto] gap-2">
+            <div className="font-semibold text-sm text-foreground">Start Date</div>
+            <div className="font-semibold text-sm text-foreground">End Date</div>
             <div className="font-semibold text-sm text-foreground">Milestone</div>
             <div className="font-semibold text-sm text-foreground">Owner</div>
             <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
@@ -169,13 +179,15 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
         <Button
           type="button"
           variant="outline"
-          onClick={() =>
+          onClick={() => {
+            const { date, end_date } = getNewMilestoneDates();
             setFormData((prev) => ({
               ...prev,
               milestones: [
                 ...prev.milestones,
                 {
-                  date: getNewMilestoneDate(),
+                  date,
+                  end_date,
                   milestone: "",
                   owner: "",
                   completion: 0,
@@ -183,8 +195,8 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
                   tasks: [],
                 },
               ],
-            }))
-          }
+            }));
+          }}
           className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 font-medium mt-4"
         >
           Add Milestone

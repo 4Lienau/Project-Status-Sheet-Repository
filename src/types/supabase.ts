@@ -361,6 +361,7 @@ export type Database = {
           completion: number
           created_at: string | null
           date: string
+          end_date: string | null
           id: string
           milestone: string
           owner: string
@@ -373,6 +374,7 @@ export type Database = {
           completion: number
           created_at?: string | null
           date: string
+          end_date?: string | null
           id?: string
           milestone: string
           owner: string
@@ -385,6 +387,7 @@ export type Database = {
           completion?: number
           created_at?: string | null
           date?: string
+          end_date?: string | null
           id?: string
           milestone?: string
           owner?: string

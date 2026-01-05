@@ -155,6 +155,7 @@ export const projectHealthAnalyzer = {
 
         return {
           date: milestone.date,
+          end_date: milestone.end_date,
           milestone: milestone.milestone,
           completion: milestone.completion,
           weight: milestone.weight || 3,

@@ -370,7 +370,8 @@ export const exportProjectsToExcel = async (
   const milestonesColumns = [
     { header: "Project ID", key: "project_id", width: 15 },
     { header: "Project", key: "project", width: 30 },
-    { header: "Date", key: "date", width: 15 },
+    { header: "Start Date", key: "date", width: 15 },
+    { header: "End Date", key: "end_date", width: 15 },
     { header: "Milestone", key: "milestone", width: 40 },
     { header: "Owner", key: "owner", width: 20 },
     { header: "Completion", key: "completion", width: 15 },
@@ -387,6 +388,7 @@ export const exportProjectsToExcel = async (
         project_id: project.project_id || "",
         project: stripHtmlTags(project.title),
         date: milestone.date,
+        end_date: milestone.end_date || "",
         milestone: stripHtmlTags(milestone.milestone || ""),
         owner: stripHtmlTags(milestone.owner || ""),
         completion: milestone.completion,
@@ -401,13 +403,13 @@ export const exportProjectsToExcel = async (
       cell.alignment = { vertical: "middle" };
 
       // Format completion percentage
-      if (colNumber === 6) {
+      if (colNumber === 7) {
         cell.numFmt = '0"%"';
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
       // Format status column
-      if (colNumber === 7) {
+      if (colNumber === 8) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
@@ -421,7 +423,7 @@ export const exportProjectsToExcel = async (
 
   // Add conditional formatting for status column
   milestonesSheet.addConditionalFormatting({
-    ref: `G2:G${allMilestones.length + 1}`,
+    ref: `H2:H${allMilestones.length + 1}`,
     rules: [
       {
         type: "containsText",
@@ -477,6 +479,7 @@ export const exportProjectsToExcel = async (
       m.project_id,
       m.project,
       m.date,
+      m.end_date,
       m.milestone,
       m.owner,
       m.completion,

@@ -36,6 +36,7 @@ import { useEffect } from "react";
 interface Milestone {
   id?: string;
   date: string;
+  end_date?: string;
   milestone: string;
   owner: string;
   completion: number;
@@ -69,9 +70,11 @@ const GanttChart: React.FC<GanttChartProps> = ({
 
   // Convert milestones to format required by gantt-schedule-timeline-calendar
   const ganttItems = milestones.map((milestone, index) => {
-    const date = new Date(milestone.date);
-    const endDate = new Date(date);
-    endDate.setDate(endDate.getDate() + 1); // Make it a 1-day task
+    const startDate = new Date(milestone.date);
+    // Use end_date if available, otherwise default to 1 day after start
+    const endDate = milestone.end_date 
+      ? new Date(milestone.end_date) 
+      : new Date(startDate.getTime() + 24 * 60 * 60 * 1000); // Add 1 day
 
     // Determine color based on status
     const statusColor = {
@@ -84,7 +87,7 @@ const GanttChart: React.FC<GanttChartProps> = ({
       id: milestone.id || `milestone-${index}`,
       label: stripHtmlTags(milestone.milestone),
       time: {
-        start: date.getTime(),
+        start: startDate.getTime(),
         end: endDate.getTime(),
       },
       style: {
@@ -104,12 +107,18 @@ const GanttChart: React.FC<GanttChartProps> = ({
   let timelineEnd = addMonths(today, 3); // Default 3 months ahead
 
   if (milestones.length > 0) {
-    // Sort dates to find earliest and latest
-    const dates = milestones
+    // Sort start dates to find earliest
+    const startDates = milestones
       .map((m) => new Date(m.date))
       .sort((a, b) => a.getTime() - b.getTime());
-    timelineStart = dates[0];
-    timelineEnd = dates[dates.length - 1];
+    
+    // Sort end dates (use end_date if available, otherwise fall back to date)
+    const endDates = milestones
+      .map((m) => new Date(m.end_date || m.date))
+      .sort((a, b) => a.getTime() - b.getTime());
+    
+    timelineStart = startDates[0];
+    timelineEnd = endDates[endDates.length - 1];
 
     // Add buffer before and after
     timelineStart = addDays(timelineStart, -15);

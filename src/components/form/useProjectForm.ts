@@ -421,6 +421,7 @@ export const useProjectForm = (
         id: milestone.id,
         project_id: milestone.project_id,
         date: milestone.date || new Date().toISOString().split("T")[0],
+        end_date: milestone.end_date, // Include end date
         milestone: milestone.milestone || "",
         owner: milestone.owner || "",
         completion: milestone.completion || 0,

@@ -70,6 +70,7 @@ interface StatusSheetProps {
       | string[];
     milestones?: Array<{
       date?: string;
+      end_date?: string;
       milestone?: string;
       owner?: string;
       completion?: number;
@@ -812,8 +813,8 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                       <th className="py-1 pr-4 w-24 font-bold text-gray-900 dark:text-gray-900">
                         Status
                       </th>
-                      <th className="py-1 pr-4 w-32 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
-                        Date
+                      <th className="py-1 pr-4 w-40 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
+                        Start/End
                       </th>
                       <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900 w-full">
                         Milestone
@@ -854,14 +855,24 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                           <td className="py-1 pr-4 whitespace-nowrap text-gray-900 dark:text-gray-900">
                             <div className="flex items-center">
                               <span>
-                                {milestone.date
-                                  ? (() => {
-                                      // Parse date string directly as YYYY-MM-DD without timezone conversion
-                                      const [year, month, day] =
-                                        milestone.date.split("-");
-                                      return `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year.slice(-2)}`;
-                                    })()
-                                  : ""}
+                                {(() => {
+                                  // Format date as M/D (e.g., 8/1)
+                                  const formatDateShort = (dateStr: string | undefined) => {
+                                    if (!dateStr) return "";
+                                    const [year, month, day] = dateStr.split("-");
+                                    return `${parseInt(month)}/${parseInt(day)}`;
+                                  };
+                                  
+                                  const startDate = formatDateShort(milestone.date);
+                                  const endDate = formatDateShort(milestone.end_date);
+                                  
+                                  if (startDate && endDate) {
+                                    return `${startDate} - ${endDate}`;
+                                  } else if (startDate) {
+                                    return startDate;
+                                  }
+                                  return "";
+                                })()}
                               </span>
                               {/* Show change indicator for date changes */}
                               {(() => {

@@ -100,13 +100,19 @@ export const calculateProjectDuration = (milestones: Milestone[]) => {
     };
   }
 
-  // Find earliest and latest milestone dates
-  const dates = milestones
+  // Find earliest start dates and latest end dates
+  const startDates = milestones
     .map((m) => new Date(m.date))
     .filter((date) => !isNaN(date.getTime()))
     .sort((a, b) => a.getTime() - b.getTime());
 
-  if (dates.length === 0) {
+  // Use end_date if available, otherwise fall back to date
+  const endDates = milestones
+    .map((m) => new Date(m.end_date || m.date))
+    .filter((date) => !isNaN(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  if (startDates.length === 0) {
     return {
       startDate: null,
       endDate: null,
@@ -117,8 +123,8 @@ export const calculateProjectDuration = (milestones: Milestone[]) => {
     };
   }
 
-  const startDate = dates[0];
-  const endDate = dates[dates.length - 1];
+  const startDate = startDates[0];
+  const endDate = endDates[endDates.length - 1];
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
 
@@ -1103,7 +1109,10 @@ export const projectService = {
           console.log("[DEBUG] No current summary found for project");
           return null;
         }
-        console.error("[DEBUG] Error fetching project summary:", error);
+        // Only log non-network errors to reduce noise from transient failures
+        if (error.message && !error.message.includes("Failed to fetch")) {
+          console.error("[DEBUG] Error fetching project summary:", error);
+        }
         return null;
       }
 
@@ -1137,11 +1146,14 @@ export const projectService = {
         created_at: formattedTimestamp || "",
         is_stale: isStale,
       };
-    } catch (error) {
-      console.error(
-        "[DEBUG] Unexpected error in getLatestProjectSummary:",
-        error,
-      );
+    } catch (error: any) {
+      // Only log non-network errors to reduce noise from transient failures
+      if (error?.message && !error.message.includes("Failed to fetch")) {
+        console.error(
+          "[DEBUG] Unexpected error in getLatestProjectSummary:",
+          error,
+        );
+      }
       return null;
     }
   },
@@ -1345,6 +1357,7 @@ export const projectService = {
             data.milestones.map((m) => ({
               project_id: id,
               date: m.date,
+              end_date: m.end_date,
               milestone: m.milestone,
               owner: m.owner,
               completion: m.completion,
@@ -1814,6 +1827,7 @@ export const projectService = {
               data.milestones.map((m) => ({
                 project_id: project.id,
                 date: m.date,
+                end_date: m.end_date,
                 milestone: m.milestone,
                 owner: m.owner,
                 completion: m.completion,

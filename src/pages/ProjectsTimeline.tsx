@@ -286,6 +286,7 @@ const ProjectsTimeline: React.FC = () => {
               const title = project.title ? project.title.replace(/<[^>]*>/g, "") : "Untitled Project";
               const milestones: TimelineMilestone[] = (project.milestones || []).map((m) => ({
                 date: m.date,
+                endDate: m.end_date,
                 milestone: m.milestone,
                 status: (m.status as any) || "green",
                 completion: m.completion,

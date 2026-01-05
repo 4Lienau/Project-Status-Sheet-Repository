@@ -999,6 +999,7 @@ const ProjectDashboard: React.FC = () => {
                   .filter((m) => m.milestone.trim() !== "")
                   .map((m) => ({
                     date: m.date,
+                    end_date: m.end_date,
                     milestone: m.milestone,
                     owner: m.owner,
                     completion: m.completion,

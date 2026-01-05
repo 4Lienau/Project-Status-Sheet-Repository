@@ -95,6 +95,7 @@ export const healthStatusDebugger = {
           weight: m.weight || 3,
           status: m.status,
           date: m.date,
+          end_date: m.end_date,
         })),
         calculatedColor,
         storedComputedColor,

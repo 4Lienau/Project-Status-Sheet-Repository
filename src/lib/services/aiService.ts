@@ -157,17 +157,23 @@ export const aiService = {
       if (type === "analysis") {
         return `<p>Unable to generate analysis at this time. ${errorMessage}</p><p>Please try again in a few moments.</p>`;
       } else if (type === "milestones") {
+        const today = new Date();
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
         return this.processMilestones(
           JSON.stringify([
             {
-              date: new Date().toISOString().split("T")[0],
+              date: today.toISOString().split("T")[0],
+              end_date: new Date(today.getTime() + oneWeek).toISOString().split("T")[0],
               milestone: "Project Kickoff",
               owner: "Project Manager",
               completion: 0,
               status: "green",
             },
             {
-              date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+              date: new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split("T")[0],
+              end_date: new Date(today.getTime() + 21 * 24 * 60 * 60 * 1000)
                 .toISOString()
                 .split("T")[0],
               milestone: "Project Closeout",
@@ -229,9 +235,19 @@ export const aiService = {
           const date = new Date(oneWeekFromToday);
           date.setDate(oneWeekFromToday.getDate() + index * 14); // Add two weeks (14 days) for each subsequent milestone
 
+          // Calculate start date
+          const startDate = milestone.date || date.toISOString().split("T")[0];
+          
+          // Calculate end date: 1 week (7 days) after start date
+          const startDateObj = new Date(startDate);
+          const endDateObj = new Date(startDateObj);
+          endDateObj.setDate(endDateObj.getDate() + 7);
+          const endDate = milestone.end_date || endDateObj.toISOString().split("T")[0];
+
           return {
             ...milestone,
-            date: milestone.date || date.toISOString().split("T")[0], // Use provided date or calculate one
+            date: startDate,
+            end_date: endDate,
             owner: milestone.owner || "Project Manager", // Provide default owner if missing
             completion:
               typeof milestone.completion === "number"
@@ -251,6 +267,9 @@ export const aiService = {
       const defaultMilestones = [
         {
           date: oneWeekFromToday.toISOString().split("T")[0],
+          end_date: new Date(oneWeekFromToday.getTime() + 7 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
           milestone: "Project Kickoff",
           owner: "Project Manager",
           completion: 0,
@@ -258,6 +277,9 @@ export const aiService = {
         },
         {
           date: new Date(oneWeekFromToday.getTime() + 14 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+          end_date: new Date(oneWeekFromToday.getTime() + 21 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
           milestone: "Requirements Gathering",
@@ -269,6 +291,9 @@ export const aiService = {
           date: new Date(oneWeekFromToday.getTime() + 28 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
+          end_date: new Date(oneWeekFromToday.getTime() + 35 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
           milestone: "Design Phase Complete",
           owner: "Design Lead",
           completion: 0,
@@ -276,6 +301,9 @@ export const aiService = {
         },
         {
           date: new Date(oneWeekFromToday.getTime() + 42 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+          end_date: new Date(oneWeekFromToday.getTime() + 49 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
           milestone: "Project Closeout",
