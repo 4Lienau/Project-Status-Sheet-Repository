@@ -1393,7 +1393,7 @@ export const projectService = {
               milestone_id: milestoneId,
               description: task.description,
               assignee: task.assignee || milestone.owner,
-              date: task.date || milestone.date,
+              date: task.date || null,
               completion: task.completion || 0,
               duration_days: task.duration_days || 1,
             };

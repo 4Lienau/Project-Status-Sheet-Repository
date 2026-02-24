@@ -14,11 +14,14 @@
  * Called by: src/components/MilestoneSortableItem.tsx
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, ArrowUpCircle } from "lucide-react";
+import { Trash2, ArrowUpCircle, Calendar as CalendarIcon } from "lucide-react";
 import UserSelectionInput from "@/components/ui/user-selection-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 interface Task {
   id?: string;
@@ -35,6 +38,59 @@ interface TaskListProps {
   onPromoteTask?: (taskIndex: number) => void;
   defaultAssignee: string;
   defaultDate: string;
+}
+
+function TaskDatePicker({
+  date,
+  onDateChange,
+}: {
+  date: string;
+  onDateChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const parsedDate = date
+    ? (() => {
+        const [year, month, day] = date.split("-");
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      })()
+    : undefined;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-start text-left font-normal h-10 bg-card/50 backdrop-blur-sm border-border text-foreground"
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? (
+            (() => {
+              const [year, month, day] = date.split("-");
+              return `${month.padStart(2, "0")}/${day.padStart(2, "0")}/${year}`;
+            })()
+          ) : (
+            <span className="text-muted-foreground">Select date</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={parsedDate}
+          defaultMonth={parsedDate}
+          onSelect={(selectedDate) => {
+            if (selectedDate) {
+              const formattedDate = format(selectedDate, "yyyy-MM-dd");
+              onDateChange(formattedDate);
+              setOpen(false);
+            }
+          }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function TaskList({
@@ -58,7 +114,7 @@ export function TaskList({
         id: generateId(),
         description: "",
         assignee: defaultAssignee,
-        date: defaultDate,
+        date: "",
         completion: 0,
         duration_days: 1,
       },
@@ -144,13 +200,11 @@ export function TaskList({
             multiSelect={false}
             className="bg-card/50 backdrop-blur-sm border-border"
           />
-          <Input
-            type="date"
-            value={task.date}
-            onChange={(e) =>
-              handleUpdateTask(originalIndex, "date", e.target.value)
+          <TaskDatePicker
+            date={task.date || ""}
+            onDateChange={(value) =>
+              handleUpdateTask(originalIndex, "date", value)
             }
-            className="bg-card/50 backdrop-blur-sm border-border text-foreground"
           />
           <Input
             type="number"

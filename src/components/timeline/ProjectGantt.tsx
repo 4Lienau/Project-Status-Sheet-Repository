@@ -1,7 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { format, addDays } from "date-fns";
-import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, GripVertical, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export interface TimelineTask {
   description: string;
@@ -275,7 +281,7 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
   // Toggle all milestones that have tasks
   const toggleAllMilestones = () => {
     const milestonesWithTasks = rows
-      .map((r, idx) => ({ idx, hasTasks: (r.tasks?.length ?? 0) > 0 }))
+      .map((r, idx) => ({ idx, hasTasks: (r.tasks?.filter(t => t.date)?.length ?? 0) > 0 }))
       .filter(m => m.hasTasks)
       .map(m => m.idx);
     
@@ -292,15 +298,69 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
     }
   };
 
-  // Dynamic left column width to fit labels up to MAX_LABEL_CHARS
-  const MAX_LABEL_CHARS = 45;
-  const CHAR_WIDTH_APPROX = 8; // px per character (approx.)
-  const PADDING = 80; // px (icon + padding)
+  // Dynamic left column width to auto-fit the longest milestone OR subtask label
+  const CHAR_WIDTH_APPROX = 7.2; // px per character (approx. for text-sm)
+  const PADDING = 80; // px (icon + expand chevron + padding)
+  const TASK_PADDING = 100; // extra indent for subtask rows (pl-8 ~32px + arrow)
   const MIN_LEFT_COL = 260;
-  const MAX_LEFT_COL = 600;
-  const longestLen = rows.length > 0 ? Math.max(...rows.map((r) => r.label.length)) : 0;
-  const visibleLen = Math.min(longestLen, MAX_LABEL_CHARS);
-  const leftColWidth = clamp(visibleLen * CHAR_WIDTH_APPROX + PADDING, MIN_LEFT_COL, MAX_LEFT_COL);
+  const MAX_LEFT_COL = 800;
+
+  // Measure longest milestone label
+  const longestMilestoneLen = rows.length > 0 ? Math.max(...rows.map((r) => r.label.length)) : 0;
+  // Measure longest subtask label (these have extra indent)
+  const longestTaskLen = rows.length > 0
+    ? Math.max(0, ...rows.flatMap((r) => (r.tasks || []).map((t) => (t.description || "Untitled task").length)))
+    : 0;
+
+  const autoWidthFromMilestones = longestMilestoneLen * CHAR_WIDTH_APPROX + PADDING;
+  const autoWidthFromTasks = longestTaskLen * CHAR_WIDTH_APPROX + TASK_PADDING;
+  const autoLeftColWidth = clamp(Math.max(autoWidthFromMilestones, autoWidthFromTasks), MIN_LEFT_COL, MAX_LEFT_COL);
+
+  // Resizable column: manual override (null = use auto width)
+  const [manualColWidth, setManualColWidth] = useState<number | null>(null);
+  const leftColWidth = manualColWidth ?? autoLeftColWidth;
+
+  // Drag-to-resize logic
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = leftColWidth;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = ev.clientX - dragStartX.current;
+      const newWidth = clamp(dragStartWidth.current + delta, MIN_LEFT_COL, MAX_LEFT_COL);
+      setManualColWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      isDragging.current = false;
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [leftColWidth]);
+
+  // Reset manual width when auto width changes significantly (e.g. new data)
+  // Double-click the handle to reset to auto
+  const handleResizeReset = useCallback(() => {
+    setManualColWidth(null);
+  }, []);
+
+  // Truncation based on actual column width
+  const maxCharsForWidth = (width: number, padding: number) => Math.max(10, Math.floor((width - padding) / CHAR_WIDTH_APPROX));
 
   const today = new Date();
   const showToday = Boolean(
@@ -316,8 +376,8 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
     ? "bg-yellow-500 border-yellow-600"
     : "bg-green-500 border-green-600";
 
-  // Check if any milestones have tasks and if all are expanded
-  const milestonesWithTasks = rows.filter(r => r.tasks && r.tasks.length > 0);
+  // Check if any milestones have tasks with dates and if all are expanded
+  const milestonesWithTasks = rows.filter(r => r.tasks && r.tasks.filter(t => t.date).length > 0);
   const allExpanded = milestonesWithTasks.length > 0 && 
     milestonesWithTasks.every((_, idx) => expandedMilestones.has(rows.findIndex(r => r === milestonesWithTasks[idx])));
 
@@ -362,8 +422,8 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
 
       {/* FIXED: New layout with fixed left column and scrollable right section */}
       <div className="flex border border-border rounded-lg overflow-hidden">
-        {/* Fixed left column */}
-        <div className="flex-shrink-0 bg-card" style={{ width: leftColWidth }}>
+        {/* Fixed left column with resize handle */}
+        <div className="flex-shrink-0 bg-card relative border-r border-border" style={{ width: leftColWidth }}>
           {/* Left header */}
           <div className="h-14 flex items-center px-3 text-xs text-muted-foreground border-b border-border bg-card">
             {rowLabelText}
@@ -371,8 +431,10 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
           {/* Left labels */}
           {rows.length > 0 ? (
             rows.map((r, idx) => {
-              const displayLabel = r.label.length > MAX_LABEL_CHARS ? `${r.label.slice(0, MAX_LABEL_CHARS - 1)}…` : r.label;
-              const hasTasks = r.tasks && r.tasks.length > 0;
+              const maxChars = maxCharsForWidth(leftColWidth, PADDING);
+              const displayLabel = r.label.length > maxChars ? `${r.label.slice(0, maxChars - 1)}…` : r.label;
+              const tasksWithDates = r.tasks ? r.tasks.filter(t => t.date) : [];
+              const hasTasks = tasksWithDates.length > 0;
               const isExpanded = expandedMilestones.has(idx);
               return (
                 <React.Fragment key={idx}>
@@ -391,18 +453,20 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
                     <div className="truncate">{displayLabel}</div>
                     {hasTasks && (
                       <span className="ml-1.5 text-xs text-muted-foreground flex-shrink-0">
-                        ({r.tasks!.length})
+                        ({tasksWithDates.length})
                       </span>
                     )}
                   </div>
                   {/* Task sub-row labels */}
                   {isExpanded && r.tasks && r.tasks.map((task, tIdx) => {
+                    if (!task.date) return null; // Ignore subtasks with no start date
                     const taskLabel = task.description || "Untitled task";
-                    const truncatedTaskLabel = taskLabel.length > (MAX_LABEL_CHARS - 4) ? `${taskLabel.slice(0, MAX_LABEL_CHARS - 5)}…` : taskLabel;
+                    const taskMaxChars = maxCharsForWidth(leftColWidth, TASK_PADDING);
+                    const truncatedTaskLabel = taskLabel.length > taskMaxChars ? `${taskLabel.slice(0, taskMaxChars - 1)}…` : taskLabel;
                     return (
                       <div
                         key={`task-label-${idx}-${tIdx}`}
-                        className="h-[30px] pl-8 pr-3 flex items-center border-b border-border/50 bg-card/60"
+                        className="h-[32px] pl-8 pr-3 flex items-center border-b border-border/50 bg-card/60"
                         title={`${taskLabel} (${task.assignee || "unassigned"})`}
                       >
                         <span className="text-xs text-muted-foreground truncate">↳ {truncatedTaskLabel}</span>
@@ -417,6 +481,17 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
               Project
             </div>
           )}
+          {/* Resize handle */}
+          <div
+            className="absolute top-0 right-0 w-[6px] h-full cursor-col-resize z-10 group hover:bg-primary/20 active:bg-primary/30 transition-colors"
+            onMouseDown={handleResizeStart}
+            onDoubleClick={handleResizeReset}
+            title="Drag to resize column • Double-click to auto-fit"
+          >
+            <div className="absolute top-1/2 -translate-y-1/2 right-0 w-[6px] h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <GripVertical className="h-3 w-3 text-muted-foreground" />
+            </div>
+          </div>
         </div>
 
         {/* Scrollable right section */}
@@ -467,10 +542,11 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
                 const color = statusColor(r.status);
                 const pct = clamp((r.completion ?? 0) / 100, 0, 1);
                 const progressWidth = Math.max(0, Math.floor(width * pct));
-                const displayLabel = r.label.length > MAX_LABEL_CHARS ? `${r.label.slice(0, MAX_LABEL_CHARS - 1)}…` : r.label;
+                const displayLabel = r.label;
                 const durationDays = dateDiffInDays(r.start, r.end) + 1;
                 const isExpanded = expandedMilestones.has(idx);
-                const hasTasks = r.tasks && r.tasks.length > 0;
+                const tasksWithDates = r.tasks ? r.tasks.filter(t => t.date) : [];
+                const hasTasks = tasksWithDates.length > 0;
                 return (
                   <React.Fragment key={idx}>
                     <div className="relative border-b border-border h-[38px] bg-background">
@@ -504,18 +580,15 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
                     </div>
                     {/* Task sub-rows */}
                     {isExpanded && r.tasks && r.tasks.map((task, tIdx) => {
-                      const taskStartDate = task.date ? new Date(task.date) : r.start;
+                      if (!task.date) return null; // Ignore subtasks with no start date
+                      const taskStartDate = new Date(task.date);
                       const taskDuration = task.duration_days || 1;
                       const taskEndDate = addDays(taskStartDate, taskDuration);
                       const taskLeft = clamp(xForDate(taskStartDate), 0, gridWidth);
-                      const taskRight = clamp(xForDate(taskEndDate), 0, gridWidth);
-                      const taskWidth = Math.max(minBarPx, taskRight - taskLeft);
                       const taskPct = clamp((task.completion ?? 0) / 100, 0, 1);
-                      const taskProgressWidth = Math.max(0, Math.floor(taskWidth * taskPct));
-                      // Task bars use a distinct purple/indigo color to differentiate from milestones
-                      const taskColor = "bg-purple-400/70 border-purple-600/70";
+                      const completionColor = taskPct >= 1 ? "text-white border border-emerald-500 bg-emerald-500/80 shadow-sm shadow-emerald-500/30 ring-1 ring-emerald-400/30" : taskPct >= 0.5 ? "text-white border border-sky-500 bg-sky-500/80 shadow-sm shadow-sky-500/30 ring-1 ring-sky-400/30" : "text-white border border-rose-500 bg-rose-500/80 shadow-sm shadow-rose-500/30 ring-1 ring-rose-400/30";
                       return (
-                        <div key={`task-bar-${idx}-${tIdx}`} className="relative border-b border-border/50 h-[30px] bg-background/50">
+                        <div key={`task-bar-${idx}-${tIdx}`} className="relative border-b border-border/50 h-[32px] bg-background/50">
                           {/* Grid lines for task rows */}
                           {ticksPrimary.map((t, i) => (
                             <div key={`task-${idx}-${tIdx}-p-${i}`} className="absolute top-0 bottom-0 w-[1.5px] bg-border/50" style={{ left: t.left }} />
@@ -526,19 +599,52 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
                           {showToday && (
                             <div className="absolute top-0 bottom-0 w-[3px] bg-red-500/50" style={{ left: todayLeft || 0 }} />
                           )}
-                          {/* Task bar */}
-                          <div
-                            className={`absolute top-1 h-5 rounded border border-dashed text-[10px] leading-5 text-foreground/80 px-1.5 overflow-hidden whitespace-nowrap ${taskColor}`}
-                            style={{ left: taskLeft, width: taskWidth }}
-                            title={
-                              `${task.description || "Untitled"}\nAssignee: ${task.assignee || "unassigned"}\n` +
-                              `Start: ${task.date ? format(taskStartDate, "MMM d, yyyy") : "n/a"}\nDuration: ${taskDuration} day${taskDuration === 1 ? "" : "s"}\n% Complete: ${Math.round(task.completion ?? 0)}%`
-                            }
-                          >
-                            {/* Task progress overlay */}
-                            <div className="absolute inset-y-0 left-0 bg-white/25" style={{ width: taskProgressWidth }} />
-                            <span className="truncate">{task.description || "Untitled"}</span>
-                          </div>
+                          {/* Task icon with tooltip */}
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={`absolute top-[1px] flex items-center justify-center w-7 h-7 rounded-md cursor-pointer hover:scale-115 hover:brightness-110 transition-all duration-200 ${completionColor}`}
+                                  style={{ left: Math.max(0, taskLeft - 10) }}
+                                >
+                                  <ListTodo className="h-3.5 w-3.5 drop-shadow-sm" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                align="start"
+                                className="bg-popover text-popover-foreground border border-border shadow-xl rounded-lg p-0 max-w-xs"
+                              >
+                                <div className="p-3 space-y-2.5">
+                                  <div className="font-semibold text-sm leading-tight">
+                                    {task.description || "Untitled"}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                                    <div className="text-muted-foreground">Assignee</div>
+                                    <div className="font-medium">{task.assignee || "Unassigned"}</div>
+                                    <div className="text-muted-foreground">Start Date</div>
+                                    <div className="font-medium">{format(taskStartDate, "MMM d, yyyy")}</div>
+                                    <div className="text-muted-foreground">End Date</div>
+                                    <div className="font-medium">{format(taskEndDate, "MMM d, yyyy")}</div>
+                                    <div className="text-muted-foreground">Duration</div>
+                                    <div className="font-medium">{taskDuration} day{taskDuration === 1 ? "" : "s"}</div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-muted-foreground">Completion</span>
+                                      <span className="font-semibold">{Math.round(task.completion ?? 0)}%</span>
+                                    </div>
+                                    <div className="w-full bg-muted rounded-full h-1.5">
+                                      <div
+                                        className={`h-1.5 rounded-full transition-all ${taskPct >= 1 ? "bg-green-500" : taskPct >= 0.5 ? "bg-blue-500" : "bg-purple-500"}`}
+                                        style={{ width: `${Math.round(task.completion ?? 0)}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       );
                     })}
@@ -574,7 +680,7 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500 border border-green-600" /> Green</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-yellow-500 border border-yellow-600" /> Yellow</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-500 border border-red-600" /> Red</div>
-        <div className="flex items-center gap-2"><span className="w-4 h-2 bg-green-400/60 border border-dashed border-green-500/60 rounded-sm" /> Sub-task</div>
+        <div className="flex items-center gap-2"><span className="w-5 h-5 rounded-[3px] border border-rose-500 bg-rose-500/80 shadow-sm shadow-rose-500/30 ring-1 ring-rose-400/30 flex items-center justify-center text-white"><ListTodo className="h-2.5 w-2.5" /></span> Sub-task (hover for details)</div>
         {showToday && <div className="flex items-center gap-2"><span className="w-[3px] h-4 bg-red-500" /> Today</div>}
       </div>
     </div>
