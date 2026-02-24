@@ -21,6 +21,7 @@ interface Task {
   assignee: string;
   date: string;
   completion: number;
+  duration_days?: number;
 }
 
 interface Milestone {
@@ -40,6 +41,7 @@ interface MilestoneListProps {
   onMilestonesChange: (milestones: Milestone[]) => void;
   onUpdate: (index: number, values: Partial<Milestone>) => void;
   onDelete: (index: number) => void;
+  onPromoteTask?: (task: Task, milestoneIndex: number) => void;
   setIsDragging?: (dragging: boolean) => void;
   ProgressPillComponent?: React.ComponentType<{
     completion: number;
@@ -54,6 +56,7 @@ export function MilestoneList({
   onMilestonesChange,
   onUpdate,
   onDelete,
+  onPromoteTask,
   ProgressPillComponent,
   projectId,
 }: MilestoneListProps) {
@@ -100,6 +103,8 @@ export function MilestoneList({
           milestone={milestone}
           onUpdate={(values) => onUpdate(originalIndex, values)}
           onDelete={() => onDelete(originalIndex)}
+          onPromoteTask={onPromoteTask}
+          milestoneIndex={originalIndex}
           ProgressPillComponent={ProgressPillComponent}
           projectId={projectId}
         />

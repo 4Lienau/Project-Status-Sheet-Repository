@@ -476,7 +476,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                 </div>
               </div>
 
-              <div className="flex-1 flex items-start justify-end ml-24 gap-4">
+              <div className="flex-1 flex items-start ml-8 gap-4">
                 <div className="flex-1">
                   <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                     Sponsors
@@ -519,7 +519,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
             className={`border-2 border-gray-300 p-3 mb-2 ${getChangedSectionClass("budget_total") || getChangedSectionClass("budget_actuals") || getChangedSectionClass("budget_forecast") || getChangedSectionClass("charter_link")}`}
           >
             <div className="flex items-center">
-              <div className="flex-1 grid grid-cols-4 gap-8">
+              <div className="flex-1 grid grid-cols-4 gap-4">
                 <div>
                   <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                     Budget
@@ -581,7 +581,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="border-l-2 border-gray-300 pl-4 ml-8">
+              <div className="border-l-2 border-gray-300 pl-4 ml-4">
                 <div className="font-bold mb-1 text-gray-900 dark:text-gray-900">
                   Charter
                 </div>
@@ -659,16 +659,22 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                 <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   Next Period's Key Activities
                 </h3>
-                <table className="w-full">
+                <table className="w-full table-fixed">
+                  <colgroup>
+                    <col style={{ width: '45%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '20%' }} />
+                  </colgroup>
                   <thead>
                     <tr className="text-left border-b border-gray-300">
-                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900 w-full">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
                         Activity
                       </th>
-                      <th className="py-1 pr-4 w-32 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
+                      <th className="py-1 pr-4 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
                         Date
                       </th>
-                      <th className="py-1 pr-4 w-20 font-bold text-gray-900 dark:text-gray-900">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
                         Progress
                       </th>
                       <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
@@ -714,8 +720,7 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                         return (
                           <tr key={index} className="border-b border-gray-300">
                             <td
-                              className={`py-1 pr-4 text-gray-900 dark:text-gray-900 ${shouldTruncate ? "whitespace-nowrap overflow-hidden text-ellipsis" : "break-words"}`}
-                              style={{ maxWidth: "200px" }}
+                              className={`py-1 pr-4 text-gray-900 dark:text-gray-900 ${shouldTruncate ? "overflow-hidden text-ellipsis" : "break-words"}`}
                             >
                               <div className="flex items-center">
                                 <span>{truncatedDescription}</span>
@@ -807,16 +812,21 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                 <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-900">
                   High Level Project Schedule
                 </h2>
-                <table className="w-full">
+                <table className="w-full table-fixed">
+                  <colgroup>
+                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '60%' }} />
+                  </colgroup>
                   <thead>
                     <tr className="text-left border-b border-gray-300">
-                      <th className="py-1 pr-4 w-24 font-bold text-gray-900 dark:text-gray-900">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
                         Status
                       </th>
-                      <th className="py-1 pr-4 w-40 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
+                      <th className="py-1 pr-4 font-bold whitespace-nowrap text-gray-900 dark:text-gray-900">
                         Start/End
                       </th>
-                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900 w-full">
+                      <th className="py-1 pr-4 font-bold text-gray-900 dark:text-gray-900">
                         Milestone
                       </th>
                     </tr>

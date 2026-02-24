@@ -41,6 +41,7 @@ export type Task = {
   assignee: string;
   date: string;
   completion: number;
+  duration_days?: number;
   created_at?: string;
   updated_at?: string;
 };
@@ -1224,6 +1225,7 @@ export const projectService = {
           assignee: string;
           date: string;
           completion: number;
+          duration_days?: number;
         }>;
       }>;
       accomplishments: string[];
@@ -1385,6 +1387,7 @@ export const projectService = {
         ) {
           const milestoneId = insertedMilestones[index].id;
           milestone.tasks.forEach((task) => {
+            console.log('[TASK_DEBUG] Raw task object in project.ts:', JSON.stringify(task, null, 2));
             const taskData = {
               project_id: id,
               milestone_id: milestoneId,
@@ -1392,14 +1395,21 @@ export const projectService = {
               assignee: task.assignee || milestone.owner,
               date: task.date || milestone.date,
               completion: task.completion || 0,
+              duration_days: task.duration_days || 1,
             };
+            console.log('[TASK_DEBUG] Task data being inserted:', {
+              description: task.description,
+              duration_days: task.duration_days,
+              taskData: taskData,
+            });
             tasksToInsert.push(taskData);
           });
         }
       });
 
       if (tasksToInsert.length > 0) {
-        const { error: tasksInsertError } = await supabase
+        console.log('[TASK_DEBUG] About to insert tasks:', tasksToInsert.length, 'tasks');
+        const { data: insertedTasks, error: tasksInsertError } = await supabase
           .from("tasks")
           .insert(tasksToInsert)
           .select();
@@ -1410,6 +1420,14 @@ export const projectService = {
             `Failed to insert tasks: ${tasksInsertError.message}`,
           );
         }
+        
+        console.log('[TASK_DEBUG] Tasks inserted successfully:', {
+          count: insertedTasks?.length || 0,
+          tasks: insertedTasks?.map(t => ({
+            description: t.description,
+            duration_days: t.duration_days,
+          }))
+        });
       }
 
       // Insert related data

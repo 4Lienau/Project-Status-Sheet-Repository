@@ -17,7 +17,7 @@
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, ArrowUpCircle } from "lucide-react";
 import UserSelectionInput from "@/components/ui/user-selection-input";
 
 interface Task {
@@ -26,11 +26,13 @@ interface Task {
   assignee: string;
   date: string;
   completion: number;
+  duration_days?: number;
 }
 
 interface TaskListProps {
   tasks: Task[];
   onTasksChange: (tasks: Task[]) => void;
+  onPromoteTask?: (taskIndex: number) => void;
   defaultAssignee: string;
   defaultDate: string;
 }
@@ -38,6 +40,7 @@ interface TaskListProps {
 export function TaskList({
   tasks,
   onTasksChange,
+  onPromoteTask,
   defaultAssignee,
   defaultDate,
 }: TaskListProps) {
@@ -57,6 +60,7 @@ export function TaskList({
         assignee: defaultAssignee,
         date: defaultDate,
         completion: 0,
+        duration_days: 1,
       },
     ];
     console.log("[DEBUG] TaskList - Adding new task, tasks now:", newTasks);
@@ -107,20 +111,21 @@ export function TaskList({
   });
 
   return (
-    <div className="pl-8 space-y-3 mt-2">
+    <div className="space-y-3 mt-2">
       {/* Column Headers */}
-      <div className="grid grid-cols-[1fr_150px_140px_100px_auto] gap-2 items-start">
+      <div className="grid grid-cols-[1fr_150px_140px_80px_100px_auto] gap-2 items-start">
         <div className="font-medium text-sm text-primary">Task</div>
-        <div className="font-medium text-sm text-primary">Assignee</div>
-        <div className="font-medium text-sm text-primary">Date</div>
-        <div className="font-medium text-sm text-primary">Completion %</div>
+        <div className="font-medium text-sm text-primary -ml-16">Assignee</div>
+        <div className="font-medium text-sm text-primary -ml-16">Start Date</div>
+        <div className="font-medium text-sm text-primary -ml-16">Days</div>
+        <div className="font-medium text-sm text-primary whitespace-nowrap -ml-16">Completion %</div>
         <div></div>
       </div>
 
       {sortedTasks.map(({ task, originalIndex }) => (
         <div
           key={task.id ?? `task-${originalIndex}`}
-          className="grid grid-cols-[1fr_150px_140px_100px_auto] gap-2 items-start"
+          className="grid grid-cols-[1fr_150px_140px_80px_100px_auto] gap-2 items-start"
         >
           <Input
             value={task.description}
@@ -149,6 +154,22 @@ export function TaskList({
           />
           <Input
             type="number"
+            min="1"
+            max="365"
+            value={task.duration_days || 1}
+            onChange={(e) =>
+              handleUpdateTask(
+                originalIndex,
+                "duration_days",
+                Math.max(1, Number(e.target.value)),
+              )
+            }
+            placeholder="Days"
+            title="Duration in days"
+            className="bg-card/50 backdrop-blur-sm border-border text-foreground"
+          />
+          <Input
+            type="number"
             min="0"
             max="100"
             value={task.completion}
@@ -161,15 +182,29 @@ export function TaskList({
             }
             className="bg-card/50 backdrop-blur-sm border-border text-foreground"
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDeleteTask(originalIndex)}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-1">
+            {onPromoteTask && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onPromoteTask(originalIndex)}
+                className="text-primary hover:text-primary hover:bg-primary/10"
+                title="Promote to Milestone"
+              >
+                <ArrowUpCircle className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDeleteTask(originalIndex)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       ))}
 

@@ -100,6 +100,13 @@ const ProjectTimeline: React.FC = () => {
             completion: m.completion,
             owner: m.owner,
             tasksCount: (m as any)?.tasks?.length ?? (m as any)?.tasks_count ?? (m as any)?.taskCount ?? 0,
+            tasks: ((m as any)?.tasks || []).map((t: any) => ({
+              description: t.description || "",
+              assignee: t.assignee || "",
+              date: t.date || "",
+              completion: t.completion || 0,
+              duration_days: t.duration_days || 1,
+            })),
           }))}
         />
       </div>

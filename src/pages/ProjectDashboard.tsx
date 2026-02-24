@@ -611,6 +611,19 @@ const ProjectDashboard: React.FC = () => {
       dbType: typeof project.project_id,
       willMapTo: (project.project_id ?? "").toString(),
     });
+    
+    // Debug milestones and tasks
+    console.log("[TASK_DEBUG] Milestones in getFormattedData:", {
+      milestonesCount: project.milestones?.length || 0,
+      milestones: project.milestones?.map((m: any) => ({
+        milestone: m.milestone,
+        tasksCount: m.tasks?.length || 0,
+        tasks: m.tasks?.map((t: any) => ({
+          description: t.description,
+          duration_days: t.duration_days,
+        }))
+      }))
+    });
 
     return {
       projectId: (project.project_id ?? "").toString(), // Add the missing projectId field
@@ -1011,13 +1024,11 @@ const ProjectDashboard: React.FC = () => {
                         assignee: t.assignee || m.owner,
                         date: t.date || m.date,
                         completion: t.completion || 0,
+                        duration_days: t.duration_days || 1,
                       })) || [],
                   }));
 
-                console.log(
-                  "ProjectDashboard: Formatted milestones for update:",
-                  JSON.stringify(formattedMilestones),
-                );
+
 
                 const updatedProject = await projectService.updateProject(
                   projectId,

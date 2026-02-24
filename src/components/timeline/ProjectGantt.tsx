@@ -1,5 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import { format, addDays } from "date-fns";
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export interface TimelineTask {
+  description: string;
+  assignee: string;
+  date: string;
+  completion: number;
+  duration_days?: number;
+}
 
 export interface TimelineMilestone {
   date: string;
@@ -10,6 +20,7 @@ export interface TimelineMilestone {
   completion?: number;
   owner?: string;
   tasksCount?: number; // optional count of tasks for tooltip
+  tasks?: TimelineTask[]; // full task data for sub-rows
 }
 
 interface ProjectGanttProps {
@@ -205,14 +216,31 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
 
   // Milestone rows: derive durations between consecutive milestones (last -> project end)
   const rowHeight = 38; // px per row
+  const taskRowHeight = 30; // px per task sub-row
   const minBarPx = Math.max(10, dayWidth); // ensure visibility for same-day ranges
+
+  // Track which milestones are expanded to show tasks
+  const [expandedMilestones, setExpandedMilestones] = useState<Set<number>>(new Set());
+
+  const toggleMilestoneExpand = (idx: number) => {
+    setExpandedMilestones(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
+      return next;
+    });
+  };
 
   const validMilestones = [...milestones]
     .map((m) => ({ 
       ...m, 
       _date: new Date(m.date), 
       _endDate: m.endDate ? new Date(m.endDate) : (m.end_date ? new Date(m.end_date) : null), // Support both endDate and end_date
-      _tasksCount: (m as any)?.tasksCount ?? 0 
+      _tasksCount: (m as any)?.tasksCount ?? (m.tasks?.length ?? 0),
+      _tasks: m.tasks || [],
     }))
     .filter((m) => !isNaN(m._date.getTime()))
     .sort((a, b) => a._date.getTime() - b._date.getTime());
@@ -224,6 +252,7 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
     status?: "green" | "yellow" | "red";
     completion?: number;
     tasksCount?: number;
+    tasks?: TimelineTask[];
   };
 
   const rows: Row[] = validMilestones.map((m, i) => {
@@ -239,8 +268,29 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
       status: m.status as Row["status"],
       completion: m.completion,
       tasksCount: m._tasksCount,
+      tasks: m._tasks,
     };
   });
+
+  // Toggle all milestones that have tasks
+  const toggleAllMilestones = () => {
+    const milestonesWithTasks = rows
+      .map((r, idx) => ({ idx, hasTasks: (r.tasks?.length ?? 0) > 0 }))
+      .filter(m => m.hasTasks)
+      .map(m => m.idx);
+    
+    if (milestonesWithTasks.length === 0) return;
+    
+    const allExpanded = milestonesWithTasks.every(idx => expandedMilestones.has(idx));
+    
+    if (allExpanded) {
+      // Collapse all
+      setExpandedMilestones(new Set());
+    } else {
+      // Expand all
+      setExpandedMilestones(new Set(milestonesWithTasks));
+    }
+  };
 
   // Dynamic left column width to fit labels up to MAX_LABEL_CHARS
   const MAX_LABEL_CHARS = 45;
@@ -266,6 +316,11 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
     ? "bg-yellow-500 border-yellow-600"
     : "bg-green-500 border-green-600";
 
+  // Check if any milestones have tasks and if all are expanded
+  const milestonesWithTasks = rows.filter(r => r.tasks && r.tasks.length > 0);
+  const allExpanded = milestonesWithTasks.length > 0 && 
+    milestonesWithTasks.every((_, idx) => expandedMilestones.has(rows.findIndex(r => r === milestonesWithTasks[idx])));
+
   return (
     <div className="w-full bg-card text-foreground border border-border rounded-lg p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -274,11 +329,33 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
             {format(start, "MMM d, yyyy")} – {format(end, "MMM d, yyyy")} ({totalDays} day{totalDays === 1 ? "" : "s"})
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <span className={`inline-block w-2.5 h-2.5 rounded-full border ${statusDotClass}`} />
-          <span className="text-sm">{statusText}</span>
-          {healthCalculationType && (
-            <span className="text-xs text-muted-foreground">{healthCalculationType === "manual" ? "Manual" : "Automatic"}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className={`inline-block w-2.5 h-2.5 rounded-full border ${statusDotClass}`} />
+            <span className="text-sm">{statusText}</span>
+            {healthCalculationType && (
+              <span className="text-xs text-muted-foreground">{healthCalculationType === "manual" ? "Manual" : "Automatic"}</span>
+            )}
+          </div>
+          {milestonesWithTasks.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleAllMilestones}
+              className="h-7 px-2 text-xs"
+            >
+              {allExpanded ? (
+                <>
+                  <ChevronsUpDown className="h-3.5 w-3.5 mr-1.5" />
+                  Collapse All
+                </>
+              ) : (
+                <>
+                  <ChevronsDownUp className="h-3.5 w-3.5 mr-1.5" />
+                  Expand All
+                </>
+              )}
+            </Button>
           )}
         </div>
       </div>
@@ -295,14 +372,44 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
           {rows.length > 0 ? (
             rows.map((r, idx) => {
               const displayLabel = r.label.length > MAX_LABEL_CHARS ? `${r.label.slice(0, MAX_LABEL_CHARS - 1)}…` : r.label;
+              const hasTasks = r.tasks && r.tasks.length > 0;
+              const isExpanded = expandedMilestones.has(idx);
               return (
-                <div 
-                  key={idx} 
-                  className="h-[38px] px-3 flex items-center border-b border-border bg-card"
-                  title={`${r.label} (${format(r.start, "MMM d")} – ${format(r.end, "MMM d")})`}
-                >
-                  <div className="truncate">{displayLabel}</div>
-                </div>
+                <React.Fragment key={idx}>
+                  <div 
+                    className="h-[38px] px-3 flex items-center border-b border-border bg-card cursor-pointer"
+                    title={`${r.label} (${format(r.start, "MMM d")} – ${format(r.end, "MMM d")})`}
+                    onClick={() => hasTasks && toggleMilestoneExpand(idx)}
+                  >
+                    {hasTasks ? (
+                      <span className="mr-1.5 flex-shrink-0 text-muted-foreground">
+                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                      </span>
+                    ) : (
+                      <span className="mr-1.5 w-3.5 flex-shrink-0" />
+                    )}
+                    <div className="truncate">{displayLabel}</div>
+                    {hasTasks && (
+                      <span className="ml-1.5 text-xs text-muted-foreground flex-shrink-0">
+                        ({r.tasks!.length})
+                      </span>
+                    )}
+                  </div>
+                  {/* Task sub-row labels */}
+                  {isExpanded && r.tasks && r.tasks.map((task, tIdx) => {
+                    const taskLabel = task.description || "Untitled task";
+                    const truncatedTaskLabel = taskLabel.length > (MAX_LABEL_CHARS - 4) ? `${taskLabel.slice(0, MAX_LABEL_CHARS - 5)}…` : taskLabel;
+                    return (
+                      <div
+                        key={`task-label-${idx}-${tIdx}`}
+                        className="h-[30px] pl-8 pr-3 flex items-center border-b border-border/50 bg-card/60"
+                        title={`${taskLabel} (${task.assignee || "unassigned"})`}
+                      >
+                        <span className="text-xs text-muted-foreground truncate">↳ {truncatedTaskLabel}</span>
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
               );
             })
           ) : (
@@ -362,36 +469,80 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
                 const progressWidth = Math.max(0, Math.floor(width * pct));
                 const displayLabel = r.label.length > MAX_LABEL_CHARS ? `${r.label.slice(0, MAX_LABEL_CHARS - 1)}…` : r.label;
                 const durationDays = dateDiffInDays(r.start, r.end) + 1;
+                const isExpanded = expandedMilestones.has(idx);
+                const hasTasks = r.tasks && r.tasks.length > 0;
                 return (
-                  <div key={idx} className="relative border-b border-border h-[38px] bg-background">
-                    {/* Vertical primary/secondary grid lines */}
-                    {ticksPrimary.map((t, i) => (
-                      <div key={`row-${idx}-p-${i}`} className="absolute top-0 bottom-0 w-[1.5px] bg-border" style={{ left: t.left }} />
-                    ))}
-                    {ticksSecondary.map((t, i) => (
-                      <div key={`row-${idx}-s-${i}`} className="absolute top-0 bottom-0 w-px bg-border/70" style={{ left: t.left }} />
-                    ))}
-                    {quarterLines.map((l, i) => (
-                      <div key={`row-${idx}-q-${i}`} className="absolute top-0 bottom-0 w-[2px] bg-foreground/30" style={{ left: l }} />
-                    ))}
-                    {/* Today marker */}
-                    {showToday && (
-                      <div className="absolute top-0 bottom-0 w-[3px] bg-red-500" style={{ left: todayLeft || 0 }} />
-                    )}
-                    {/* Bar */}
-                    <div
-                      className={`absolute top-1.5 h-6 rounded-md shadow-sm text-[11px] leading-6 text-white dark:text-black px-2 overflow-hidden whitespace-nowrap ${color}`}
-                      style={{ left, width }}
-                      title={
-                        `${r.label}\n${format(r.start, "MMM d, yyyy")} → ${format(r.end, "MMM d, yyyy")}\n` +
-                        `Status: ${r.status ?? "n/a"}\nTasks: ${r.tasksCount ?? 0}\n% Complete: ${Math.round((r.completion ?? 0))}%\nDuration: ${durationDays} day${durationDays === 1 ? "" : "s"}`
-                      }
-                    >
-                      {/* Progress overlay */}
-                      <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: progressWidth }} />
-                      <span className="truncate">{displayLabel}</span>
+                  <React.Fragment key={idx}>
+                    <div className="relative border-b border-border h-[38px] bg-background">
+                      {/* Vertical primary/secondary grid lines */}
+                      {ticksPrimary.map((t, i) => (
+                        <div key={`row-${idx}-p-${i}`} className="absolute top-0 bottom-0 w-[1.5px] bg-border" style={{ left: t.left }} />
+                      ))}
+                      {ticksSecondary.map((t, i) => (
+                        <div key={`row-${idx}-s-${i}`} className="absolute top-0 bottom-0 w-px bg-border/70" style={{ left: t.left }} />
+                      ))}
+                      {quarterLines.map((l, i) => (
+                        <div key={`row-${idx}-q-${i}`} className="absolute top-0 bottom-0 w-[2px] bg-foreground/30" style={{ left: l }} />
+                      ))}
+                      {/* Today marker */}
+                      {showToday && (
+                        <div className="absolute top-0 bottom-0 w-[3px] bg-red-500" style={{ left: todayLeft || 0 }} />
+                      )}
+                      {/* Bar */}
+                      <div
+                        className={`absolute top-1.5 h-6 rounded-md shadow-sm text-[11px] leading-6 text-white dark:text-black px-2 overflow-hidden whitespace-nowrap ${color}`}
+                        style={{ left, width }}
+                        title={
+                          `${r.label}\n${format(r.start, "MMM d, yyyy")} → ${format(r.end, "MMM d, yyyy")}\n` +
+                          `Status: ${r.status ?? "n/a"}\nTasks: ${r.tasksCount ?? 0}\n% Complete: ${Math.round((r.completion ?? 0))}%\nDuration: ${durationDays} day${durationDays === 1 ? "" : "s"}`
+                        }
+                      >
+                        {/* Progress overlay */}
+                        <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: progressWidth }} />
+                        <span className="truncate">{displayLabel}</span>
+                      </div>
                     </div>
-                  </div>
+                    {/* Task sub-rows */}
+                    {isExpanded && r.tasks && r.tasks.map((task, tIdx) => {
+                      const taskStartDate = task.date ? new Date(task.date) : r.start;
+                      const taskDuration = task.duration_days || 1;
+                      const taskEndDate = addDays(taskStartDate, taskDuration);
+                      const taskLeft = clamp(xForDate(taskStartDate), 0, gridWidth);
+                      const taskRight = clamp(xForDate(taskEndDate), 0, gridWidth);
+                      const taskWidth = Math.max(minBarPx, taskRight - taskLeft);
+                      const taskPct = clamp((task.completion ?? 0) / 100, 0, 1);
+                      const taskProgressWidth = Math.max(0, Math.floor(taskWidth * taskPct));
+                      // Task bars use a distinct purple/indigo color to differentiate from milestones
+                      const taskColor = "bg-purple-400/70 border-purple-600/70";
+                      return (
+                        <div key={`task-bar-${idx}-${tIdx}`} className="relative border-b border-border/50 h-[30px] bg-background/50">
+                          {/* Grid lines for task rows */}
+                          {ticksPrimary.map((t, i) => (
+                            <div key={`task-${idx}-${tIdx}-p-${i}`} className="absolute top-0 bottom-0 w-[1.5px] bg-border/50" style={{ left: t.left }} />
+                          ))}
+                          {ticksSecondary.map((t, i) => (
+                            <div key={`task-${idx}-${tIdx}-s-${i}`} className="absolute top-0 bottom-0 w-px bg-border/40" style={{ left: t.left }} />
+                          ))}
+                          {showToday && (
+                            <div className="absolute top-0 bottom-0 w-[3px] bg-red-500/50" style={{ left: todayLeft || 0 }} />
+                          )}
+                          {/* Task bar */}
+                          <div
+                            className={`absolute top-1 h-5 rounded border border-dashed text-[10px] leading-5 text-foreground/80 px-1.5 overflow-hidden whitespace-nowrap ${taskColor}`}
+                            style={{ left: taskLeft, width: taskWidth }}
+                            title={
+                              `${task.description || "Untitled"}\nAssignee: ${task.assignee || "unassigned"}\n` +
+                              `Start: ${task.date ? format(taskStartDate, "MMM d, yyyy") : "n/a"}\nDuration: ${taskDuration} day${taskDuration === 1 ? "" : "s"}\n% Complete: ${Math.round(task.completion ?? 0)}%`
+                            }
+                          >
+                            {/* Task progress overlay */}
+                            <div className="absolute inset-y-0 left-0 bg-white/25" style={{ width: taskProgressWidth }} />
+                            <span className="truncate">{task.description || "Untitled"}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })
             ) : (
@@ -423,6 +574,7 @@ const ProjectGantt: React.FC<ProjectGanttProps> = ({
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500 border border-green-600" /> Green</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-yellow-500 border border-yellow-600" /> Yellow</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-500 border border-red-600" /> Red</div>
+        <div className="flex items-center gap-2"><span className="w-4 h-2 bg-green-400/60 border border-dashed border-green-500/60 rounded-sm" /> Sub-task</div>
         {showToday && <div className="flex items-center gap-2"><span className="w-[3px] h-4 bg-red-500" /> Today</div>}
       </div>
     </div>

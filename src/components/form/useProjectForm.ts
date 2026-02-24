@@ -416,23 +416,57 @@ export const useProjectForm = (
       considerations: ensureConsiderationsAreStrings(formData.considerations),
       // Ensure milestones are properly formatted and ALL milestones are included
       // This is critical - we need to preserve all milestones including newly added ones
-      milestones: formData.milestones.map((milestone) => ({
-        // Preserve the ID if it exists (for existing milestones)
-        id: milestone.id,
-        project_id: milestone.project_id,
-        date: milestone.date || new Date().toISOString().split("T")[0],
-        end_date: milestone.end_date, // Include end date
-        milestone: milestone.milestone || "",
-        owner: milestone.owner || "",
-        completion: milestone.completion || 0,
-        status: milestone.status || "green",
-        weight: milestone.weight || 3, // Ensure weight is included
-        tasks: milestone.tasks || [],
-        // Preserve other fields that might be present
-        created_at: milestone.created_at,
-        updated_at: milestone.updated_at,
-      })),
+      milestones: formData.milestones.map((milestone) => {
+        const formattedMilestone = {
+          // Preserve the ID if it exists (for existing milestones)
+          id: milestone.id,
+          project_id: milestone.project_id,
+          date: milestone.date || new Date().toISOString().split("T")[0],
+          end_date: milestone.end_date, // Include end date
+          milestone: milestone.milestone || "",
+          owner: milestone.owner || "",
+          completion: milestone.completion || 0,
+          status: milestone.status || "green",
+          weight: milestone.weight || 3, // Ensure weight is included
+          tasks: milestone.tasks || [],
+          // Preserve other fields that might be present
+          created_at: milestone.created_at,
+          updated_at: milestone.updated_at,
+        };
+        
+        // DEBUG: Log task data to verify duration_days is preserved
+        if (formattedMilestone.tasks.length > 0) {
+          console.log('[TASK_DEBUG] Milestone tasks before submission:', {
+            milestone: milestone.milestone,
+            tasks: formattedMilestone.tasks.map((t: any) => {
+              console.log('[TASK_DEBUG] Full task object:', JSON.stringify(t, null, 2));
+              return {
+                description: t.description,
+                duration_days: t.duration_days,
+                durationDays: (t as any).durationDays,
+                allKeys: Object.keys(t),
+              };
+            })
+          });
+        }
+        
+        return formattedMilestone;
+      }),
     };
+    
+    // DEBUG: Check tasks in submissionData
+    console.log('[TASK_DEBUG] submissionData.milestones with tasks:', 
+      submissionData.milestones
+        .filter(m => m.tasks && m.tasks.length > 0)
+        .map(m => ({
+          milestone: m.milestone,
+          tasks: m.tasks.map((t: any) => ({
+            description: t.description,
+            duration_days: t.duration_days,
+            hasAllFields: Object.keys(t)
+          }))
+        }))
+    );
 
     // PROJECT ID DEBUG: Log Project ID in submission data
     console.log("[PROJECT_ID] In submission data:", {

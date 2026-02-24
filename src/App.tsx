@@ -16,7 +16,7 @@
  * Called by: src/main.tsx
  */
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import {
   useRoutes,
   Routes,
@@ -39,25 +39,28 @@ import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
 import { useSessionTracking } from "./lib/hooks/useSessionTracking";
 
-// Helper function to check authentication status
-const checkAuthStatus = (user, loading, initialCheckComplete) => {
-  // Still loading authentication state
-  if (loading || !initialCheckComplete) {
-    return "loading";
-  }
-
-  // Not authenticated
-  if (!user) {
-    return "unauthenticated";
-  }
-
-  // Authenticated
-  return "authenticated";
-};
-
 // Component to handle session tracking
 const SessionTracker = () => {
   const location = useLocation();
+
+  // Avoid hook-order issues: Session tracking depends on auth context,
+  // so don't call useSessionTracking until we're sure we're on a "main app" route.
+  // Tempo storyboard routes may render a different provider tree.
+  const isMainAppRoute =
+    location.pathname === "/" ||
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/login") ||
+    location.pathname.startsWith("/auth") ||
+    location.pathname.startsWith("/status-sheet") ||
+    location.pathname.startsWith("/project") ||
+    location.pathname.startsWith("/profile") ||
+    location.pathname.startsWith("/kpis") ||
+    location.pathname.startsWith("/roadmap") ||
+    location.pathname.startsWith("/overview") ||
+    location.pathname.startsWith("/projects-timeline");
+
+  if (!isMainAppRoute) return null;
+
   const { trackPageView, trackFeatureUse } = useSessionTracking();
 
   // Track page views
@@ -90,23 +93,12 @@ const SessionTracker = () => {
 // Protected route component that redirects to login if not authenticated
 const ProtectedRoute = ({ children, ...props }) => {
   const { user, loading } = useAuth();
-  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
-  const location = useLocation();
-
-  // Set a flag when initial check is complete
-  useEffect(() => {
-    if (!loading) {
-      setInitialCheckComplete(true);
-    }
-  }, [loading, location.pathname]);
-
-  const authStatus = checkAuthStatus(user, loading, initialCheckComplete);
 
   // Only filter out specific problematic props
   const { key, testID, tempoelementid, ...safeProps } = props;
 
   // Show loading state while checking authentication
-  if (authStatus === "loading") {
+  if (loading) {
     return (
       <div
         className="flex items-center justify-center min-h-screen"
@@ -123,7 +115,7 @@ const ProtectedRoute = ({ children, ...props }) => {
   }
 
   // Redirect to login if not authenticated
-  if (authStatus === "unauthenticated") {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -144,14 +136,24 @@ function App() {
     location.pathname.startsWith("/project") ||
     location.pathname.startsWith("/profile") ||
     location.pathname.startsWith("/kpis") ||
-    location.pathname.startsWith("/roadmap");
+    location.pathname.startsWith("/roadmap") ||
+    location.pathname.startsWith("/overview") ||
+    location.pathname.startsWith("/projects-timeline");
+
+  // Only call Tempo's useRoutes when we intend to render Tempo routes.
+  // This prevents a hook-order/provider-tree mismatch between Tempo routes and app routes.
+  const tempoRoutes =
+    import.meta.env.VITE_TEMPO === "true" && !isMainAppRoute
+      ? useRoutes(routes)
+      : null;
 
   // Only handle Tempo routes if we're NOT on a main application route
-  if (import.meta.env.VITE_TEMPO === "true" && !isMainAppRoute) {
-    const tempoRoutes = useRoutes(routes);
-    if (tempoRoutes) {
-      return <Suspense fallback={<p>Loading...</p>}>{tempoRoutes}</Suspense>;
-    }
+  if (
+    import.meta.env.VITE_TEMPO === "true" &&
+    !isMainAppRoute &&
+    tempoRoutes
+  ) {
+    return <Suspense fallback={<p>Loading...</p>}>{tempoRoutes}</Suspense>;
   }
 
   return (

@@ -10,6 +10,7 @@ import {
 import { MilestoneList } from "@/components/MilestoneList";
 import { ProgressPill } from "@/components/ui/progress-pill";
 import { SectionHeader } from "./SectionHeader";
+import { useToast } from "@/components/ui/use-toast";
 
 import { AIContextDialog } from "./AIContextDialog";
 
@@ -41,10 +42,47 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
   isGeneratingMilestones = false,
 }) => {
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const { toast } = useToast();
 
   const handleDialogGenerate = (context: string) => {
     setDialogOpen(false);
     handleGenerateContent("milestones", context);
+  };
+
+  // Handle promoting a sub-task to a full milestone
+  const handlePromoteTask = (task: { description: string; assignee: string; date: string; completion: number; duration_days?: number }, milestoneIndex: number) => {
+    const durationDays = task.duration_days || 1;
+    const startDate = task.date;
+
+    // Calculate end date from start date + duration
+    let endDate = startDate;
+    if (startDate) {
+      const start = new Date(startDate);
+      const end = new Date(start);
+      end.setDate(end.getDate() + durationDays);
+      endDate = end.toISOString().split("T")[0];
+    }
+
+    const newMilestone = {
+      date: startDate,
+      end_date: endDate,
+      milestone: task.description,
+      owner: task.assignee,
+      completion: task.completion,
+      status: "green" as const,
+      weight: 3,
+      tasks: [],
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      milestones: [...prev.milestones, newMilestone],
+    }));
+
+    toast({
+      title: "Task Promoted",
+      description: `"${task.description || "Untitled task"}" has been promoted to a milestone.`,
+    });
   };
 
   // Helper function to calculate the dates for a new milestone
@@ -118,18 +156,17 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
 
       <div className="space-y-4 bg-card/80 backdrop-blur-sm rounded-xl p-4 border-4 border-border shadow-lg">
         {/* Column Headers */}
-        <div className="grid grid-cols-[30px_1fr] gap-2 mb-3 pb-2 border-b border-border">
-          <div></div>
-          <div className="grid grid-cols-[140px_140px_1fr_150px_auto] gap-2">
+        <div className="mb-3 pb-2 border-b border-border">
+          <div className="grid grid-cols-[120px_120px_1fr_130px_auto] gap-2">
             <div className="font-semibold text-sm text-foreground">Start Date</div>
             <div className="font-semibold text-sm text-foreground">End Date</div>
             <div className="font-semibold text-sm text-foreground">Milestone</div>
             <div className="font-semibold text-sm text-foreground">Owner</div>
-            <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
-              <div className="font-semibold text-sm text-foreground">
+            <div className="grid grid-cols-[80px_60px_100px_36px] gap-1">
+              <div className="font-semibold text-sm text-foreground whitespace-nowrap">
                 % Complete
               </div>
-              <div className="font-semibold text-sm text-foreground flex items-center gap-1">
+              <div className="font-semibold text-sm text-foreground flex items-center gap-1 whitespace-nowrap">
                 Weight
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -146,7 +183,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <div className="font-semibold text-sm text-foreground">Status</div>
+              <div className="font-semibold text-sm text-foreground whitespace-nowrap">Status</div>
               <div></div>
             </div>
           </div>
@@ -173,6 +210,7 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
               milestones: prev.milestones.filter((_, i) => i !== index),
             }))
           }
+          onPromoteTask={handlePromoteTask}
           ProgressPillComponent={MilestoneProgressPill}
           projectId={formData.id}
         />

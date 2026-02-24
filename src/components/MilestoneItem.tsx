@@ -39,6 +39,7 @@ interface Task {
   assignee: string;
   date: string;
   completion: number;
+  duration_days?: number;
 }
 
 interface MilestoneItemProps {
@@ -54,6 +55,8 @@ interface MilestoneItemProps {
   };
   onUpdate: (values: any) => void;
   onDelete: () => void;
+  onPromoteTask?: (task: Task, milestoneIndex: number) => void;
+  milestoneIndex?: number;
   projectId?: string;
   ProgressPillComponent?: React.ComponentType<{
     completion: number;
@@ -66,6 +69,8 @@ export function MilestoneItem({
   milestone,
   onUpdate,
   onDelete,
+  onPromoteTask,
+  milestoneIndex,
   projectId,
   ProgressPillComponent,
 }: MilestoneItemProps) {
@@ -98,10 +103,24 @@ export function MilestoneItem({
     }
   };
 
+  const handlePromoteTask = (taskIndex: number) => {
+    const tasks = milestone.tasks || [];
+    const task = tasks[taskIndex];
+    if (!task) return;
+
+    // Remove the task from this milestone
+    const updatedTasks = tasks.filter((_, i) => i !== taskIndex);
+    handleTasksChange(updatedTasks);
+
+    // Notify parent to create a new milestone from this task
+    if (onPromoteTask && milestoneIndex !== undefined) {
+      onPromoteTask(task, milestoneIndex);
+    }
+  };
+
   return (
     <div className="border-b border-border py-1 bg-card rounded-md mb-2">
-      <div className="grid grid-cols-[1fr] gap-2">
-        <div className="grid grid-cols-[140px_140px_1fr_150px_auto] gap-2">
+      <div className="grid grid-cols-[120px_120px_1fr_130px_auto] gap-2">
           <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -307,7 +326,7 @@ export function MilestoneItem({
             multiSelect={false}
             className="bg-card/50 backdrop-blur-sm border-border"
           />
-          <div className="grid grid-cols-[80px_70px_120px_40px] gap-2">
+          <div className="grid grid-cols-[80px_60px_100px_36px] gap-1">
             {ProgressPillComponent ? (
               <ProgressPillComponent
                 completion={milestone.completion}
@@ -337,7 +356,7 @@ export function MilestoneItem({
                     weight: newWeight,
                   });
                 }}
-                className={`flex h-10 w-full rounded-md border border-input bg-background px-2 py-2 text-sm text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${(milestone.weight || 3) >= 4 ? "font-semibold text-primary" : ""}`}
+                className={`flex h-10 w-full rounded-md border border-input bg-background px-1 py-2 text-xs text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${(milestone.weight || 3) >= 4 ? "font-semibold text-primary" : ""}`}
                 title="Milestone Weight (1-5)"
               >
                 <option value="1">1</option>
@@ -360,7 +379,7 @@ export function MilestoneItem({
                   status: e.target.value as "green" | "yellow" | "red",
                 })
               }
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-1 py-2 text-xs text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="green">On Track</option>
               <option value="yellow">At Risk</option>
@@ -383,12 +402,12 @@ export function MilestoneItem({
             </Button>
           </div>
         </div>
-      </div>
 
       {showTasks && (
         <TaskList
           tasks={milestone.tasks || []}
           onTasksChange={handleTasksChange}
+          onPromoteTask={onPromoteTask ? handlePromoteTask : undefined}
           defaultAssignee={milestone.owner}
           defaultDate={milestone.date}
         />

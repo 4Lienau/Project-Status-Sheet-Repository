@@ -9,18 +9,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    // Handle expired refresh tokens gracefully
-    onAuthStateChange: (event, session) => {
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('Token refreshed successfully');
-      }
-      // Handle token refresh failures silently
-      if (event === 'TOKEN_REFRESHED' && !session) {
-        console.log('Token refresh failed, clearing session');
-        localStorage.removeItem('supabase.auth.token');
-        localStorage.removeItem('supabase.auth.refreshToken');
-      }
-    },
   },
   global: {
     headers: {
@@ -29,14 +17,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Add error handler for auth errors
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT' && !session) {
-    // Clear any stale tokens from localStorage
-    localStorage.removeItem('supabase.auth.token');
-    localStorage.removeItem('supabase.auth.refreshToken');
-  }
-});
+// Note: Auth state change handling is centralized in AuthContext.tsx
+// Do NOT add onAuthStateChange here to avoid duplicate subscriptions.
 
 // Intercept and suppress refresh token errors
 const originalConsoleError = console.error;
