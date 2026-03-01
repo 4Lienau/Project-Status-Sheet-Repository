@@ -28,6 +28,7 @@ import RisksSection from "@/components/form/RisksSection";
 import ConsiderationsSection from "@/components/form/ConsiderationsSection";
 import ChangesSection from "@/components/form/ChangesSection";
 import HealthCalculationSection from "@/components/form/HealthCalculationSection";
+import { AutoCopyAccomplishmentsDialog } from "@/components/form/AutoCopyAccomplishmentsDialog";
 
 // Import dialog components
 import {
@@ -100,6 +101,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     handleCancelPreview,
     generateContent,
     handleToggleAnalysis,
+
+    // Auto-copy accomplishments
+    showAutoCopyDialog,
+    setShowAutoCopyDialog,
+    pendingCompletedItems,
+    handleAutoCopyConfirm,
+    handleAutoCopyCancel,
   } = useProjectForm(initialData, onSubmit, projectId, onBack);
 
   // Calculate current health status color
@@ -382,6 +390,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               // Apply the selected milestones to the form data
               await handleApplyMilestones(selectedMilestones);
             }}
+          />
+
+          {/* Auto-Copy Accomplishments Dialog */}
+          <AutoCopyAccomplishmentsDialog
+            open={showAutoCopyDialog}
+            onOpenChange={setShowAutoCopyDialog}
+            completedItems={pendingCompletedItems}
+            onConfirm={handleAutoCopyConfirm}
+            onCancel={handleAutoCopyCancel}
           />
         </form>
       </div>

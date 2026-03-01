@@ -660,7 +660,15 @@ const ProjectDashboard: React.FC = () => {
       projectManager: project.project_manager || "",
       department: project.department || "",
       milestones: project.milestones || [],
-      accomplishments: project.accomplishments?.map((a) => a.description) || [],
+      accomplishments: project.accomplishments?.map((a) => ({
+        id: a.id,
+        description: a.description || "",
+        source_type: a.source_type || "manual",
+        source_id: a.source_id || null,
+        is_hidden: a.is_hidden || false,
+        is_deleted: a.is_deleted || false,
+        auto_generated: a.auto_generated || false,
+      })) || [],
       nextPeriodActivities:
         project.next_period_activities?.map((a) => ({
           description: a.description || "",
@@ -1172,7 +1180,7 @@ const ProjectDashboard: React.FC = () => {
                 : [],
               accomplishments: Array.isArray(project.accomplishments)
                 ? project.accomplishments.map((a) =>
-                    typeof a === "string" ? a : a.description,
+                    typeof a === "string" ? { description: a, source_type: "manual", source_id: null, is_hidden: false, is_deleted: false, auto_generated: false } : { id: a.id, description: a.description || "", source_type: a.source_type || "manual", source_id: a.source_id || null, is_hidden: a.is_hidden || false, is_deleted: a.is_deleted || false, auto_generated: a.auto_generated || false },
                   )
                 : [],
               nextPeriodActivities: Array.isArray(

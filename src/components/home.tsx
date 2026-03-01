@@ -816,7 +816,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                       description: "Project title is required",
                       variant: "destructive",
                     });
-                    return;
+                    return false;
                   }
 
                   try {
@@ -857,7 +857,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         (m) => m.milestone.trim() !== "",
                       ),
                       accomplishments: data.accomplishments.filter(
-                        (a) => a.trim() !== "",
+                        (a) => typeof a === "string" ? a.trim() !== "" : a.description?.trim() !== "",
                       ),
                       next_period_activities: data.nextPeriodActivities
                         .filter((a) => a.description.trim() !== "")
@@ -912,7 +912,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                       });
                       // Navigate to the new project's edit page
                       navigate(`/project/${project.id}/edit`);
+                      return true;
                     }
+                    return false;
                   } catch (error) {
                     console.error("Error creating project:", error);
                     toast({
@@ -921,6 +923,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         "Failed to create project. Please try again.",
                       variant: "destructive",
                     });
+                    return false;
                   }
                 }}
               />

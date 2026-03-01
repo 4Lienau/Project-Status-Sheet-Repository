@@ -17,26 +17,41 @@ export type Database = {
       accomplishments: {
         Row: {
           accomplishment: string
+          auto_generated: boolean | null
           created_at: string | null
           description: string
           id: string
+          is_deleted: boolean | null
+          is_hidden: boolean | null
           project_id: string | null
+          source_id: string | null
+          source_type: string | null
           updated_at: string | null
         }
         Insert: {
           accomplishment?: string
+          auto_generated?: boolean | null
           created_at?: string | null
           description: string
           id?: string
+          is_deleted?: boolean | null
+          is_hidden?: boolean | null
           project_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string | null
         }
         Update: {
           accomplishment?: string
+          auto_generated?: boolean | null
           created_at?: string | null
           description?: string
           id?: string
+          is_deleted?: boolean | null
+          is_hidden?: boolean | null
           project_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string | null
         }
         Relationships: [

@@ -1,9 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast, toastStyles } from "@/components/ui/use-toast";
 import { aiService } from "@/lib/services/aiService";
 import { projectService } from "@/lib/services/project";
 import { ensureConsiderationsAreStrings } from "./FormUtils";
+import {
+  detectNewlyCompletedItems,
+  detectUncompletedItems,
+  generateAccomplishmentDescription,
+  normalizeAccomplishments,
+  type AccomplishmentItem,
+  type CompletedItem,
+} from "@/lib/services/accomplishmentAutoService";
 
 const defaultFormData = {
   projectId: "",
@@ -95,6 +103,16 @@ export const useProjectForm = (
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Auto-copy accomplishments state
+  const [showAutoCopyDialog, setShowAutoCopyDialog] = useState(false);
+  const [pendingCompletedItems, setPendingCompletedItems] = useState<CompletedItem[]>([]);
+  // Flag to trigger a save after accomplishments have been added via auto-copy
+  const [autoCopySaveNeeded, setAutoCopySaveNeeded] = useState(false);
+  // Flag to trigger a save after accomplishments have been auto-removed (un-completion)
+  const [autoRemoveSaveNeeded, setAutoRemoveSaveNeeded] = useState(false);
+  // Track the "last saved" milestones to detect deliberate changes to 100%
+  const lastSavedMilestonesRef = useRef<any[]>(initialData?.milestones || []);
 
   const [pendingGenerationType, setPendingGenerationType] = useState<
     "description" | "value" | null
@@ -371,6 +389,20 @@ export const useProjectForm = (
 
       setFormData(updatedFormData);
 
+      // Update the last saved milestones ref to the persisted database state.
+      // This is critical: it ensures we only detect transitions TO 100% relative
+      // to what was actually saved, not intermediate in-memory edits.
+      // Items that are already at 100% in the DB will NOT trigger the auto-copy dialog.
+      lastSavedMilestonesRef.current = JSON.parse(
+        JSON.stringify(initialData?.milestones || []),
+      );
+      console.log("[AUTO_COPY] Updated lastSavedMilestonesRef from initialData:", {
+        count: lastSavedMilestonesRef.current.length,
+        alreadyAt100: lastSavedMilestonesRef.current.filter(
+          (m: any) => (m.completion || 0) === 100,
+        ).length,
+      });
+
       // Reset form attributes
       const formElement = document.querySelector("form");
       if (formElement) {
@@ -381,7 +413,29 @@ export const useProjectForm = (
     }
   }, [initialData, isAddingMilestones, isAutoSaving]);
 
-  const handleSubmit = async (e: React.FormEvent | null) => {
+  // Effect to trigger save after auto-copy accomplishments have been added to formData.
+  // This avoids the stale closure issue: we set autoCopySaveNeeded=true after setFormData,
+  // and this effect runs after the re-render with the updated formData.
+  useEffect(() => {
+    if (autoCopySaveNeeded) {
+      setAutoCopySaveNeeded(false);
+      console.log("[AUTO_COPY] Triggering deferred save after accomplishments update");
+      handleSubmitInternal(null);
+    }
+  }, [autoCopySaveNeeded]);
+
+  // Effect to trigger save after auto-removal of accomplishments for un-completed items.
+  // Same deferred save pattern: setFormData marks items as deleted, then this effect
+  // fires after re-render with the updated formData.
+  useEffect(() => {
+    if (autoRemoveSaveNeeded) {
+      setAutoRemoveSaveNeeded(false);
+      console.log("[AUTO_COPY] Triggering deferred save after auto-removal of accomplishments");
+      handleSubmitInternal(null);
+    }
+  }, [autoRemoveSaveNeeded]);
+
+  const handleSubmitInternal = async (e: React.FormEvent | null) => {
     // If the form is being submitted manually (not automatically), prevent the default behavior
     // to avoid page refresh, but still process the submission
     if (e) {
@@ -509,6 +563,13 @@ export const useProjectForm = (
           });
         }
 
+        // Update last saved milestones ref to current milestones after successful save.
+        // This ensures subsequent saves only detect NEW transitions to 100%.
+        lastSavedMilestonesRef.current = JSON.parse(
+          JSON.stringify(formData.milestones || []),
+        );
+        console.log("[AUTO_COPY] Updated lastSavedMilestonesRef after successful save");
+
         // Reset state flags AFTER everything else is done
         setHasChanges(false);
         setHasUserInteracted(false);
@@ -561,6 +622,224 @@ export const useProjectForm = (
 
     // Return false to ensure the form doesn't submit normally
     return false;
+  };
+
+  /**
+   * Wrapper around handleSubmit that checks for newly completed milestones/tasks.
+   * 
+   * KEY DESIGN: We compare current milestones against lastSavedMilestonesRef
+   * (the persisted database state), NOT against transient in-memory state.
+   * This means:
+   * - If a milestone was already 100% in the DB → it will NOT trigger the dialog
+   * - Only milestones that transition from <100% (in DB) to 100% (in form) trigger it
+   * - This prevents false positives when editing existing projects
+   */
+  const handleSubmitWithAutoCopy = async (e: React.FormEvent | null) => {
+    // Prevent default early so we don't lose the event
+    if (e) {
+      e.preventDefault();
+      if (e.stopPropagation) {
+        e.stopPropagation();
+      }
+    }
+
+    const currentMilestones = formData.milestones || [];
+    const previousMilestones = lastSavedMilestonesRef.current || [];
+    const currentAccomplishments = normalizeAccomplishments(formData.accomplishments || []);
+
+    console.log("[AUTO_COPY] Checking for newly completed items:", {
+      previousMilestonesCount: previousMilestones.length,
+      currentMilestonesCount: currentMilestones.length,
+      existingAccomplishmentsCount: currentAccomplishments.length,
+      previousAlreadyAt100: previousMilestones.filter(
+        (m: any) => (m.completion || 0) === 100,
+      ).length,
+      currentAt100: currentMilestones.filter(
+        (m: any) => (m.completion || 0) === 100,
+      ).length,
+    });
+
+    // 1. Detect items that newly reached 100% (relative to last saved DB state)
+    const newlyCompleted = detectNewlyCompletedItems(
+      previousMilestones,
+      currentMilestones,
+      currentAccomplishments,
+    );
+
+    // 2. Detect items that went from 100% back to <100% (un-completions)
+    const uncompletedItems = detectUncompletedItems(
+      previousMilestones,
+      currentMilestones,
+    );
+
+    // 3. Auto-remove accomplishments for un-completed items (silent, no dialog)
+    // We use multiple matching strategies because task/milestone IDs can change
+    // across saves (delete + re-insert pattern), so source_id alone may not match.
+    let hasAutoRemovals = false;
+    if (uncompletedItems.length > 0) {
+      console.log("[AUTO_COPY] Detected un-completed items:", uncompletedItems.map(u => ({
+        sourceId: u.sourceId,
+        compositeKey: u.compositeKey,
+        description: u.description,
+        type: u.type,
+      })));
+      console.log("[AUTO_COPY] Current accomplishments for matching:", currentAccomplishments.map(a => ({
+        description: a.description?.substring(0, 50),
+        source_id: a.source_id,
+        source_type: a.source_type,
+        auto_generated: a.auto_generated,
+        is_deleted: a.is_deleted,
+      })));
+
+      // Build sets for fast lookup across multiple matching strategies
+      const sourceIdSet = new Set(uncompletedItems.map(u => u.sourceId));
+      const compositeKeySet = new Set(uncompletedItems.map(u => u.compositeKey));
+      // Build description-based matchers for fallback matching
+      const descriptionMatchers = uncompletedItems.map(u => ({
+        description: u.description,
+        parentMilestoneName: u.parentMilestoneName,
+        type: u.type,
+      }));
+
+      const updatedAccomplishments = currentAccomplishments.map((a) => {
+        if (!a.auto_generated || a.is_deleted) return a;
+
+        let matched = false;
+        let matchReason = "";
+
+        // Strategy 1: Match by source_id (direct ID match)
+        if (a.source_id && sourceIdSet.has(a.source_id)) {
+          matched = true;
+          matchReason = "source_id match";
+        }
+
+        // Strategy 2: Match by source_id against composite keys
+        // (handles case where accomplishment was created with a composite key as source_id)
+        if (!matched && a.source_id && compositeKeySet.has(a.source_id)) {
+          matched = true;
+          matchReason = "composite key match";
+        }
+
+        // Strategy 3: Match by description content
+        // (handles case where IDs changed due to delete+re-insert during save)
+        if (!matched) {
+          for (const dm of descriptionMatchers) {
+            if (dm.type === "task" && a.source_type === "task") {
+              // For tasks, check if the accomplishment description contains the task description
+              if (a.description === dm.description ||
+                  (dm.parentMilestoneName && a.description === `${dm.description} (${dm.parentMilestoneName})`) ||
+                  a.description.startsWith(dm.description)) {
+                matched = true;
+                matchReason = "description match (task)";
+                break;
+              }
+            } else if (dm.type === "milestone" && a.source_type === "milestone") {
+              if (a.description === dm.description) {
+                matched = true;
+                matchReason = "description match (milestone)";
+                break;
+              }
+            }
+          }
+        }
+
+        if (matched) {
+          console.log(`[AUTO_COPY] Marking accomplishment as deleted (${matchReason}):`, {
+            description: a.description,
+            source_id: a.source_id,
+          });
+          hasAutoRemovals = true;
+          return { ...a, is_deleted: true };
+        }
+        return a;
+      });
+      
+      if (hasAutoRemovals) {
+        setFormData((prev: any) => ({
+          ...prev,
+          accomplishments: updatedAccomplishments,
+        }));
+      } else {
+        console.log("[AUTO_COPY] No matching auto-generated accomplishments found for un-completed items");
+      }
+    }
+
+    // 4. If there are newly completed items, show the confirmation dialog
+    if (newlyCompleted.length > 0) {
+      console.log("[AUTO_COPY] Found newly completed items, showing dialog:", newlyCompleted);
+      setPendingCompletedItems(newlyCompleted);
+      setShowAutoCopyDialog(true);
+      return false;
+    }
+
+    // 5. If we had auto-removals but no newly completed items, use deferred save
+    // to ensure the formData state update (marking items as deleted) is applied
+    // before the save runs. This avoids the stale closure issue.
+    if (hasAutoRemovals) {
+      console.log("[AUTO_COPY] Auto-removals detected, using deferred save to ensure state is updated");
+      setAutoRemoveSaveNeeded(true);
+      return false;
+    }
+
+    // 6. No changes needed - proceed with normal save
+    console.log("[AUTO_COPY] No newly completed items, proceeding with save");
+    return handleSubmitInternal(null);
+  };
+
+  /**
+   * Called when the user confirms the auto-copy dialog selection.
+   * Adds selected items as accomplishments, then proceeds with the save.
+   */
+  const handleAutoCopyConfirm = async (selectedItems: CompletedItem[]) => {
+    setShowAutoCopyDialog(false);
+
+    if (selectedItems.length > 0) {
+      const currentAccomplishments = normalizeAccomplishments(formData.accomplishments || []);
+
+      // Create new accomplishment entries for selected items
+      const newAccomplishments: AccomplishmentItem[] = selectedItems.map((item) => ({
+        description: generateAccomplishmentDescription(item),
+        source_type: item.type,
+        source_id: item.id,
+        is_hidden: false,
+        is_deleted: false,
+        auto_generated: true,
+      }));
+
+      console.log("[AUTO_COPY] Adding accomplishments:", newAccomplishments);
+
+      const updatedAccomplishments = [...currentAccomplishments, ...newAccomplishments];
+
+      // Update formData with new accomplishments
+      setFormData((prev: any) => ({
+        ...prev,
+        accomplishments: updatedAccomplishments,
+      }));
+
+      toast({
+        title: "Accomplishments Added",
+        description: `${selectedItems.length} item${selectedItems.length > 1 ? "s" : ""} added to accomplishments.`,
+        className: toastStyles.success,
+      });
+
+      // Use the deferred save flag — the useEffect will trigger handleSubmitInternal
+      // after the next render when formData includes the new accomplishments.
+      setAutoCopySaveNeeded(true);
+    } else {
+      // No items selected, just proceed with save
+      handleSubmitInternal(null);
+    }
+  };
+
+  /**
+   * Called when the user cancels the auto-copy dialog.
+   * Proceeds with save without adding accomplishments.
+   */
+  const handleAutoCopyCancel = () => {
+    setShowAutoCopyDialog(false);
+    setPendingCompletedItems([]);
+    // Still proceed with save
+    handleSubmitInternal(null);
   };
 
   const handleGenerateContent = async (
@@ -1097,7 +1376,7 @@ export const useProjectForm = (
     isAnalysisExpanded,
     isAnalysisLoading,
     hasUserInteracted,
-    handleSubmit,
+    handleSubmit: handleSubmitWithAutoCopy,
     handleGenerateContent,
     handleShowDeleteDialog,
     handleConfirmDelete,
@@ -1108,6 +1387,13 @@ export const useProjectForm = (
     handleCancelOverwrite,
     handleConfirmPreview,
     handleCancelPreview,
+
+    // Auto-copy accomplishments
+    showAutoCopyDialog,
+    setShowAutoCopyDialog,
+    pendingCompletedItems,
+    handleAutoCopyConfirm,
+    handleAutoCopyCancel,
 
     handleToggleAnalysis,
     handleUserInteraction,

@@ -10,6 +10,16 @@ export type Milestone = Database["public"]["Tables"]["milestones"]["Row"] & {
 };
 export type Accomplishment =
   Database["public"]["Tables"]["accomplishments"]["Row"];
+
+export interface AccomplishmentItem {
+  id?: string;
+  description: string;
+  source_type: "manual" | "milestone" | "task";
+  source_id: string | null;
+  is_hidden: boolean;
+  is_deleted: boolean;
+  auto_generated: boolean;
+}
 export type NextPeriodActivity = {
   id: string;
   project_id: string;
@@ -52,7 +62,7 @@ export interface ProjectWithRelations
   computed_status_color: "red" | "yellow" | "green" | null;
   projectId: string; // Form field mapping for project_id
   milestones: (Milestone & { tasks?: Task[] })[];
-  accomplishments: Accomplishment[];
+  accomplishments: (Accomplishment | AccomplishmentItem)[];
   next_period_activities: NextPeriodActivity[];
   risks: Risk[];
   considerations: string[];
@@ -1228,7 +1238,7 @@ export const projectService = {
           duration_days?: number;
         }>;
       }>;
-      accomplishments: string[];
+      accomplishments: Array<string | AccomplishmentItem>;
       next_period_activities: Array<{
         description: string;
         date: string;
@@ -1432,14 +1442,33 @@ export const projectService = {
 
       // Insert related data
       if (data.accomplishments && data.accomplishments.length > 0) {
-        const { error: accomplishmentsError } = await supabase
-          .from("accomplishments")
-          .insert(
-            data.accomplishments.map((a) => ({
+        const accomplishmentRows = data.accomplishments.map((a) => {
+          if (typeof a === "string") {
+            return {
               project_id: id,
               description: a,
-            })),
-          );
+              source_type: "manual",
+              source_id: null,
+              is_hidden: false,
+              is_deleted: false,
+              auto_generated: false,
+            };
+          }
+          // AccomplishmentItem object
+          return {
+            project_id: id,
+            description: a.description,
+            source_type: a.source_type || "manual",
+            source_id: a.source_id || null,
+            is_hidden: a.is_hidden || false,
+            is_deleted: a.is_deleted || false,
+            auto_generated: a.auto_generated || false,
+          };
+        });
+
+        const { error: accomplishmentsError } = await supabase
+          .from("accomplishments")
+          .insert(accomplishmentRows);
         if (accomplishmentsError) {
           console.error(
             "Error inserting accomplishments:",
@@ -1865,14 +1894,32 @@ export const projectService = {
       if (data.accomplishments && data.accomplishments.length > 0) {
         console.log(`Inserting ${data.accomplishments.length} accomplishments`);
         try {
-          const { error: accomplishmentsError } = await supabase
-            .from("accomplishments")
-            .insert(
-              data.accomplishments.map((a) => ({
+          const accomplishmentRows = data.accomplishments.map((a) => {
+            if (typeof a === "string") {
+              return {
                 project_id: project.id,
                 description: a,
-              })),
-            );
+                source_type: "manual",
+                source_id: null,
+                is_hidden: false,
+                is_deleted: false,
+                auto_generated: false,
+              };
+            }
+            return {
+              project_id: project.id,
+              description: a.description,
+              source_type: a.source_type || "manual",
+              source_id: a.source_id || null,
+              is_hidden: a.is_hidden || false,
+              is_deleted: a.is_deleted || false,
+              auto_generated: a.auto_generated || false,
+            };
+          });
+
+          const { error: accomplishmentsError } = await supabase
+            .from("accomplishments")
+            .insert(accomplishmentRows);
           if (accomplishmentsError) {
             console.error(
               "Error inserting accomplishments:",

@@ -636,12 +636,20 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
                   Accomplishments To Date
                 </h3>
                 <ul className="list-disc pl-5 space-y-1">
-                  {(data.accomplishments || []).map((item, index) => (
+                  {(data.accomplishments || [])
+                    .filter((item) => {
+                      // Filter out hidden and deleted accomplishments from the status sheet
+                      if (typeof item === "object" && item !== null) {
+                        return !item.is_hidden && !item.is_deleted;
+                      }
+                      return true; // Legacy string format - always show
+                    })
+                    .map((item, index) => (
                     <li
                       key={index}
                       className="text-gray-900 dark:text-gray-900 flex items-center"
                     >
-                      <span>{item}</span>
+                      <span>{typeof item === "object" ? item.description : item}</span>
                       {index === 0 &&
                         renderChangeIndicator(
                           "accomplishments",
