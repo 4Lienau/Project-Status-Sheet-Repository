@@ -378,12 +378,14 @@ const ProjectList = ({
               {/* Diagonal Watermark for Completed Projects */}
               {project.status === 'completed' && (
                 <div 
-                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   style={{
-                    transform: 'rotate(-45deg)',
+                    transform: 'rotate(-35deg)',
+                    zIndex: 5,
                   }}
                 >
-                  <div className="text-green-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                  <div className="text-green-500 text-7xl font-black whitespace-nowrap select-none tracking-widest"
+                    style={{ opacity: 0.15 }}>
                     COMPLETED
                   </div>
                 </div>
@@ -392,12 +394,14 @@ const ProjectList = ({
               {/* Diagonal Watermark for On Hold Projects */}
               {project.status === 'on_hold' && (
                 <div 
-                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   style={{
-                    transform: 'rotate(-45deg)',
+                    transform: 'rotate(-35deg)',
+                    zIndex: 5,
                   }}
                 >
-                  <div className="text-yellow-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                  <div className="text-yellow-500 text-7xl font-black whitespace-nowrap select-none tracking-widest"
+                    style={{ opacity: 0.15 }}>
                     ON HOLD
                   </div>
                 </div>
@@ -406,12 +410,14 @@ const ProjectList = ({
               {/* Diagonal Watermark for Cancelled Projects */}
               {project.status === 'cancelled' && (
                 <div 
-                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   style={{
-                    transform: 'rotate(-45deg)',
+                    transform: 'rotate(-35deg)',
+                    zIndex: 5,
                   }}
                 >
-                  <div className="text-red-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                  <div className="text-red-500 text-7xl font-black whitespace-nowrap select-none tracking-widest"
+                    style={{ opacity: 0.15 }}>
                     CANCELLED
                   </div>
                 </div>
@@ -420,18 +426,20 @@ const ProjectList = ({
               {/* Diagonal Watermark for Draft Projects */}
               {project.status === 'draft' && (
                 <div 
-                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   style={{
-                    transform: 'rotate(-45deg)',
+                    transform: 'rotate(-35deg)',
+                    zIndex: 5,
                   }}
                 >
-                  <div className="text-yellow-500/10 text-7xl font-bold whitespace-nowrap select-none">
+                  <div className="text-yellow-500 text-7xl font-black whitespace-nowrap select-none tracking-widest"
+                    style={{ opacity: 0.15 }}>
                     DRAFT
                   </div>
                 </div>
               )}
 
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ zIndex: 1 }} />
               <div className="relative">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="text-lg font-semibold text-foreground">

@@ -26,10 +26,11 @@ import { Button } from "@/components/ui/button";
 import queryString from "query-string";
 
 // Only handle popup detection if we're actually in a popup window
+// Check both window.opener AND that we're not the top-level window (not in an iframe scenario)
 const isActualPopup =
   window.opener &&
   window !== window.opener &&
-  window.location.search.includes("popup=true");
+  window === window.top; // Ensure we're not in an iframe (Tempo canvas uses iframes)
 
 if (isActualPopup) {
   console.log("POPUP DETECTED: Immediate action to prevent rendering");
@@ -42,20 +43,6 @@ if (isActualPopup) {
   } catch (e) {
     console.error("Error sending initial message to opener:", e);
   }
-
-  // Block navigation
-  window.onbeforeunload = (e) => {
-    e.preventDefault();
-    e.returnValue = "";
-    return "";
-  };
-
-  // Disable history navigation
-  try {
-    history.pushState = function () {};
-    history.replaceState = function () {};
-    history.go = function () {};
-  } catch (e) {}
 }
 
 const AuthCallback = () => {
@@ -67,26 +54,13 @@ const AuthCallback = () => {
     const handleAuthCallback = async () => {
       try {
         // Only handle popup logic if we're actually in a popup
+        // Check window.opener AND ensure we're not in an iframe (Tempo canvas)
         const isPopup =
           window.opener &&
           window !== window.opener &&
-          window.location.search.includes("popup=true");
+          window === window.top;
         if (isPopup) {
           console.log("POPUP DETECTED: Immediately blocking navigation");
-          // Block all navigation attempts
-          window.onbeforeunload = (e) => {
-            e.preventDefault();
-            e.returnValue = "";
-            return "";
-          };
-          window.onpopstate = (e) => {
-            e.preventDefault();
-            return false;
-          };
-          // Disable history navigation
-          history.pushState = function () {};
-          history.replaceState = function () {};
-          history.go = function () {};
         }
 
         // Check if there's an error in the URL (both in search params and hash fragment)

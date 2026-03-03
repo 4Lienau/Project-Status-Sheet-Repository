@@ -19,14 +19,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Cloud } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 
 const AuthForm = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,7 +79,7 @@ const AuthForm = () => {
     checkExistingAuthProcess();
   }, [navigate]);
 
-  // Listen for messages from the popup window
+  // Listen for messages from the popup window and monitor auth state
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Verify the origin of the message
@@ -91,141 +89,136 @@ const AuthForm = () => {
 
       // Handle authentication completion message
       if (event.data?.type === "AUTH_COMPLETE" && event.data?.success) {
-        // Redirect to home page
-        console.log("Received AUTH_COMPLETE message, redirecting to home");
-        localStorage.removeItem("auth_in_progress");
-        localStorage.removeItem("auth_started_at");
-        setLoading(false);
-
-        // Try to close any remaining popup windows
-        try {
-          if ((window as any).authPopup && !(window as any).authPopup.closed) {
-            console.log("Attempting to close lingering popup from parent");
-            (window as any).authPopup.close();
-          }
-        } catch (e) {
-          console.log("Error closing popup from parent:", e);
-        }
-
-        // Force a session check before redirecting
-        console.log("Checking session before redirecting");
-        supabase.auth.getSession().then(({ data }) => {
-          if (data.session) {
-            console.log("Valid session confirmed, redirecting to home");
-            // Clear any beforeunload listeners that might be causing the "Leave site?" dialog
-            window.onbeforeunload = null;
-
-            // Use a small timeout to ensure the UI has time to update
-            setTimeout(() => {
-              // Force a clean navigation without the leave site dialog
-              const cleanNavigation = () => {
-                window.removeEventListener("beforeunload", cleanNavigation);
-                return undefined;
-              };
-              window.addEventListener("beforeunload", cleanNavigation);
-
-              window.location.href = "/";
-            }, 100);
-          } else {
-            console.log("No valid session found after AUTH_COMPLETE message");
-            // Try one more time with a delay
-            setTimeout(async () => {
-              const { data: retryData } = await supabase.auth.getSession();
-              if (retryData.session) {
-                console.log("Session found on retry, redirecting");
-                // Clear any beforeunload listeners
-                window.onbeforeunload = null;
-                window.location.href = "/";
-              } else {
-                console.log("Still no session after retry, showing error");
-                setError(
-                  "Authentication completed but session not found. Please try again.",
-                );
-              }
-            }, 1000);
-          }
-        });
+        handleAuthSuccess("AUTH_COMPLETE message");
       } else if (event.data?.type === "AUTH_FAILED") {
         console.log("Received AUTH_FAILED message");
-        localStorage.removeItem("auth_in_progress");
-        localStorage.removeItem("auth_started_at");
-        setLoading(false);
+        cleanupAuth();
         setError("Authentication failed. Please try again.");
       }
     };
 
+    // Helper to clean up auth state
+    const cleanupAuth = () => {
+      localStorage.removeItem("auth_in_progress");
+      localStorage.removeItem("auth_started_at");
+      setLoading(false);
+      // Try to close any remaining popup windows
+      try {
+        if ((window as any).authPopup && !(window as any).authPopup.closed) {
+          console.log("Closing lingering popup");
+          (window as any).authPopup.close();
+        }
+      } catch (e) {
+        console.log("Error closing popup:", e);
+      }
+    };
+
+    // Helper to handle successful auth
+    const handleAuthSuccess = (source: string) => {
+      console.log(`Auth success detected via: ${source}`);
+      cleanupAuth();
+
+      // Clear any beforeunload listeners
+      window.onbeforeunload = null;
+
+      // Redirect to home
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 100);
+    };
+
     window.addEventListener("message", handleMessage);
 
-    // Set up a fallback mechanism to check for authentication
-    // in case the message passing fails
+    // Listen for auth state changes - this fires even if the popup fails to load
+    // the callback page, as long as the PKCE exchange happens in any tab/window
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (loading && event === "SIGNED_IN" && session?.user) {
+          console.log("Auth state change detected: SIGNED_IN in main window");
+          handleAuthSuccess("onAuthStateChange SIGNED_IN");
+        }
+      },
+    );
+
+    // Set up a fallback polling mechanism
     let authCheckInterval: number | null = null;
+    let popupFailureCount = 0;
 
     if (loading) {
       authCheckInterval = window.setInterval(async () => {
-        console.log("Checking authentication status...");
+        console.log("Polling authentication status...");
+
+        // Check session directly
         const { data } = await supabase.auth.getSession();
-
-        // Only redirect if we have both a session and a user
         if (data.session && data.session.user) {
-          console.log("Valid session detected in main window, redirecting");
-          console.log("User ID:", data.session.user.id);
-          clearInterval(authCheckInterval);
-          localStorage.removeItem("auth_in_progress");
-          localStorage.removeItem("auth_started_at");
-          setLoading(false);
+          console.log("Valid session detected via polling");
+          if (authCheckInterval) clearInterval(authCheckInterval);
+          handleAuthSuccess("session polling");
+          return;
+        }
 
-          // Try to close any remaining popup windows
-          try {
-            if (
-              (window as any).authPopup &&
-              !(window as any).authPopup.closed
-            ) {
-              console.log("Attempting to close lingering popup from interval");
-              (window as any).authPopup.close();
+        // Check popup status
+        try {
+          const popup = (window as any).authPopup;
+          if (popup) {
+            if (popup.closed) {
+              console.log("Popup closed, doing final session check");
+              if (authCheckInterval) clearInterval(authCheckInterval);
+
+              // Give a moment for the session to propagate
+              setTimeout(async () => {
+                const { data: finalData } = await supabase.auth.getSession();
+                if (finalData.session && finalData.session.user) {
+                  handleAuthSuccess("popup closed + session found");
+                } else {
+                  cleanupAuth();
+                  setError(
+                    "Authentication window was closed. Please try again.",
+                  );
+                }
+              }, 1500);
+              return;
             }
-          } catch (e) {
-            console.log("Error closing popup from interval:", e);
-          }
 
-          // Clear any beforeunload listeners that might be causing the "Leave site?" dialog
-          window.onbeforeunload = null;
-
-          // Use a small timeout to ensure the UI has time to update
-          setTimeout(() => {
-            console.log("Navigating to home page after session check");
-            // Force a clean navigation without the leave site dialog
-            const cleanNavigation = () => {
-              window.removeEventListener("beforeunload", cleanNavigation);
-              return undefined;
-            };
-            window.addEventListener("beforeunload", cleanNavigation);
-
-            window.location.href = "/";
-          }, 100);
-        } else {
-          console.log("No valid session yet, continuing to wait...");
-
-          // Check if popup is still open
-          try {
-            if ((window as any).authPopup) {
-              if ((window as any).authPopup.closed) {
-                console.log("Popup closed without completing auth");
-                clearInterval(authCheckInterval);
-                localStorage.removeItem("auth_in_progress");
-                localStorage.removeItem("auth_started_at");
-                setLoading(false);
-                setError("Authentication window was closed. Please try again.");
+            // Check if popup hit an error (connection refused, etc.)
+            try {
+              // If we can read popup.location.href without error, 
+              // it's on our origin
+              const popupUrl = popup.location.href;
+              if (popupUrl && (popupUrl.includes("about:blank") || popupUrl === "")) {
+                // Popup navigated to blank - something went wrong
+                popupFailureCount++;
               }
+            } catch (e) {
+              // Cross-origin = popup is on Azure AD or another domain, that's normal
+              // But if popup has been on a foreign domain for too long, 
+              // it might be stuck on an error page
+              popupFailureCount = 0; // Reset - popup is on a different domain (normal)
             }
-          } catch (e) {
-            console.log("Error checking popup status:", e);
+          }
+        } catch (e) {
+          console.log("Error checking popup:", e);
+        }
+
+        // If we've been waiting too long (30 seconds), provide recovery options
+        const authStartedAt = localStorage.getItem("auth_started_at");
+        if (authStartedAt) {
+          const elapsed = Date.now() - parseInt(authStartedAt, 10);
+          if (elapsed > 30000) {
+            console.log("Auth process taking too long, showing recovery option");
+            if (authCheckInterval) clearInterval(authCheckInterval);
+            cleanupAuth();
+            setError(
+              "Authentication is taking too long. The login popup may have encountered an error. Please try again.",
+            );
           }
         }
-      }, 1000) as unknown as number;
+      }, 2000) as unknown as number;
     }
 
     return () => {
       window.removeEventListener("message", handleMessage);
+      authListener?.subscription.unsubscribe();
       if (authCheckInterval) clearInterval(authCheckInterval);
     };
   }, [navigate, loading]);
@@ -235,13 +228,19 @@ const AuthForm = () => {
       setLoading(true);
       setError(null);
 
+      // Determine the correct redirect URL
+      // Use the current origin for the redirect - this must be whitelisted
+      // in the Supabase Dashboard > Authentication > URL Configuration > Redirect URLs
+      const redirectOrigin = window.location.origin;
+      const redirectUrl = `${redirectOrigin}/auth/callback`;
+      console.log("Auth redirect URL:", redirectUrl);
+
       // Use popup flow to prevent new browser window
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "azure",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl,
           scopes: "email profile openid",
-          // Use popup flow to keep everything in the same window
           queryParams: {
             prompt: "select_account",
           },
@@ -258,10 +257,9 @@ const AuthForm = () => {
       const left = window.innerWidth / 2 - width / 2;
       const top = window.innerHeight / 2 - height / 2;
 
-      // Force the popup to open in a new window, not a new tab
       let popup;
       try {
-        // First close any existing popup with the same name
+        // Close any existing popup
         try {
           if ((window as any).authPopup && !(window as any).authPopup.closed) {
             (window as any).authPopup.close();
@@ -270,67 +268,41 @@ const AuthForm = () => {
           console.log("Error closing existing popup:", e);
         }
 
-        // Open a new popup with a unique name (timestamp) to avoid caching issues
         const popupName = `azure-auth-popup-${Date.now()}`;
-
-        // Add a special parameter to the URL to indicate this is a popup
-        const urlWithParam = new URL(data.url);
-        urlWithParam.searchParams.append("popup", "true");
-
         popup = window.open(
-          urlWithParam.toString(),
+          data.url,
           popupName,
           `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes,toolbar=no,menubar=no,location=no`,
         );
 
-        // Check if popup was actually created and accessible
         if (!popup || popup.closed || typeof popup.closed === "undefined") {
-          console.log("Popup appears to be blocked, but continuing anyway");
-          // Don't throw an error, just show a message and continue
-          toast({
-            title: "Popup Notice",
-            description:
-              "If a login window opened, please complete authentication there. If not, please enable popups for this site.",
-            duration: 6000,
-          });
-        } else {
-          // Try to set a flag on the popup window to identify it as an auth popup
-          try {
-            popup.isAuthPopup = true;
-          } catch (e) {
-            console.log("Could not set isAuthPopup flag on popup window");
-          }
+          console.log("Popup blocked, falling back to redirect flow");
+          // Fall back to redirect-based auth
+          await handleRedirectSignIn();
+          return;
         }
       } catch (popupError) {
         console.error("Error opening popup:", popupError);
-        // Don't throw an error, just show a message and continue
-        toast({
-          title: "Authentication Notice",
-          description:
-            "If a login window opened, please complete authentication there. If not, please enable popups for this site.",
-          duration: 6000,
-        });
+        // Fall back to redirect-based auth
+        await handleRedirectSignIn();
+        return;
       }
 
-      // Store popup reference globally to help with debugging
+      // Store popup reference globally
       (window as any).authPopup = popup;
 
-      // Set a flag to indicate authentication is in progress with timestamp
+      // Set auth-in-progress flag
       localStorage.setItem("auth_in_progress", "true");
       localStorage.setItem("auth_started_at", Date.now().toString());
 
-      // Set up a cleanup timeout in case authentication gets stuck
+      // Set up a cleanup timeout (5 minutes)
       setTimeout(
         () => {
           const authStartedAt = localStorage.getItem("auth_started_at");
           if (authStartedAt) {
             const startTime = parseInt(authStartedAt, 10);
-            const now = Date.now();
-            // If auth has been in progress for more than 5 minutes, clean up
-            if (now - startTime > 5 * 60 * 1000) {
-              console.log(
-                "Auth process timed out after 5 minutes, cleaning up",
-              );
+            if (Date.now() - startTime > 5 * 60 * 1000) {
+              console.log("Auth process timed out after 5 minutes");
               localStorage.removeItem("auth_in_progress");
               localStorage.removeItem("auth_started_at");
               setLoading(false);
@@ -338,139 +310,45 @@ const AuthForm = () => {
           }
         },
         5 * 60 * 1000,
-      ); // 5 minute timeout
+      );
 
-      // Poll for authentication completion
-      const checkPopup = setInterval(() => {
-        try {
-          // Check if popup is closed
-          if (popup.closed) {
-            clearInterval(checkPopup);
-            console.log("Popup closed, checking authentication status");
-            // Check if user is authenticated after popup closes
-            supabase.auth.getSession().then(({ data: { session } }) => {
-              // Only redirect if we have both a session and a user
-              if (session && session.user) {
-                console.log(
-                  "Valid session found after popup closed, redirecting",
-                );
-                console.log("User ID:", session.user.id);
-                localStorage.removeItem("auth_in_progress");
-                localStorage.removeItem("auth_started_at");
-
-                // Clear any beforeunload listeners that might be causing the "Leave site?" dialog
-                window.onbeforeunload = null;
-
-                // Use window.location for a more forceful navigation
-                setTimeout(() => {
-                  // Force a clean navigation without the leave site dialog
-                  const cleanNavigation = () => {
-                    window.removeEventListener("beforeunload", cleanNavigation);
-                    return undefined;
-                  };
-                  window.addEventListener("beforeunload", cleanNavigation);
-
-                  window.location.href = "/";
-                }, 100);
-              } else {
-                console.log("No valid session found after popup closed");
-                localStorage.removeItem("auth_in_progress");
-                localStorage.removeItem("auth_started_at");
-                setLoading(false); // Reset loading state if not authenticated
-                setError("Authentication was not completed. Please try again.");
-              }
-            });
-          } else {
-            // Check if popup has navigated to our domain
-            try {
-              // This will throw an error if popup has navigated to a different origin
-              const popupUrl = popup.location.href;
-
-              // If we can access the URL, check if it's on our callback page
-              if (popupUrl.includes("/auth/callback")) {
-                console.log("Popup is on callback page, checking for session");
-                // Check for session in main window
-                supabase.auth.getSession().then(({ data: { session } }) => {
-                  // Only redirect if we have both a session and a user
-                  if (session && session.user) {
-                    console.log(
-                      "Valid session found while popup on callback page",
-                    );
-                    console.log("User ID:", session.user.id);
-                    // Try to close the popup with multiple methods
-                    try {
-                      // First try to replace the content with a self-closing script
-                      try {
-                        popup.document.open();
-                        popup.document.write(
-                          "<html><head><script>window.close();</script></head><body></body></html>",
-                        );
-                        popup.document.close();
-                      } catch (e) {
-                        console.log("Error replacing popup content:", e);
-                      }
-
-                      // Then try standard close
-                      popup.close();
-
-                      // Try additional methods
-                      setTimeout(() => {
-                        try {
-                          popup.open("", "_self").close();
-                        } catch (e) {}
-                        try {
-                          popup.location.href = "about:blank";
-                        } catch (e) {}
-                        try {
-                          popup.location.replace("about:blank");
-                        } catch (e) {}
-                      }, 100);
-                    } catch (closeError) {
-                      console.error("Error closing popup:", closeError);
-                    }
-                    clearInterval(checkPopup);
-                    localStorage.removeItem("auth_in_progress");
-                    localStorage.removeItem("auth_started_at");
-
-                    // Clear any beforeunload listeners that might be causing the "Leave site?" dialog
-                    window.onbeforeunload = null;
-
-                    // Use window.location for a more forceful navigation
-                    console.log("Forcefully redirecting to home page");
-                    // Force a clean navigation without the leave site dialog
-                    const cleanNavigation = () => {
-                      window.removeEventListener(
-                        "beforeunload",
-                        cleanNavigation,
-                      );
-                      return undefined;
-                    };
-                    window.addEventListener("beforeunload", cleanNavigation);
-
-                    window.location.href = "/";
-                  } else {
-                    console.log("No valid session yet, continuing to wait...");
-                  }
-                });
-              }
-            } catch (locationError) {
-              // Expected error when popup navigates to different origin (Azure AD)
-              // Just continue polling
-            }
-          }
-        } catch (e) {
-          // Handle cross-origin errors
-          console.error("Popup check error:", e);
-          clearInterval(checkPopup);
-          localStorage.removeItem("auth_in_progress");
-          localStorage.removeItem("auth_started_at");
-          setLoading(false);
-        }
-      }, 500);
+      // Note: Popup monitoring (close detection, session polling, timeout)
+      // is handled by the useEffect above that watches the `loading` state.
     } catch (error) {
       console.error("Auth error:", error);
       localStorage.removeItem("auth_in_progress");
       localStorage.removeItem("auth_started_at");
+      setError(error.message);
+      setLoading(false);
+    }
+  };
+
+  // Fallback: redirect-based sign-in (no popup)
+  const handleRedirectSignIn = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const redirectOrigin = window.location.origin;
+      const redirectUrl = `${redirectOrigin}/auth/callback`;
+      console.log("Redirect auth URL:", redirectUrl);
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "azure",
+        options: {
+          redirectTo: redirectUrl,
+          scopes: "email profile openid",
+          queryParams: {
+            prompt: "select_account",
+          },
+          // Don't skip redirect - let the browser navigate directly
+        },
+      });
+
+      if (error) throw error;
+      // Browser will redirect to Azure AD
+    } catch (error) {
+      console.error("Redirect auth error:", error);
       setError(error.message);
       setLoading(false);
     }
@@ -503,6 +381,19 @@ const AuthForm = () => {
             "Sign in with Azure AD"
           )}
         </Button>
+
+        {error && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full flex items-center justify-center gap-3 py-3 text-sm font-medium rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
+            onClick={handleRedirectSignIn}
+            disabled={loading}
+          >
+            <Cloud className="h-4 w-4" />
+            Try alternate sign-in method
+          </Button>
+        )}
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
