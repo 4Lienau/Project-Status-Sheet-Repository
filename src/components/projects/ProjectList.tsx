@@ -48,9 +48,9 @@ interface ProjectListProps {
   onSelectProject: (project: ProjectWithRelations) => void;
   onCreateNew: () => void;
   filterManager?: string | string[];
-  filterStatus?: string;
+  filterStatus?: string | string[];
   filterDepartment?: string;
-  filterStatusHealth?: string;
+  filterStatusHealth?: string | string[];
   filterSearch?: string;
   onFilteredCountChange?: (count: number) => void;
   onTotalCountChange?: (count: number) => void;
@@ -75,6 +75,20 @@ const ProjectList = ({
     : filterManager === "all" || !filterManager
       ? []
       : [filterManager];
+
+  // Convert filterStatus to array for multi-select support
+  const filterStatusArray = Array.isArray(filterStatus)
+    ? filterStatus
+    : filterStatus === "all" || !filterStatus
+      ? []
+      : [filterStatus];
+
+  // Convert filterStatusHealth to array for multi-select support
+  const filterStatusHealthArray = Array.isArray(filterStatusHealth)
+    ? filterStatusHealth
+    : filterStatusHealth === "all" || !filterStatusHealth
+      ? []
+      : [filterStatusHealth];
 
   // Flag to determine if we should apply manager filtering
   // We only want to filter if we have specific managers selected
@@ -215,9 +229,9 @@ const ProjectList = ({
       setLoading(true);
       console.log("Loading projects with filters:", {
         filterManagerArray,
-        filterStatus,
+        filterStatusArray,
         filterDepartment,
-        filterStatusHealth,
+        filterStatusHealthArray,
       });
 
       try {
@@ -273,23 +287,24 @@ const ProjectList = ({
         }
 
         // Apply status filter
-        if (filterStatus && filterStatus !== "all") {
-          filtered = filtered.filter((p) => p.status === filterStatus);
+        if (filterStatusArray.length > 0) {
+          filtered = filtered.filter((p) => filterStatusArray.includes(p.status));
         }
 
         // OPTIMIZED: Apply status health filter with memoized calculations
-        if (filterStatusHealth && filterStatusHealth !== "all") {
+        if (filterStatusHealthArray.length > 0) {
           filtered = filtered.filter((project) => {
             // Special handling: Exclude cancelled projects from "Red (Critical)" filter
             if (
-              filterStatusHealth === "red" &&
+              filterStatusHealthArray.includes("red") &&
+              !filterStatusHealthArray.includes(project.status) &&
               project.status === "cancelled"
             ) {
               return false;
             }
 
             const statusHealthColor = getProjectStatusHealthColorMemo(project);
-            return statusHealthColor === filterStatusHealth;
+            return filterStatusHealthArray.includes(statusHealthColor);
           });
         }
 
@@ -322,9 +337,9 @@ const ProjectList = ({
   }, [
     // Simplified dependencies to prevent unnecessary re-renders
     JSON.stringify(filterManagerArray), // Use JSON.stringify to properly compare arrays
-    filterStatus,
+    JSON.stringify(filterStatusArray),
     filterDepartment,
-    filterStatusHealth,
+    JSON.stringify(filterStatusHealthArray),
     filterSearch,
     user?.id,
   ]);

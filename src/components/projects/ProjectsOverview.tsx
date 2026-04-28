@@ -96,9 +96,9 @@ import {
 interface ProjectsOverviewProps {
   onBack: () => void;
   filterManager?: string | string[];
-  filterStatus?: string;
+  filterStatus?: string | string[];
   filterDepartment?: string;
-  filterStatusHealth?: string;
+  filterStatusHealth?: string | string[];
 }
 
 // Define project type for better type safety
@@ -863,6 +863,20 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
             ? []
             : [filterManager];
 
+        // Convert filterStatus to array for multi-select support
+        const filterStatusArray = Array.isArray(filterStatus)
+          ? filterStatus
+          : filterStatus === "all" || !filterStatus
+            ? []
+            : [filterStatus];
+
+        // Convert filterStatusHealth to array for multi-select support
+        const filterStatusHealthArray = Array.isArray(filterStatusHealth)
+          ? filterStatusHealth
+          : filterStatusHealth === "all" || !filterStatusHealth
+            ? []
+            : [filterStatusHealth];
+
         // Apply project manager filter only if specific managers are selected
         if (filterManagerArray.length > 0) {
           filtered = filtered.filter((project) => {
@@ -872,16 +886,17 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
         }
 
         // Apply status filter
-        if (filterStatus && filterStatus !== "all") {
-          filtered = filtered.filter((p) => p.status === filterStatus);
+        if (filterStatusArray.length > 0) {
+          filtered = filtered.filter((p) => filterStatusArray.includes(p.status));
         }
 
         // Apply status health filter
-        if (filterStatusHealth && filterStatusHealth !== "all") {
+        if (filterStatusHealthArray.length > 0) {
           filtered = filtered.filter((project) => {
             // Special handling: Exclude cancelled projects from "Red (Critical)" filter
             if (
-              filterStatusHealth === "red" &&
+              filterStatusHealthArray.includes("red") &&
+              !filterStatusHealthArray.includes(project.status) &&
               project.status === "cancelled"
             ) {
               return false;
@@ -893,7 +908,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
               statusHealthColor = calculateProjectHealthStatusColor(project);
             }
 
-            return statusHealthColor === filterStatusHealth;
+            return filterStatusHealthArray.includes(statusHealthColor);
           });
         }
 

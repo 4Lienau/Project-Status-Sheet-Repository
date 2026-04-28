@@ -126,12 +126,13 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   // Note: Removed automatic mode reset to prevent interference with overview mode
   const [projectData, setProjectData] = useState(null);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
-  const [selectedStatusHealth, setSelectedStatusHealth] =
-    useState<string>("all");
+  const [selectedStatusHealths, setSelectedStatusHealths] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
+  const [statusHealthPopoverOpen, setStatusHealthPopoverOpen] = useState(false);
   const [projectManagers, setProjectManagers] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
@@ -147,17 +148,18 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   // Clear all filters function - memoized to prevent re-renders
   const clearAllFilters = useCallback(() => {
     setSelectedManagers([]);
-    setSelectedStatus("all");
+    setSelectedStatuses([]);
     setSelectedDepartment("all");
-    setSelectedStatusHealth("all");
+    setSelectedStatusHealths([]);
     setSearchQuery("");
 
     // Save cleared filters to localStorage
     if (userId) {
       saveFilterToStorage(userId, "managers", []);
-      saveFilterToStorage(userId, "status", "all");
+      saveFilterToStorage(userId, "statuses", []);
       saveFilterToStorage(userId, "department", "all");
-      saveFilterToStorage(userId, "statusHealth", "all");
+      saveFilterToStorage(userId, "statusHealths", []);
+      saveFilterToStorage(userId, "searchQuery", "");
     }
   }, [userId]);
 
@@ -165,29 +167,33 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   useEffect(() => {
     if (userId && !filtersLoaded) {
       const savedManagers = loadFilterFromStorage(userId, "managers", []);
-      const savedStatus = loadFilterFromStorage(userId, "status", "all");
+      // Support migration from old single-select format
+      const savedStatuses = loadFilterFromStorage(userId, "statuses", []);
       const savedDepartment = loadFilterFromStorage(
         userId,
         "department",
         "all",
       );
-      const savedStatusHealth = loadFilterFromStorage(
+      const savedStatusHealths = loadFilterFromStorage(
         userId,
-        "statusHealth",
-        "all",
+        "statusHealths",
+        [],
       );
+      const savedSearchQuery = loadFilterFromStorage(userId, "searchQuery", "");
 
       setSelectedManagers(savedManagers);
-      setSelectedStatus(savedStatus);
+      setSelectedStatuses(Array.isArray(savedStatuses) ? savedStatuses : savedStatuses !== "all" ? [savedStatuses] : []);
       setSelectedDepartment(savedDepartment);
-      setSelectedStatusHealth(savedStatusHealth);
+      setSelectedStatusHealths(Array.isArray(savedStatusHealths) ? savedStatusHealths : savedStatusHealths !== "all" ? [savedStatusHealths] : []);
+      setSearchQuery(savedSearchQuery);
       setFiltersLoaded(true);
 
       console.log("Loaded persistent filters:", {
         managers: savedManagers,
-        status: savedStatus,
+        statuses: savedStatuses,
         department: savedDepartment,
-        statusHealth: savedStatusHealth,
+        statusHealths: savedStatusHealths,
+        searchQuery: savedSearchQuery,
       });
     }
   }, [userId, filtersLoaded]);
@@ -415,7 +421,12 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                       <Input
                         placeholder="Search projects..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          if (user?.id) {
+                            saveFilterToStorage(user.id, "searchQuery", e.target.value);
+                          }
+                        }}
                         className="pl-8 bg-card/50 border-border"
                       />
                     </div>
@@ -581,62 +592,244 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                     )}
                   </div>
 
-                  <div className="flex flex-col">
+                  <div className="w-[200px] flex flex-col">
                     <label className="text-sm font-medium text-muted-foreground mb-2">
                       Filter by Status
                     </label>
-                    <Select
-                      value={selectedStatus}
-                      onValueChange={(value) => {
-                        setSelectedStatus(value);
-                        if (user?.id) {
-                          saveFilterToStorage(user.id, "status", value);
-                        }
-                      }}
+                    <Popover
+                      open={statusPopoverOpen}
+                      onOpenChange={setStatusPopoverOpen}
                     >
-                      <SelectTrigger className="w-[200px] text-foreground border-border bg-card/50 hover:bg-card">
-                        <SelectValue
-                          placeholder="All Statuses"
-                          className="text-foreground"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="on_hold">On Hold</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                        <SelectItem value="draft">Draft</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={statusPopoverOpen}
+                          className="w-full justify-between text-foreground border-border bg-card/50 hover:bg-card h-10"
+                        >
+                          {selectedStatuses.length > 0
+                            ? `${selectedStatuses.length} status${selectedStatuses.length > 1 ? "es" : ""} selected`
+                            : "All Statuses"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0" align="start">
+                        <Command>
+                          <CommandList>
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => {
+                                  setSelectedStatuses([]);
+                                  setStatusPopoverOpen(false);
+                                  if (user?.id) {
+                                    saveFilterToStorage(user.id, "statuses", []);
+                                  }
+                                }}
+                                className="flex items-center justify-between"
+                              >
+                                <span>All Statuses</span>
+                                {selectedStatuses.length === 0 && (
+                                  <Check className="h-4 w-4" />
+                                )}
+                              </CommandItem>
+                              {[
+                                { value: "active", label: "Active" },
+                                { value: "on_hold", label: "On Hold" },
+                                { value: "completed", label: "Completed" },
+                                { value: "cancelled", label: "Cancelled" },
+                                { value: "draft", label: "Draft" },
+                              ].map((status) => (
+                                <CommandItem
+                                  key={status.value}
+                                  onSelect={() => {
+                                    setSelectedStatuses((prev) => {
+                                      const newStatuses = prev.includes(status.value)
+                                        ? prev.filter((s) => s !== status.value)
+                                        : [...prev, status.value];
+                                      if (user?.id) {
+                                        saveFilterToStorage(user.id, "statuses", newStatuses);
+                                      }
+                                      return newStatuses;
+                                    });
+                                  }}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span>{status.label}</span>
+                                  {selectedStatuses.includes(status.value) && (
+                                    <Check className="h-4 w-4" />
+                                  )}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {selectedStatuses.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {selectedStatuses.map((status) => (
+                          <Badge
+                            key={status}
+                            variant="secondary"
+                            className="flex items-center gap-1 bg-secondary text-secondary-foreground border-border hover:bg-secondary/80"
+                          >
+                            {status === "on_hold" ? "On Hold" : status.charAt(0).toUpperCase() + status.slice(1)}
+                            <X
+                              className="h-3 w-3 cursor-pointer hover:text-muted-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedStatuses((prev) => {
+                                  const newStatuses = prev.filter((s) => s !== status);
+                                  if (user?.id) {
+                                    saveFilterToStorage(user.id, "statuses", newStatuses);
+                                  }
+                                  return newStatuses;
+                                });
+                              }}
+                            />
+                          </Badge>
+                        ))}
+                        {selectedStatuses.length > 1 && (
+                          <Badge
+                            variant="outline"
+                            className="cursor-pointer bg-card/50 text-foreground border-border hover:bg-card"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedStatuses([]);
+                              if (user?.id) {
+                                saveFilterToStorage(user.id, "statuses", []);
+                              }
+                            }}
+                          >
+                            Clear all
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex flex-col">
+                  <div className="w-[200px] flex flex-col">
                     <label className="text-sm font-medium text-muted-foreground mb-2">
                       Filter by Status Health
                     </label>
-                    <Select
-                      value={selectedStatusHealth}
-                      onValueChange={(value) => {
-                        setSelectedStatusHealth(value);
-                        if (user?.id) {
-                          saveFilterToStorage(user.id, "statusHealth", value);
-                        }
-                      }}
+                    <Popover
+                      open={statusHealthPopoverOpen}
+                      onOpenChange={setStatusHealthPopoverOpen}
                     >
-                      <SelectTrigger className="w-[200px] text-foreground border-border bg-card/50 hover:bg-card">
-                        <SelectValue
-                          placeholder="All Health Status"
-                          className="text-foreground"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Health Status</SelectItem>
-                        <SelectItem value="green">Green (On Track)</SelectItem>
-                        <SelectItem value="yellow">Yellow (At Risk)</SelectItem>
-                        <SelectItem value="red">Red (Critical)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={statusHealthPopoverOpen}
+                          className="w-full justify-between text-foreground border-border bg-card/50 hover:bg-card h-10"
+                        >
+                          {selectedStatusHealths.length > 0
+                            ? `${selectedStatusHealths.length} health${selectedStatusHealths.length > 1 ? " statuses" : ""} selected`
+                            : "All Health Status"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0" align="start">
+                        <Command>
+                          <CommandList>
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => {
+                                  setSelectedStatusHealths([]);
+                                  setStatusHealthPopoverOpen(false);
+                                  if (user?.id) {
+                                    saveFilterToStorage(user.id, "statusHealths", []);
+                                  }
+                                }}
+                                className="flex items-center justify-between"
+                              >
+                                <span>All Health Status</span>
+                                {selectedStatusHealths.length === 0 && (
+                                  <Check className="h-4 w-4" />
+                                )}
+                              </CommandItem>
+                              {[
+                                { value: "green", label: "Green (On Track)" },
+                                { value: "yellow", label: "Yellow (At Risk)" },
+                                { value: "red", label: "Red (Critical)" },
+                              ].map((health) => (
+                                <CommandItem
+                                  key={health.value}
+                                  onSelect={() => {
+                                    setSelectedStatusHealths((prev) => {
+                                      const newHealths = prev.includes(health.value)
+                                        ? prev.filter((h) => h !== health.value)
+                                        : [...prev, health.value];
+                                      if (user?.id) {
+                                        saveFilterToStorage(user.id, "statusHealths", newHealths);
+                                      }
+                                      return newHealths;
+                                    });
+                                  }}
+                                  className="flex items-center justify-between"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className={`h-3 w-3 rounded-full ${
+                                      health.value === "green" ? "bg-green-500" :
+                                      health.value === "yellow" ? "bg-yellow-500" :
+                                      "bg-red-500"
+                                    }`} />
+                                    <span>{health.label}</span>
+                                  </div>
+                                  {selectedStatusHealths.includes(health.value) && (
+                                    <Check className="h-4 w-4" />
+                                  )}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {selectedStatusHealths.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {selectedStatusHealths.map((health) => (
+                          <Badge
+                            key={health}
+                            variant="secondary"
+                            className="flex items-center gap-1 bg-secondary text-secondary-foreground border-border hover:bg-secondary/80"
+                          >
+                            <div className={`h-2 w-2 rounded-full ${
+                              health === "green" ? "bg-green-500" :
+                              health === "yellow" ? "bg-yellow-500" :
+                              "bg-red-500"
+                            }`} />
+                            {health === "green" ? "On Track" : health === "yellow" ? "At Risk" : "Critical"}
+                            <X
+                              className="h-3 w-3 cursor-pointer hover:text-muted-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedStatusHealths((prev) => {
+                                  const newHealths = prev.filter((h) => h !== health);
+                                  if (user?.id) {
+                                    saveFilterToStorage(user.id, "statusHealths", newHealths);
+                                  }
+                                  return newHealths;
+                                });
+                              }}
+                            />
+                          </Badge>
+                        ))}
+                        {selectedStatusHealths.length > 1 && (
+                          <Badge
+                            variant="outline"
+                            className="cursor-pointer bg-card/50 text-foreground border-border hover:bg-card"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedStatusHealths([]);
+                              if (user?.id) {
+                                saveFilterToStorage(user.id, "statusHealths", []);
+                              }
+                            }}
+                          >
+                            Clear all
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col">
@@ -695,12 +888,12 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                                     ),
                                 );
                               }
-                              if (selectedStatus !== "all") {
+                              if (selectedStatuses.length > 0) {
                                 filteredProjects = filteredProjects.filter(
-                                  (p) => p.status === selectedStatus,
+                                  (p) => selectedStatuses.includes(p.status),
                                 );
                               }
-                              if (selectedStatusHealth !== "all") {
+                              if (selectedStatusHealths.length > 0) {
                                 filteredProjects = filteredProjects.filter(
                                   (p) => {
                                     // Use computed status color if available, otherwise use standardized calculation
@@ -716,8 +909,8 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                                         calculateProjectHealthStatusColor(p);
                                     }
 
-                                    return (
-                                      statusHealthColor === selectedStatusHealth
+                                    return selectedStatusHealths.includes(
+                                      statusHealthColor
                                     );
                                   },
                                 );
@@ -782,9 +975,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                 onSelectProject={handleSelectProject}
                 onCreateNew={handleCreateNew}
                 filterManager={selectedManagers}
-                filterStatus={selectedStatus}
+                filterStatus={selectedStatuses}
                 filterDepartment={selectedDepartment}
-                filterStatusHealth={selectedStatusHealth}
+                filterStatusHealth={selectedStatusHealths}
                 filterSearch={searchQuery}
                 onFilteredCountChange={setFilteredProjectCount}
                 onTotalCountChange={setTotalProjectCount}
@@ -935,9 +1128,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
               <ProjectsOverview
                 onBack={handleBackToProjects}
                 filterManager={selectedManagers}
-                filterStatus={selectedStatus}
+                filterStatus={selectedStatuses}
                 filterDepartment={selectedDepartment}
-                filterStatusHealth={selectedStatusHealth}
+                filterStatusHealth={selectedStatusHealths}
               />
             </div>
           )}
