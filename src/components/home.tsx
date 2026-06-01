@@ -124,6 +124,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   }, [propMode]);
 
   // Note: Removed automatic mode reset to prevent interference with overview mode
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectData, setProjectData] = useState(null);
   const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
@@ -1001,6 +1002,8 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                 </Button>
               </div>
               <ProjectForm
+                initialData={null}
+                projectId=""
                 onBack={() => navigate("/")}
                 onSubmit={async (data) => {
                   if (!data.title.trim()) {
@@ -1011,6 +1014,13 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                     });
                     return false;
                   }
+
+                  // Prevent duplicate project creation if already in progress
+                  if (isCreatingProject) {
+                    console.log("[PROJECT_CREATE] Already creating project, ignoring duplicate submit");
+                    return false;
+                  }
+                  setIsCreatingProject(true);
 
                   try {
                     // Get current user's department
@@ -1104,12 +1114,14 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         className: "bg-green-50 border-green-200",
                       });
                       // Navigate to the new project's edit page
-                      navigate(`/project/${project.id}/edit`);
+                      navigate(`/project/${project.id}`);
                       return true;
                     }
+                    setIsCreatingProject(false);
                     return false;
                   } catch (error) {
                     console.error("Error creating project:", error);
+                    setIsCreatingProject(false);
                     toast({
                       title: "Error",
                       description:

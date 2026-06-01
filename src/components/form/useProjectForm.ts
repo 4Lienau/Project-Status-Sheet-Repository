@@ -114,6 +114,11 @@ export const useProjectForm = (
   // Track the "last saved" milestones to detect deliberate changes to 100%
   const lastSavedMilestonesRef = useRef<any[]>(initialData?.milestones || []);
 
+  // Project completion prompt state
+  const [showProjectCompleteDialog, setShowProjectCompleteDialog] = useState(false);
+  // Flag to trigger save after user responds to the project complete dialog
+  const [projectCompleteSaveNeeded, setProjectCompleteSaveNeeded] = useState(false);
+
   const [pendingGenerationType, setPendingGenerationType] = useState<
     "description" | "value" | null
   >(null);
@@ -420,7 +425,7 @@ export const useProjectForm = (
     if (autoCopySaveNeeded) {
       setAutoCopySaveNeeded(false);
       console.log("[AUTO_COPY] Triggering deferred save after accomplishments update");
-      handleSubmitInternal(null);
+      checkAndPromptProjectComplete();
     }
   }, [autoCopySaveNeeded]);
 
@@ -431,9 +436,19 @@ export const useProjectForm = (
     if (autoRemoveSaveNeeded) {
       setAutoRemoveSaveNeeded(false);
       console.log("[AUTO_COPY] Triggering deferred save after auto-removal of accomplishments");
-      handleSubmitInternal(null);
+      checkAndPromptProjectComplete();
     }
   }, [autoRemoveSaveNeeded]);
+
+  // Effect to trigger save after user responds to the project complete dialog.
+  // If user confirmed, the status was already set to "completed" in formData.
+  useEffect(() => {
+    if (projectCompleteSaveNeeded) {
+      setProjectCompleteSaveNeeded(false);
+      console.log("[PROJECT_COMPLETE] Triggering deferred save after project complete dialog response");
+      handleSubmitInternal(null);
+    }
+  }, [projectCompleteSaveNeeded]);
 
   const handleSubmitInternal = async (e: React.FormEvent | null) => {
     // If the form is being submitted manually (not automatically), prevent the default behavior
@@ -781,8 +796,46 @@ export const useProjectForm = (
       return false;
     }
 
-    // 6. No changes needed - proceed with normal save
-    console.log("[AUTO_COPY] No newly completed items, proceeding with save");
+    // 6. No changes needed - check if all milestones are complete before saving
+    console.log("[AUTO_COPY] No newly completed items, checking project completion");
+    return checkAndPromptProjectComplete();
+  };
+
+  /**
+   * Check if all milestones are at 100% and the project status is not already "completed".
+   * Only prompts when milestones transition to all-100% during this editing session
+   * (i.e., they weren't all at 100% in the last saved state).
+   */
+  const checkAndPromptProjectComplete = () => {
+    const milestones = formData.milestones || [];
+    const currentStatus = formData.status;
+    const previousMilestones = lastSavedMilestonesRef.current || [];
+
+    // Check if all current milestones are at 100%
+    const allCurrentAt100 = milestones.length > 0 &&
+      milestones.every((m: any) => (m.completion || 0) === 100);
+
+    // Check if all previous (saved) milestones were already at 100%
+    const allPreviousAt100 = previousMilestones.length > 0 &&
+      previousMilestones.length === milestones.length &&
+      previousMilestones.every((m: any) => (m.completion || 0) === 100);
+
+    // Only prompt if:
+    // 1. ALL milestones are now at 100%
+    // 2. They weren't ALL at 100% before (i.e., something changed)
+    // 3. The project status is NOT already "completed"
+    if (
+      allCurrentAt100 &&
+      !allPreviousAt100 &&
+      currentStatus !== "completed"
+    ) {
+      console.log("[PROJECT_COMPLETE] All milestones at 100%, showing completion prompt");
+      setShowProjectCompleteDialog(true);
+      return false;
+    }
+
+    // Otherwise, proceed with normal save
+    console.log("[PROJECT_COMPLETE] Not all milestones complete, already completed, or no transition detected - proceeding with save");
     return handleSubmitInternal(null);
   };
 
@@ -826,8 +879,8 @@ export const useProjectForm = (
       // after the next render when formData includes the new accomplishments.
       setAutoCopySaveNeeded(true);
     } else {
-      // No items selected, just proceed with save
-      handleSubmitInternal(null);
+      // No items selected, just proceed with save (check for project completion first)
+      checkAndPromptProjectComplete();
     }
   };
 
@@ -838,7 +891,32 @@ export const useProjectForm = (
   const handleAutoCopyCancel = () => {
     setShowAutoCopyDialog(false);
     setPendingCompletedItems([]);
-    // Still proceed with save
+    // Still proceed with save (check for project completion first)
+    checkAndPromptProjectComplete();
+  };
+
+  /**
+   * Called when the user confirms they want to mark the project as completed.
+   * Updates the status to "completed" and triggers a deferred save.
+   */
+  const handleProjectCompleteConfirm = () => {
+    setShowProjectCompleteDialog(false);
+    console.log("[PROJECT_COMPLETE] User confirmed - setting status to completed");
+    setFormData((prev: any) => ({
+      ...prev,
+      status: "completed",
+    }));
+    // Use deferred save to ensure formData state update is applied before saving
+    setProjectCompleteSaveNeeded(true);
+  };
+
+  /**
+   * Called when the user declines to mark the project as completed.
+   * Proceeds with save using the current status.
+   */
+  const handleProjectCompleteCancel = () => {
+    setShowProjectCompleteDialog(false);
+    console.log("[PROJECT_COMPLETE] User declined - saving with current status");
     handleSubmitInternal(null);
   };
 
@@ -1394,6 +1472,12 @@ export const useProjectForm = (
     pendingCompletedItems,
     handleAutoCopyConfirm,
     handleAutoCopyCancel,
+
+    // Project completion prompt
+    showProjectCompleteDialog,
+    setShowProjectCompleteDialog,
+    handleProjectCompleteConfirm,
+    handleProjectCompleteCancel,
 
     handleToggleAnalysis,
     handleUserInteraction,

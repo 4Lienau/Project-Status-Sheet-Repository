@@ -29,6 +29,7 @@ import ConsiderationsSection from "@/components/form/ConsiderationsSection";
 import ChangesSection from "@/components/form/ChangesSection";
 import HealthCalculationSection from "@/components/form/HealthCalculationSection";
 import { AutoCopyAccomplishmentsDialog } from "@/components/form/AutoCopyAccomplishmentsDialog";
+import { ProjectCompleteDialog } from "@/components/form/ProjectCompleteDialog";
 
 // Import dialog components
 import {
@@ -79,8 +80,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     generatedContent,
     showDeleteDialog,
     setShowDeleteDialog,
-    showGanttChart,
-    setShowGanttChart,
     pendingGenerationType,
     setPendingGenerationType,
     isGeneratingAnalysis,
@@ -108,6 +107,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     pendingCompletedItems,
     handleAutoCopyConfirm,
     handleAutoCopyCancel,
+
+    // Project completion prompt
+    showProjectCompleteDialog,
+    setShowProjectCompleteDialog,
+    handleProjectCompleteConfirm,
+    handleProjectCompleteCancel,
   } = useProjectForm(initialData, onSubmit, projectId, onBack);
 
   // Calculate current health status color
@@ -399,6 +404,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             completedItems={pendingCompletedItems}
             onConfirm={handleAutoCopyConfirm}
             onCancel={handleAutoCopyCancel}
+          />
+
+          {/* Project Completion Prompt Dialog */}
+          <ProjectCompleteDialog
+            open={showProjectCompleteDialog}
+            onOpenChange={setShowProjectCompleteDialog}
+            onConfirm={handleProjectCompleteConfirm}
+            onCancel={handleProjectCompleteCancel}
           />
         </form>
       </div>
