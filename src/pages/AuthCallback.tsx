@@ -92,7 +92,16 @@ const AuthCallback = () => {
           return;
         }
 
-        // Process the authentication callback
+        // Redirect flow (non-popup): Supabase's detectSessionInUrl=true handles
+        // the PKCE exchange automatically. Calling getSession() here races with
+        // AuthContext and causes 401 (code already used). Let onAuthStateChange
+        // below handle SIGNED_IN → navigate.
+        if (!isPopup) {
+          console.log("Redirect flow: waiting for onAuthStateChange SIGNED_IN");
+          return;
+        }
+
+        // Popup flow only: check session directly
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -282,7 +291,10 @@ const AuthCallback = () => {
             }
           } else {
             console.log("Auth state change: not in popup, redirecting");
-            navigate("/");
+            // Full reload so Supabase re-initializes and finds the stored session
+            // before ProtectedRoute renders — avoids the stale-state race condition
+            // where navigate("/") renders ProtectedRoute with user===null.
+            window.location.replace("/");
           }
         } else if (event === "SIGNED_OUT") {
           navigate("/login");

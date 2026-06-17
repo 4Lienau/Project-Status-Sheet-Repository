@@ -8,7 +8,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
+    // PKCE has verifier/storage issues on localhost (HTTP). Use implicit locally
+    // so Supabase returns tokens directly in the hash fragment instead.
+    // Production (HTTPS on Netlify) keeps PKCE via the environment check.
+    flowType: typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'implicit'
+      : 'pkce',
   },
   global: {
     headers: {

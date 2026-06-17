@@ -62,6 +62,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         setLoading(true);
         console.log("AuthProvider: Checking initial authentication state...");
+
+        // On the callback route, AuthCallback owns the PKCE exchange.
+        // Calling getSession() here races with it and causes a 401 (code already used).
+        if (window.location.pathname.includes("/auth/callback")) {
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {

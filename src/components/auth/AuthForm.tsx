@@ -228,6 +228,14 @@ const AuthForm = () => {
       setLoading(true);
       setError(null);
 
+      // Localhost: skip popup flow — PKCE stores the code verifier in the main
+      // window's sessionStorage, but the popup has separate storage, causing
+      // AUTH_FAILED. The redirect flow keeps everything in one window.
+      if (window.location.hostname === "localhost") {
+        await handleRedirectSignIn();
+        return;
+      }
+
       // Determine the correct redirect URL
       // Use the current origin for the redirect - this must be whitelisted
       // in the Supabase Dashboard > Authentication > URL Configuration > Redirect URLs
