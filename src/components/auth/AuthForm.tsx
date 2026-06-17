@@ -28,30 +28,19 @@ const AuthForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Clear any existing auth session on component mount
+  // If the user already has a valid session and lands on /login, redirect home.
+  // Do NOT sign them out — that destroys sessions established by the OAuth
+  // callback when a transient ProtectedRoute redirect races against auth state.
   useEffect(() => {
-    const clearExistingSession = async () => {
-      // Check if we're on the login page directly (not from a sign-out)
-      if (
-        window.location.pathname === "/login" &&
-        !window.location.search.includes("signout=true")
-      ) {
-        console.log("Login page loaded, checking for existing session");
-        const { data } = await supabase.auth.getSession();
-
-        // If there's an existing session but we're on the login page, sign out
-        if (data.session) {
-          console.log("Found existing session on login page, signing out");
-          await supabase.auth.signOut({ scope: "global" });
-          // Clear any local storage items
-          localStorage.removeItem("supabase.auth.token");
-          localStorage.removeItem("supabase.auth.refreshToken");
-        }
+    const redirectIfAuthenticated = async () => {
+      if (window.location.pathname !== "/login") return;
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate("/");
       }
     };
-
-    clearExistingSession();
-  }, []);
+    redirectIfAuthenticated();
+  }, [navigate]);
 
   // Check for existing auth-in-progress flag on component mount
   useEffect(() => {

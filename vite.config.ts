@@ -1,20 +1,11 @@
 import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { tempo } from "tempo-devtools/dist/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    react({
-      babel: {
-        plugins:
-          process.env.TEMPO === "true"
-            ? ["tempo-devtools/dist/babel-plugin"]
-            : [],
-      },
-    }),
-    tempo(),
+    react(),
   ],
   resolve: {
     alias: {
@@ -23,5 +14,16 @@ export default defineConfig({
   },
   server: {
     allowedHosts: true,
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["./src/test-setup.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      include: ["src/lib/services/**"],
+    },
   },
 });

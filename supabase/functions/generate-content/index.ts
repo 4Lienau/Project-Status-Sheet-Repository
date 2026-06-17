@@ -16,10 +16,23 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = [
+  'https://projects.re-wa.org',
+  'https://rewapss.lienau.tech',
+  'http://localhost:5173',
+  'http://localhost:8888',
+];
+
+function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
+  const origin =
+    requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)
+      ? requestOrigin
+      : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 // Function to get the appropriate prompt for each content type
 const getPrompt = (type: string): string => {
@@ -92,11 +105,14 @@ Format your response as HTML with 2-3 concise paragraphs (<p> tags). Use bullet 
 };
 
 serve(async (req) => {
+  const requestOrigin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(requestOrigin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { 
+    return new Response('ok', {
       headers: corsHeaders,
-      status: 200 
+      status: 200
     });
   }
 

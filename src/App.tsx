@@ -10,7 +10,6 @@
  * - React core libraries
  * - react-router-dom for routing
  * - Various page components
- * - tempo-routes for Tempo platform integration
  * - useAuth custom hook for authentication
  *
  * Called by: src/main.tsx
@@ -18,7 +17,6 @@
 
 import { Suspense, useEffect } from "react";
 import {
-  useRoutes,
   Routes,
   Route,
   useLocation,
@@ -35,7 +33,6 @@ import ProjectKPIsPage from "./pages/ProjectKPIsPage";
 import ProjectsRoadmap from "./pages/ProjectsRoadmap";
 import ProjectsTimeline from "./pages/ProjectsTimeline";
 import ProjectTimeline from "./pages/ProjectTimeline";
-import routes from "tempo-routes";
 import { useAuth } from "./lib/hooks/useAuth";
 import { useSessionTracking } from "./lib/hooks/useSessionTracking";
 
@@ -140,22 +137,6 @@ function App() {
     location.pathname.startsWith("/overview") ||
     location.pathname.startsWith("/projects-timeline");
 
-  // Only call Tempo's useRoutes when we intend to render Tempo routes.
-  // This prevents a hook-order/provider-tree mismatch between Tempo routes and app routes.
-  const tempoRoutes =
-    import.meta.env.VITE_TEMPO === "true" && !isMainAppRoute
-      ? useRoutes(routes)
-      : null;
-
-  // Only handle Tempo routes if we're NOT on a main application route
-  if (
-    import.meta.env.VITE_TEMPO === "true" &&
-    !isMainAppRoute &&
-    tempoRoutes
-  ) {
-    return <Suspense fallback={<p>Loading...</p>}>{tempoRoutes}</Suspense>;
-  }
-
   return (
     <Suspense fallback={<p>Loading...</p>}>
       <SessionTracker />
@@ -174,8 +155,6 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
-        {/* Tempo route for development */}
-        {import.meta.env.VITE_TEMPO === "true" && <Route path="/tempobook/*" />}
         <Route
           path="/status-sheet/:id"
           element={

@@ -63,9 +63,11 @@ export const aiService = {
     additionalContext?: string,
   ) {
     try {
-      console.log(
-        `🚀 Starting ${type} content generation via Supabase Edge Function`,
-      );
+      if (import.meta.env.DEV) {
+        console.log(
+          `🚀 Starting ${type} content generation via Supabase Edge Function`,
+        );
+      }
 
       // Use Supabase Edge Function instead of Netlify
       const { data, error } = await supabase.functions.invoke(
@@ -91,7 +93,9 @@ export const aiService = {
         throw new Error('No content returned from AI service');
       }
 
-      console.log(`✅ Successfully generated ${type} content via Supabase Edge Function`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ Successfully generated ${type} content via Supabase Edge Function`);
+      }
 
       // Track AI usage - only track successful generations
       const userId = await getCurrentUserId();
@@ -210,18 +214,21 @@ export const aiService = {
 
       // Validate milestone quality first
       const qualityCheck = this.validateMilestoneQuality(milestones);
-      console.log("📊 Milestone quality assessment:", qualityCheck);
+      if (import.meta.env.DEV) {
+        console.log("📊 Milestone quality assessment:", qualityCheck);
+      }
 
       // Ensure we always have Project Kickoff and Project Closeout milestones
       milestones = this.ensureMandatoryMilestones(milestones);
 
-      // Log final milestone structure for debugging
-      console.log("🎯 Final processed milestones:", {
-        count: milestones.length,
-        first: milestones[0]?.milestone,
-        last: milestones[milestones.length - 1]?.milestone,
-        qualityScore: qualityCheck.score,
-      });
+      if (import.meta.env.DEV) {
+        console.log("🎯 Final processed milestones:", {
+          count: milestones.length,
+          first: milestones[0]?.milestone,
+          last: milestones[milestones.length - 1]?.milestone,
+          qualityScore: qualityCheck.score,
+        });
+      }
 
       // Get current date and add one week for the first milestone
       const today = new Date();
@@ -349,7 +356,7 @@ export const aiService = {
       }
     });
 
-    if (issues.length > 0) {
+    if (import.meta.env.DEV && issues.length > 0) {
       console.warn("🚨 Milestone quality issues detected:", issues);
     }
 

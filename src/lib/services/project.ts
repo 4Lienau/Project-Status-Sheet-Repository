@@ -163,21 +163,23 @@ export const calculateProjectDuration = (milestones: Milestone[]) => {
     (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
 
-  console.log(`[DURATION_CALC] Project duration calculation:`, {
-    startDate: startDate.toDateString(),
-    endDate: endDate.toDateString(),
-    today: today.toDateString(),
-    totalDays, // Duration from start to end
-    totalDaysRemaining, // Days from today to end
-    ratio: totalDaysRemaining / totalDays,
-    percentageIfUsedDirectly: Math.round(
-      (totalDaysRemaining / totalDays) * 100,
-    ),
-    issue:
-      totalDaysRemaining > totalDays
-        ? "WILL CAUSE >100% if used directly"
-        : "Normal",
-  });
+  if (import.meta.env.DEV) {
+    console.log(`[DURATION_CALC] Project duration calculation:`, {
+      startDate: startDate.toDateString(),
+      endDate: endDate.toDateString(),
+      today: today.toDateString(),
+      totalDays, // Duration from start to end
+      totalDaysRemaining, // Days from today to end
+      ratio: totalDaysRemaining / totalDays,
+      percentageIfUsedDirectly: Math.round(
+        (totalDaysRemaining / totalDays) * 100,
+      ),
+      issue:
+        totalDaysRemaining > totalDays
+          ? "WILL CAUSE >100% if used directly"
+          : "Normal",
+    });
+  }
 
   // Calculate working days remaining
   let workingDaysRemaining = 0;
