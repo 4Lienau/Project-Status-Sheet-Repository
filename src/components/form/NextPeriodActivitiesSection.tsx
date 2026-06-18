@@ -40,7 +40,7 @@ const NextPeriodActivitiesSection: React.FC<
   const handleActivityUpdate = (
     originalIndex: number,
     field: string,
-    value: string | number,
+    value: string | number | any[],
   ) => {
     updateItemByField(originalIndex, field as any, value);
   };
@@ -57,6 +57,7 @@ const NextPeriodActivitiesSection: React.FC<
       date: new Date().toISOString().split("T")[0],
       completion: 0,
       assignee: "",
+      sub_activities: [],
     });
   };
 

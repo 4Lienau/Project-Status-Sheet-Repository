@@ -1069,6 +1069,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                           date: a.date,
                           completion: a.completion,
                           assignee: a.assignee,
+                          sub_activities: a.sub_activities || [],
                         })),
                       risks: data.risks
                         .filter((r) =>

@@ -5,13 +5,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev              # Start Vite dev server at http://localhost:5173
+netlify dev              # Start local dev server at http://localhost:8888 (USE THIS, not npm run dev)
 npm run build            # TypeScript check + production build (dist/)
 npm run build-no-errors  # Build without halting on TS errors
 npm run lint             # ESLint on all .ts and .tsx files
 npm run preview          # Preview production build locally
 npm run types:supabase   # Regenerate src/types/supabase.ts from live schema
 ```
+
+**Always use `netlify dev`** to start the server, not `npm run dev`. `netlify dev` runs both Vite and the local Netlify Functions runtime together — required for AI features and any other serverless function calls to work. `npm run dev` starts Vite only and will cause function calls to fail.
 
 No test suite exists — verify features by running the dev server.
 
@@ -31,7 +33,7 @@ After database schema changes, run `npm run types:supabase` (requires `SUPABASE_
 
 **Auth flow**: Supabase Auth → `profiles` table record → admin approval required before access is granted. Azure AD OAuth is integrated for enterprise users via `src/components/auth/`.
 
-**Row-level security**: Users see only projects belonging to their department. This is enforced at the database level, not in application code.
+**Row-level security**: Users see all projects for any user and any department.
 
 **AI features**: OpenAI calls go through `netlify/functions/generate-content.ts` (server-side, key stays private). The client-side `src/lib/services/aiService.ts` calls that Netlify function.
 
@@ -42,7 +44,11 @@ After database schema changes, run `npm run types:supabase` (requires `SUPABASE_
 ## Environment Variables
 
 Required in `.env`:
+
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_OPENAI_API_KEY`
 - `SUPABASE_PROJECT_ID` (for type generation only)
+
+## Known Workarounds & Learnings
+@LEARNINGS.md

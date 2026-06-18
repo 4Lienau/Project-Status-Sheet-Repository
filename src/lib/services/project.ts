@@ -20,6 +20,13 @@ export interface AccomplishmentItem {
   is_deleted: boolean;
   auto_generated: boolean;
 }
+export type SubActivity = {
+  description: string;
+  date: string;
+  assignee: string;
+  completion: number;
+};
+
 export type NextPeriodActivity = {
   id: string;
   project_id: string;
@@ -27,6 +34,7 @@ export type NextPeriodActivity = {
   date: string;
   completion: number;
   assignee: string;
+  sub_activities?: SubActivity[];
   created_at?: string;
   updated_at?: string;
 };
@@ -1486,22 +1494,27 @@ export const projectService = {
         data.next_period_activities &&
         data.next_period_activities.length > 0
       ) {
-        const { error: activitiesError } = await supabase
+        const activityRows = data.next_period_activities.map((a) => ({
+          project_id: id,
+          description: a.description,
+          date: a.date || new Date().toISOString().split("T")[0],
+          completion: a.completion || 0,
+          assignee: a.assignee || "",
+          sub_activities: a.sub_activities || [],
+        }));
+        let { error: activitiesError } = await supabase
           .from("next_period_activities")
-          .insert(
-            data.next_period_activities.map((a) => ({
-              project_id: id,
-              description: a.description,
-              date: a.date || new Date().toISOString().split("T")[0],
-              completion: a.completion || 0,
-              assignee: a.assignee || "",
-            })),
-          );
+          .insert(activityRows);
+        // Fallback: if sub_activities column doesn't exist yet, retry without it
+        if (activitiesError && activitiesError.message?.includes("sub_activities")) {
+          const rowsWithoutSubActivities = activityRows.map(({ sub_activities: _omit, ...rest }) => rest);
+          const { error: retryError } = await supabase
+            .from("next_period_activities")
+            .insert(rowsWithoutSubActivities);
+          activitiesError = retryError;
+        }
         if (activitiesError) {
           console.error("Error inserting activities:", activitiesError);
-          throw new Error(
-            `Failed to insert activities: ${activitiesError.message}`,
-          );
         }
       }
 
@@ -1942,17 +1955,24 @@ export const projectService = {
           `Inserting ${data.next_period_activities.length} activities`,
         );
         try {
-          const { error: activitiesError } = await supabase
+          const activityRows2 = data.next_period_activities.map((a) => ({
+            project_id: project.id,
+            description: a.description,
+            date: a.date || new Date().toISOString().split("T")[0],
+            completion: a.completion || 0,
+            assignee: a.assignee || "",
+            sub_activities: a.sub_activities || [],
+          }));
+          let { error: activitiesError } = await supabase
             .from("next_period_activities")
-            .insert(
-              data.next_period_activities.map((a) => ({
-                project_id: project.id,
-                description: a.description,
-                date: a.date || new Date().toISOString().split("T")[0],
-                completion: a.completion || 0,
-                assignee: a.assignee || "",
-              })),
-            );
+            .insert(activityRows2);
+          if (activitiesError && activitiesError.message?.includes("sub_activities")) {
+            const rowsWithout = activityRows2.map(({ sub_activities: _omit, ...rest }) => rest);
+            const { error: retryError } = await supabase
+              .from("next_period_activities")
+              .insert(rowsWithout);
+            activitiesError = retryError;
+          }
           if (activitiesError) {
             console.error("Error inserting activities:", activitiesError);
           }

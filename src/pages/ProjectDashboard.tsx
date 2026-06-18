@@ -675,6 +675,7 @@ const ProjectDashboard: React.FC = () => {
           date: a.date || new Date().toISOString().split("T")[0],
           completion: a.completion || 0,
           assignee: a.assignee || "",
+          sub_activities: (a.sub_activities as any[]) || [],
         })) || [],
       risks:
         project.risks?.map((r) => ({
@@ -1089,6 +1090,7 @@ const ProjectDashboard: React.FC = () => {
                         date: a.date || new Date().toISOString().split("T")[0],
                         completion: a.completion || 0,
                         assignee: a.assignee || "",
+                        sub_activities: a.sub_activities || [],
                       })) || [],
                     risks:
                       data.risks?.map((r) => ({
