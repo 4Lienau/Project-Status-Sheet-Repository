@@ -553,11 +553,9 @@ const ProjectList = ({
 
                 {/* Health Indicator */}
                 {(() => {
-                  // Calculate overall health percentage
-                  const overallCompletion =
-                    project.health_calculation_type === "manual"
-                      ? project.manual_health_percentage
-                      : calculateWeightedCompletion(project.milestones);
+                  // Always show actual weighted milestone completion regardless of health_calculation_type.
+                  // manual_health_percentage only affects the status color, not the completion display.
+                  const overallCompletion = calculateWeightedCompletion(project.milestones);
 
                   // Calculate time remaining percentage for tooltip
                   const timeRemainingPercentage =

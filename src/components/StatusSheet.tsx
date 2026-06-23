@@ -167,11 +167,9 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
     );
   }
 
-  // Calculate overall completion percentage
-  const overallCompletion =
-    data.health_calculation_type === "manual"
-      ? data.manual_health_percentage || 0
-      : calculateWeightedCompletion(data.milestones || []);
+  // Always show actual weighted milestone completion regardless of health_calculation_type.
+  // manual_health_percentage only affects the status color, not the completion display.
+  const overallCompletion = calculateWeightedCompletion(data.milestones || []);
 
   // Determine overall status color using computed_status_color from database
   const getStatusColor = () => {
