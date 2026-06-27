@@ -20,7 +20,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Download, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import StatusSheet from "@/components/StatusSheet";
 import { projectService } from "@/lib/services/project";
 import { projectVersionsService } from "@/lib/services/projectVersions";
@@ -29,6 +29,7 @@ import html2canvas from "html2canvas";
 import { supabase } from "@/lib/supabase";
 import Layout from "@/components/layout/Layout";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { useAuth } from "@/lib/hooks/AuthContext";
 
 /**
  * StatusSheetView component
@@ -36,6 +37,7 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
  */
 const StatusSheetView: React.FC = () => {
   const { toast } = useToast();
+  const { canEditProject, user } = useAuth();
   const [versions, setVersions] = useState([]);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1); // -1 means current (non-versioned)
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
@@ -433,13 +435,20 @@ const StatusSheetView: React.FC = () => {
                 <ArrowLeft className="h-4 w-4" /> Back to Projects
               </Button>
               
-              <Button
-                variant="default"
-                onClick={() => navigate(`/project/${id}`)}
-                className="flex items-center gap-2"
-              >
-                Edit Project
-              </Button>
+              {canEditProject(project) ? (
+                <Button
+                  variant="default"
+                  onClick={() => navigate(`/project/${id}`)}
+                  className="flex items-center gap-2"
+                >
+                  Edit Project
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground bg-muted rounded-md border">
+                  <Eye className="h-4 w-4" />
+                  View Only
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">

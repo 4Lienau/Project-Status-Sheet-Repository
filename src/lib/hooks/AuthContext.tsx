@@ -18,6 +18,7 @@ export interface UserProfile {
   department: string | null;
   email: string | null;
   is_approved?: boolean;
+  role: 'project_manager' | 'department_director' | 'admin';
 }
 
 interface AuthContextType {
@@ -26,6 +27,9 @@ interface AuthContextType {
   loading: boolean;
   isApproved: boolean | null;
   isPendingApproval: boolean;
+  canEditProject: (project: { owner_id?: string | null; id: string }) => boolean;
+  isAdmin: boolean;
+  isDirector: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -34,6 +38,9 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isApproved: null,
   isPendingApproval: false,
+  canEditProject: () => false,
+  isAdmin: false,
+  isDirector: false,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [isPendingApproval, setIsPendingApproval] = useState(false);
+  const [editorProjectIds, setEditorProjectIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -195,11 +203,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, department, email, is_approved")
+        .select("id, full_name, department, email, is_approved, role")
         .eq("id", user.id)
         .single();
 
-      setProfile(data);
+      // Refresh department from directory_users if it differs (Azure AD is authoritative)
+      if (data?.email) {
+        const { data: dirUser } = await supabase
+          .from("directory_users")
+          .select("department")
+          .eq("email", data.email)
+          .eq("sync_status", "active")
+          .single();
+
+        if (dirUser?.department && dirUser.department !== data?.department) {
+          await supabase
+            .from("profiles")
+            .update({ department: dirUser.department })
+            .eq("id", user.id);
+          if (data) data.department = dirUser.department;
+        }
+      }
+
+      // Load the set of project IDs where this user is a designated editor
+      const { data: editorRows } = await supabase
+        .from("project_editors")
+        .select("project_id")
+        .eq("user_id", user.id);
+
+      setEditorProjectIds(new Set((editorRows ?? []).map((r) => r.project_id)));
+
+      setProfile(data ? { ...data, role: data.role ?? 'project_manager' } : null);
 
       if (data) {
         if (data.is_approved === false) {
@@ -277,9 +311,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadProfile();
   }, [user]);
 
+  const isAdmin = profile?.role === 'admin';
+  const isDirector = profile?.role === 'department_director';
+
+  const canEditProject = useCallback(
+    (project: { owner_id?: string | null; id: string }): boolean => {
+      if (!user) return false;
+      if (isAdmin) return true;
+      if (project.owner_id == null) return true; // grace period: unowned projects
+      if (project.owner_id === user.id) return true;
+      return editorProjectIds.has(project.id);
+    },
+    [user, isAdmin, editorProjectIds],
+  );
+
   return (
     <AuthContext.Provider
-      value={{ user, profile, loading, isApproved, isPendingApproval }}
+      value={{ user, profile, loading, isApproved, isPendingApproval, canEditProject, isAdmin, isDirector }}
     >
       {children}
     </AuthContext.Provider>

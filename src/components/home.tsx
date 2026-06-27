@@ -109,7 +109,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { user, loading } = useAuth();
+  const { user, loading, profile, isDirector } = useAuth();
 
   // Determine mode from props (for URL-based routing) or default to list
   const [mode, setMode] = useState<"list" | "form" | "preview" | "overview">(
@@ -170,10 +170,13 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
       const savedManagers = loadFilterFromStorage(userId, "managers", []);
       // Support migration from old single-select format
       const savedStatuses = loadFilterFromStorage(userId, "statuses", []);
+      // Directors default to their own department if no preference saved yet
+      const defaultDepartment =
+        isDirector && profile?.department ? profile.department : "all";
       const savedDepartment = loadFilterFromStorage(
         userId,
         "department",
-        "all",
+        defaultDepartment,
       );
       const savedStatusHealths = loadFilterFromStorage(
         userId,
@@ -268,19 +271,21 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
         ...new Set(projects.map((p) => p.department)),
       ].filter(Boolean);
 
-      // Also get departments from profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("department")
-        .not("department", "is", null);
+      // Use canonical master departments table as the authoritative source.
+      // Avoids raw AD names (e.g. "IT Administration") bleeding into the filter
+      // from profiles that haven't been synced yet.
+      const { data: masterDepts } = await supabase
+        .from("departments")
+        .select("name")
+        .order("name");
 
-      const profileDepartments = profiles
-        ? [...new Set(profiles.map((p) => p.department))].filter(Boolean)
+      const masterDepartments = masterDepts
+        ? masterDepts.map((d) => d.name).filter(Boolean)
         : [];
 
-      // Combine both sources of departments
+      // Combine: master list + any project departments not yet in master list
       const allDepartments = [
-        ...new Set([...projectDepartments, ...profileDepartments]),
+        ...new Set([...masterDepartments, ...projectDepartments]),
       ].sort();
       setDepartments(allDepartments);
       

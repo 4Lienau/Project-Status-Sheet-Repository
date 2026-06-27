@@ -251,33 +251,12 @@ const DepartmentManager: React.FC = () => {
   return (
     <Card className="bg-card border border-border">
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-foreground">Department Management</CardTitle>
-        </div>
+        <CardTitle className="text-foreground">Master Departments</CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">
+          Departments are derived from Azure Active Directory. Use the <strong>Dept Mapping</strong> tab to assign AD department names to these master departments.
+        </p>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1">
-            <Label htmlFor="new-department" className="sr-only">
-              New Department
-            </Label>
-            <Input
-              id="new-department"
-              value={newDepartmentName}
-              onChange={(e) => setNewDepartmentName(e.target.value)}
-              placeholder="Enter department name"
-              className="w-full"
-            />
-          </div>
-          <Button
-            onClick={handleAddDepartment}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Department
-          </Button>
-        </div>
-
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -288,79 +267,19 @@ const DepartmentManager: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Department Name</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {departments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-center py-8">
-                      No departments found. Add some using the form above.
+                    <TableCell className="text-center py-8 text-muted-foreground">
+                      No departments found.
                     </TableCell>
                   </TableRow>
                 ) : (
                   departments.map((department) => (
                     <TableRow key={department.id}>
-                      <TableCell className="font-medium">
-                        {editingDepartment?.id === department.id ? (
-                          <Input
-                            value={editingDepartment.name}
-                            onChange={(e) =>
-                              setEditingDepartment({
-                                ...editingDepartment,
-                                name: e.target.value,
-                              })
-                            }
-                            autoFocus
-                          />
-                        ) : (
-                          department.name
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {editingDepartment?.id === department.id ? (
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={saveDepartment}
-                              className="text-success hover:text-success hover:bg-success/10"
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={cancelEditing}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => startEditing(department)}
-                              className="text-primary hover:text-primary hover:bg-primary/10"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDepartmentId(department.id);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
+                      <TableCell className="font-medium">{department.name}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -369,31 +288,6 @@ const DepartmentManager: React.FC = () => {
           </div>
         )}
       </CardContent>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this department from the database.
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteDepartment}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 };

@@ -1868,4 +1868,72 @@ export const adminService = {
       };
     }
   },
+
+  async updateUserRole(userId: string, role: 'project_manager' | 'department_director' | 'admin'): Promise<boolean> {
+    // Uses SECURITY DEFINER RPC — admin check is enforced server-side.
+    // Direct UPDATE on profiles.role is blocked via REVOKE UPDATE(role).
+    const { error } = await supabase.rpc('admin_set_user_role', {
+      target_user_id: userId,
+      new_role: role,
+    });
+    if (error) {
+      console.error('Error updating user role:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async getAllProfiles(): Promise<Array<{ id: string; full_name: string | null; email: string | null; department: string | null; role: string; is_approved: boolean | null }>> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, department, role, is_approved')
+      .order('full_name');
+    if (error) {
+      console.error('Error fetching profiles:', error);
+      return [];
+    }
+    return data ?? [];
+  },
+
+  async getDepartmentMappings(): Promise<Array<{ id: string; ad_name: string; master_dept_id: string | null; is_excluded: boolean; exclusion_reason: string | null; departments: { name: string } | null }>> {
+    const { data, error } = await supabase
+      .from('ad_department_mappings')
+      .select('id, ad_name, master_dept_id, is_excluded, exclusion_reason, departments(name)')
+      .order('ad_name');
+    if (error) {
+      console.error('Error fetching department mappings:', error);
+      return [];
+    }
+    return (data ?? []) as any;
+  },
+
+  async upsertDepartmentMapping(adName: string, masterDeptId: string | null, isExcluded: boolean, exclusionReason?: string): Promise<boolean> {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from('ad_department_mappings')
+      .upsert({
+        ad_name: adName,
+        master_dept_id: isExcluded ? null : masterDeptId,
+        is_excluded: isExcluded,
+        exclusion_reason: exclusionReason ?? null,
+        mapped_by: user?.id ?? null,
+      }, { onConflict: 'ad_name' });
+    if (error) {
+      console.error('Error upserting department mapping:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async getMasterDepartments(): Promise<Array<{ id: string; name: string }>> {
+    const { data, error } = await supabase
+      .from('departments')
+      .select('id, name')
+      .order('name');
+    if (error) {
+      console.error('Error fetching master departments:', error);
+      return [];
+    }
+    return data ?? [];
+  },
 };

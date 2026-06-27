@@ -43,3 +43,18 @@ core
 # Local Netlify folder
 .netlify
 **/tempobook/**
+
+# Claude Code session data
+.claude/
+
+# Graphify knowledge graph output
+graphify-out/
+
+# OpenSpec tool artifacts
+openspec/
+
+# VS Code workspace files (personal, not project-wide)
+*.code-workspace
+
+# Migration convenience/consolidation files (not real migrations)
+supabase/migrations/ALL_*_migrations.sql

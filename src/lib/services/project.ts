@@ -1864,6 +1864,7 @@ export const projectService = {
           manual_health_percentage: data.manual_health_percentage,
           manual_status_color: data.manual_status_color,
           department: department,
+          owner_id: user?.id ?? null,
         })
         .select()
         .single();
@@ -1878,6 +1879,24 @@ export const projectService = {
       }
 
       console.log("Project created successfully with ID:", project.id);
+
+      // Auto-add the designated Project Manager as an editor so they can
+      // edit the project even if someone else (e.g. an admin) created it.
+      if (data.project_manager && user) {
+        const { data: pmProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("full_name", data.project_manager.trim())
+          .single();
+
+        if (pmProfile && pmProfile.id !== user.id) {
+          await supabase.from("project_editors").insert({
+            project_id: project.id,
+            user_id: pmProfile.id,
+            granted_by: user.id,
+          });
+        }
+      }
 
       // Insert milestones if any
       if (data.milestones && data.milestones.length > 0) {
@@ -2406,5 +2425,88 @@ export const projectService = {
       console.error("Unexpected error in getProject:", error);
       return null;
     }
+  },
+
+  async getProjectEditors(projectId: string): Promise<Array<{ user_id: string; full_name: string | null; email: string | null; granted_by: string | null; created_at: string }>> {
+    const { data: editors, error } = await supabase
+      .from("project_editors")
+      .select("user_id, granted_by, created_at")
+      .eq("project_id", projectId);
+
+    if (error) {
+      console.error("Error fetching project editors:", error);
+      return [];
+    }
+    if (!editors?.length) return [];
+
+    const userIds = editors.map((e) => e.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", userIds);
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    return editors.map((e) => ({
+      user_id: e.user_id,
+      full_name: profileMap.get(e.user_id)?.full_name ?? null,
+      email: profileMap.get(e.user_id)?.email ?? null,
+      granted_by: e.granted_by,
+      created_at: e.created_at,
+    }));
+  },
+
+  async addProjectEditor(projectId: string, userId: string): Promise<boolean> {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("project_editors")
+      .insert({ project_id: projectId, user_id: userId, granted_by: user?.id ?? null });
+
+    if (error) {
+      console.error("Error adding project editor:", error);
+      return false;
+    }
+    return true;
+  },
+
+  async removeProjectEditor(projectId: string, userId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from("project_editors")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error removing project editor:", error);
+      return false;
+    }
+    return true;
+  },
+
+  async getApprovedUsers(): Promise<Array<{ id: string | null; full_name: string | null; email: string | null; department: string | null; hasAccount: boolean }>> {
+    // Search all active AD users, then join to profiles by email for the auth UUID.
+    // Users without a profile haven't logged in yet — hasAccount will be false.
+    const [{ data: dirUsers }, { data: profiles }] = await Promise.all([
+      supabase
+        .from("directory_users")
+        .select("display_name, email, department")
+        .eq("sync_status", "active")
+        .order("display_name"),
+      supabase
+        .from("profiles")
+        .select("id, email"),
+    ]);
+
+    const profileMap = new Map(
+      (profiles ?? []).map((p) => [p.email?.toLowerCase(), p.id])
+    );
+
+    return (dirUsers ?? []).map((u) => ({
+      id: profileMap.get(u.email?.toLowerCase()) ?? null,
+      full_name: u.display_name,
+      email: u.email,
+      department: u.department,
+      hasAccount: profileMap.has(u.email?.toLowerCase()),
+    }));
   },
 };

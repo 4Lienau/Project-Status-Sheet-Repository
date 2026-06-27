@@ -26,7 +26,9 @@ import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { projectService } from "@/lib/services/project";
 import { projectVersionsService } from "@/lib/services/projectVersions";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { useAuth } from "@/lib/hooks/useAuth";
+import ProjectEditors from "@/components/project/ProjectEditors";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ProjectForm from "@/components/ProjectForm";
@@ -63,10 +65,12 @@ const ProjectDashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { canEditProject, user, isAdmin } = useAuth();
+  const [showEditors, setShowEditors] = useState(false);
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
+
   // Initialize isEditing based on the route path
   // If the path is /project/:id (without /view), it's edit mode
   // If the path is /project/:id/view, it's view mode
@@ -185,6 +189,13 @@ const ProjectDashboard: React.FC = () => {
       console.log("[DEBUG] Version loading effect cleanup");
     };
   }, [id, project?.id]); // Only depend on project.id, not the entire project object
+
+  // Force non-editors into view mode once project loads
+  useEffect(() => {
+    if (project && !canEditProject(project)) {
+      setIsEditing(false);
+    }
+  }, [project, canEditProject]);
 
   // Check if project is completed when entering edit mode
   useEffect(() => {
@@ -935,44 +946,46 @@ const ProjectDashboard: React.FC = () => {
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            <Button
-              onClick={async () => {
-                if (isEditing) {
-                  // Check for unsaved changes before switching to Status Sheet view
-                  const formElement = document.querySelector("form");
-                  const formHasChanges =
-                    formElement?.getAttribute("data-has-changes") === "true";
-                  const formHasInteraction =
-                    formElement?.getAttribute("data-user-interaction") === "true";
+            {project && !canEditProject(project) ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground bg-muted rounded-md border">
+                <Eye className="h-4 w-4" />
+                View Only
+              </div>
+            ) : (
+              <Button
+                onClick={async () => {
+                  if (isEditing) {
+                    // Check for unsaved changes before switching to Status Sheet view
+                    const formElement = document.querySelector("form");
+                    const formHasChanges =
+                      formElement?.getAttribute("data-has-changes") === "true";
+                    const formHasInteraction =
+                      formElement?.getAttribute("data-user-interaction") === "true";
 
-                  if (formHasChanges && formHasInteraction) {
-                    // Show confirmation dialog
-                    const confirmLeave = window.confirm(
-                      "You have unsaved changes. Are you sure you want to leave without saving?",
-                    );
-                    if (confirmLeave) {
-                      // Navigate to view mode
+                    if (formHasChanges && formHasInteraction) {
+                      const confirmLeave = window.confirm(
+                        "You have unsaved changes. Are you sure you want to leave without saving?",
+                      );
+                      if (confirmLeave) {
+                        navigate(`/project/${id}/view`);
+                      }
+                    } else {
                       navigate(`/project/${id}/view`);
                     }
                   } else {
-                    // Navigate to view mode
-                    navigate(`/project/${id}/view`);
+                    navigate(`/project/${id}`);
                   }
-                } else {
-                  // Navigate to edit mode
-                  navigate(`/project/${id}`);
-                }
-              }}
-              variant="outline"
-            >
-              {isEditing ? "View Status Sheet" : "Edit Project"}
-            </Button>
+                }}
+                variant="outline"
+              >
+                {isEditing ? "View Status Sheet" : "Edit Project"}
+              </Button>
+            )}
 
             {isEditing && (
               <Button
                 variant="outline"
                 onClick={() => {
-                  // Only allow if project id exists
                   if (id) {
                     navigate(`/project/${id}/timeline`);
                   } else {
@@ -982,6 +995,23 @@ const ProjectDashboard: React.FC = () => {
               >
                 View Timeline
               </Button>
+            )}
+
+            {isEditing && project && (project.owner_id === user?.id || isAdmin) && (
+              <div className="w-full">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowEditors((v) => !v)}
+                >
+                  Manage Editors
+                </Button>
+                {showEditors && (
+                  <div className="mt-2 p-3 border rounded-lg bg-muted/30 w-72">
+                    <ProjectEditors projectId={project.id} ownerId={project.owner_id} />
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -1208,6 +1238,7 @@ const ProjectDashboard: React.FC = () => {
             }
           />
         )}
+
       </div>
     </Layout>
   );

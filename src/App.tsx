@@ -88,8 +88,8 @@ const SessionTracker = () => {
 };
 
 // Protected route component that redirects to login if not authenticated
-const ProtectedRoute = ({ children, ...props }) => {
-  const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, requireAdmin = false, ...props }) => {
+  const { user, loading, isAdmin } = useAuth();
 
   // Only filter out specific problematic props
   const { key, testID, tempoelementid, ...safeProps } = props;
@@ -116,7 +116,12 @@ const ProtectedRoute = ({ children, ...props }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Render children if authenticated
+  // Redirect non-admins away from admin-only routes
+  if (requireAdmin && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Render children if authenticated (and authorized)
   return <>{children}</>;
 };
 
@@ -145,7 +150,7 @@ function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireAdmin>
               <AdminPage />
             </ProtectedRoute>
           }

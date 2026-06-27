@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import KnowledgeManager from "@/components/admin/KnowledgeManager";
 import DepartmentManager from "@/components/admin/DepartmentManager";
+import RoleManager from "@/components/admin/RoleManager";
+import DepartmentMappingManager from "@/components/admin/DepartmentMappingManager";
 import SupabaseMetrics from "@/components/admin/SupabaseMetrics";
 import PendingUsersManager from "@/components/admin/PendingUsersManager";
 import ProjectDurationManager from "@/components/admin/ProjectDurationManager";
@@ -73,7 +75,7 @@ import { Breadcrumb, BreadcrumbItem } from "@/components/ui/breadcrumb";
 const ADMIN_EMAILS = ["4lienau@gmail.com", "chrisl@re-wa.org"];
 
 const AdminPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -779,6 +781,16 @@ const AdminPage: React.FC = () => {
               <Building2 className="h-4 w-4 mr-2" />
               Departments
             </TabsTrigger>
+            <TabsTrigger value="dept-mapping" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Building2 className="h-4 w-4 mr-2" />
+              Dept Mapping
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="roles" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Users className="h-4 w-4 mr-2" />
+                Roles
+              </TabsTrigger>
+            )}
             <TabsTrigger value="reminders" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Mail className="h-4 w-4 mr-2" />
               Reminder Emails
@@ -1525,6 +1537,30 @@ const AdminPage: React.FC = () => {
           <TabsContent value="departments" className="space-y-4">
             <DepartmentManager />
           </TabsContent>
+
+          <TabsContent value="dept-mapping" className="space-y-4">
+            <Card className="bg-card border border-border">
+              <CardHeader>
+                <CardTitle className="text-foreground">Department Mapping</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DepartmentMappingManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="roles" className="space-y-4">
+              <Card className="bg-card border border-border">
+                <CardHeader>
+                  <CardTitle className="text-foreground">User Role Assignment</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RoleManager />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           <TabsContent value="analytics" className="space-y-4">
             <UsageAnalytics />

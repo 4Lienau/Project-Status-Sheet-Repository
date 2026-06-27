@@ -734,30 +734,33 @@ serve(async (req) => {
         }
       }
 
-      // Mark users as inactive if they no longer exist in the active Azure AD users with departments
-      // Since we only process active users with valid departments, any previously active user not in this list
-      // has either been deactivated, deleted from Azure AD, or had their department removed/cleared
+      // Two-step deactivation: avoids URL length limits when there are many users.
+      // Step 1: fetch currently active records, Step 2: deactivate those not in the synced list.
       const azureUserIds = allUsers.map((u) => u.id);
-      if (azureUserIds.length > 0) {
-        const { data: deactivatedUsers, error: deactivateError } =
-          await supabase
-            .from("directory_users")
-            .update({
-              sync_status: "inactive",
-              last_synced: new Date().toISOString(),
-            })
-            .not(
-              "azure_user_id",
-              "in",
-              `(${azureUserIds.map((id) => `'${id}'`).join(",")})`,
-            )
-            .eq("sync_status", "active")
-            .select("id");
+      const azureUserIdSet = new Set(azureUserIds);
 
-        if (deactivateError) {
-          console.error("Error deactivating users:", deactivateError);
-        } else {
-          usersDeactivated = deactivatedUsers?.length || 0;
+      const { data: currentlyActive } = await supabase
+        .from("directory_users")
+        .select("id, azure_user_id")
+        .eq("sync_status", "active");
+
+      const toDeactivate = (currentlyActive ?? [])
+        .filter((u) => !azureUserIdSet.has(u.azure_user_id))
+        .map((u) => u.id);
+
+      if (toDeactivate.length > 0) {
+        const batchSize = 100;
+        for (let i = 0; i < toDeactivate.length; i += batchSize) {
+          const batch = toDeactivate.slice(i, i + batchSize);
+          const { error: deactivateError } = await supabase
+            .from("directory_users")
+            .update({ sync_status: "inactive", last_synced: new Date().toISOString() })
+            .in("id", batch);
+          if (deactivateError) {
+            console.error("Error deactivating batch:", deactivateError);
+          } else {
+            usersDeactivated += batch.length;
+          }
         }
       }
 

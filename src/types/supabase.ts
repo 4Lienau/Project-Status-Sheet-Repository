@@ -64,6 +64,47 @@ export type Database = {
           },
         ]
       }
+      ad_department_mappings: {
+        Row: {
+          ad_name: string
+          created_at: string
+          exclusion_reason: string | null
+          id: string
+          is_excluded: boolean
+          mapped_by: string | null
+          master_dept_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_name: string
+          created_at?: string
+          exclusion_reason?: string | null
+          id?: string
+          is_excluded?: boolean
+          mapped_by?: string | null
+          master_dept_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_name?: string
+          created_at?: string
+          exclusion_reason?: string | null
+          id?: string
+          is_excluded?: boolean
+          mapped_by?: string | null
+          master_dept_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_department_mappings_master_dept_id_fkey"
+            columns: ["master_dept_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage_tracking: {
         Row: {
           created_at: string | null
@@ -430,6 +471,7 @@ export type Database = {
           description: string
           id: string
           project_id: string | null
+          sub_activities: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -440,6 +482,7 @@ export type Database = {
           description: string
           id?: string
           project_id?: string | null
+          sub_activities?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -450,6 +493,7 @@ export type Database = {
           description?: string
           id?: string
           project_id?: string | null
+          sub_activities?: Json | null
           updated_at?: string | null
         }
         Relationships: [
@@ -500,6 +544,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_approved: boolean | null
+          role: string
           updated_at: string | null
         }
         Insert: {
@@ -509,6 +554,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_approved?: boolean | null
+          role?: string
           updated_at?: string | null
         }
         Update: {
@@ -518,9 +564,39 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_approved?: boolean | null
+          role?: string
           updated_at?: string | null
         }
         Relationships: []
+      }
+      project_editors: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_editors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_summaries: {
         Row: {
@@ -607,6 +683,7 @@ export type Database = {
           id: string
           manual_health_percentage: number | null
           manual_status_color: string | null
+          owner_id: string | null
           project_analysis: string | null
           project_id: string | null
           project_manager: string
@@ -637,6 +714,7 @@ export type Database = {
           id?: string
           manual_health_percentage?: number | null
           manual_status_color?: string | null
+          owner_id?: string | null
           project_analysis?: string | null
           project_id?: string | null
           project_manager: string
@@ -667,6 +745,7 @@ export type Database = {
           id?: string
           manual_health_percentage?: number | null
           manual_status_color?: string | null
+          owner_id?: string | null
           project_analysis?: string | null
           project_id?: string | null
           project_manager?: string
@@ -1011,7 +1090,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_set_user_role: {
+        Args: { new_role: string; target_user_id: string }
+        Returns: undefined
+      }
       bytea_to_text: { Args: { data: string }; Returns: string }
+      can_edit_project: { Args: { p_project_id: string }; Returns: boolean }
       check_and_log_sync_status: { Args: never; Returns: undefined }
       check_and_trigger_due_syncs: { Args: never; Returns: undefined }
       check_azure_sync_due: { Args: never; Returns: boolean }
@@ -1313,6 +1397,7 @@ export type Database = {
         }[]
       }
       recalculate_all_computed_status_colors: { Args: never; Returns: number }
+      resolve_department: { Args: { ad_dept: string }; Returns: string }
       test_project_creation_tracking: {
         Args: { p_test_project_id?: string; p_user_id: string }
         Returns: Json
