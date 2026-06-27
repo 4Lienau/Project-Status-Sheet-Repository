@@ -171,24 +171,6 @@ export const calculateProjectDuration = (milestones: Milestone[]) => {
     (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
 
-  if (import.meta.env.DEV) {
-    console.log(`[DURATION_CALC] Project duration calculation:`, {
-      startDate: startDate.toDateString(),
-      endDate: endDate.toDateString(),
-      today: today.toDateString(),
-      totalDays, // Duration from start to end
-      totalDaysRemaining, // Days from today to end
-      ratio: totalDaysRemaining / totalDays,
-      percentageIfUsedDirectly: Math.round(
-        (totalDaysRemaining / totalDays) * 100,
-      ),
-      issue:
-        totalDaysRemaining > totalDays
-          ? "WILL CAUSE >100% if used directly"
-          : "Normal",
-    });
-  }
-
   // Calculate working days remaining
   let workingDaysRemaining = 0;
   const calcStartDate = new Date(today);
@@ -236,9 +218,6 @@ export const calculateTimeRemainingPercentage = (
 
   // If project is completed, return 0% time remaining
   if (projectWithRelations.status === "completed") {
-    console.log(
-      `[TIME_CALC] Project is completed, returning 0% time remaining`,
-    );
     return 0;
   }
 
@@ -254,17 +233,8 @@ export const calculateTimeRemainingPercentage = (
   const totalDays = projectWithRelations.total_days;
   const remainingDays = projectWithRelations.total_days_remaining;
 
-  console.log(`[TIME_CALC] Input data:`, {
-    totalDays,
-    remainingDays,
-    status: projectWithRelations.status,
-    calculated_start_date: projectWithRelations.calculated_start_date,
-    calculated_end_date: projectWithRelations.calculated_end_date,
-  });
-
   // If project is overdue, return 0%
   if (remainingDays < 0) {
-    console.log(`[TIME_CALC] Project is overdue, returning 0%`);
     return 0;
   }
 
@@ -272,14 +242,6 @@ export const calculateTimeRemainingPercentage = (
   // This is the fundamental issue - we should NEVER show >100% time remaining
   const rawPercentage = Math.round((remainingDays / totalDays) * 100);
   const cappedPercentage = Math.max(0, Math.min(100, rawPercentage));
-
-  console.log(`[TIME_CALC] Time remaining calculation:`, {
-    totalDays,
-    remainingDays,
-    rawPercentage,
-    cappedPercentage,
-    willReturn: cappedPercentage,
-  });
 
   // Additional check for future projects - but still cap at 100%
   const today = new Date();
@@ -289,9 +251,6 @@ export const calculateTimeRemainingPercentage = (
     : null;
 
   if (startDate && startDate > today) {
-    console.log(
-      `[TIME_CALC] Future project detected: start=${startDate.toDateString()}, today=${today.toDateString()}, but still capping at 100%`,
-    );
     // Even for future projects, never exceed 100%
     return Math.min(100, cappedPercentage);
   }
@@ -350,14 +309,6 @@ export const getTimeRemainingDescription = (
   const cappedPercentage =
     timeRemainingPercentage !== null ? timeRemainingPercentage : 0;
 
-  console.log(`[TIME_DESC] Time remaining description calculation:`, {
-    totalDays,
-    remainingDays,
-    timeRemainingPercentage,
-    cappedPercentage,
-    status: projectWithRelations.status,
-  });
-
   if (cappedPercentage === 100) {
     return `${remainingDays} day${remainingDays === 1 ? "" : "s"} remaining (full duration)`;
   } else {
@@ -406,39 +357,21 @@ export const calculateProjectHealthStatusColor = (
   project: ProjectWithRelations | Project,
   milestones?: Milestone[],
 ): "red" | "yellow" | "green" => {
-  console.log(`[HEALTH_CALC] Calculating health status for project:`, {
-    id: project.id,
-    title: project.title,
-    health_calculation_type: project.health_calculation_type,
-    manual_status_color: project.manual_status_color,
-    status: project.status,
-    milestones_count:
-      milestones?.length ||
-      (project as ProjectWithRelations).milestones?.length ||
-      0,
-  });
-
   // For manual calculation, use the manual status color if available
   if (
     project.health_calculation_type === "manual" &&
     project.manual_status_color
   ) {
-    console.log(
-      `[HEALTH_CALC] Using manual status color: ${project.manual_status_color}`,
-    );
     return project.manual_status_color;
   }
 
   // For automatic calculation or when manual color is not set
   // Use status-based colors first
   if (project.status === "completed") {
-    console.log(`[HEALTH_CALC] Status-based color: green (completed)`);
     return "green";
   } else if (project.status === "cancelled") {
-    console.log(`[HEALTH_CALC] Status-based color: red (cancelled)`);
     return "red";
   } else if (project.status === "draft" || project.status === "on_hold") {
-    console.log(`[HEALTH_CALC] Status-based color: yellow (${project.status})`);
     return "yellow";
   }
 
@@ -453,14 +386,6 @@ export const calculateProjectHealthStatusColor = (
     // Calculate time remaining percentage
     const timeRemainingPercentage = calculateTimeRemainingPercentage(project);
 
-    console.log(`[HEALTH_CALC] Time-aware calculation:`, {
-      weightedCompletion,
-      timeRemainingPercentage,
-      total_days: (project as ProjectWithRelations).total_days,
-      total_days_remaining: (project as ProjectWithRelations)
-        .total_days_remaining,
-    });
-
     // If we don't have time data, fall back to milestone-only calculation
     if (timeRemainingPercentage === null) {
       let color: "red" | "yellow" | "green" = "green";
@@ -468,9 +393,6 @@ export const calculateProjectHealthStatusColor = (
       else if (weightedCompletion >= 40) color = "yellow";
       else color = "red";
 
-      console.log(
-        `[HEALTH_CALC] Milestone-only color: ${color} (weighted completion: ${weightedCompletion}%)`,
-      );
       return color;
     }
 
@@ -494,14 +416,8 @@ export const calculateProjectHealthStatusColor = (
         // If milestones are already significantly complete before project starts,
         // this might indicate data issues, but still lean positive
         color = "yellow";
-        console.log(
-          `[HEALTH_CALC] Future project with high completion: ${color} (completion: ${weightedCompletion}%, starts in future)`,
-        );
       } else {
         color = "green";
-        console.log(
-          `[HEALTH_CALC] Future project: ${color} (completion: ${weightedCompletion}%, starts in future)`,
-        );
       }
       return color;
     }
@@ -511,9 +427,6 @@ export const calculateProjectHealthStatusColor = (
       if (weightedCompletion >= 90)
         color = "yellow"; // Even high completion is concerning if overdue
       else color = "red";
-      console.log(
-        `[HEALTH_CALC] Overdue project color: ${color} (completion: ${weightedCompletion}%, overdue)`,
-      );
       return color;
     }
 
@@ -525,9 +438,6 @@ export const calculateProjectHealthStatusColor = (
       else if (weightedCompletion >= 0)
         color = "yellow"; // Even 0% completion can be yellow with lots of time
       else color = "red";
-      console.log(
-        `[HEALTH_CALC] Substantial time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
-      );
       return color;
     }
 
@@ -537,9 +447,6 @@ export const calculateProjectHealthStatusColor = (
         color = "green"; // Lower threshold for green when plenty of time
       else if (weightedCompletion >= 5) color = "yellow";
       else color = "red";
-      console.log(
-        `[HEALTH_CALC] Plenty of time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
-      );
       return color;
     }
 
@@ -548,9 +455,6 @@ export const calculateProjectHealthStatusColor = (
       if (weightedCompletion >= 30) color = "green";
       else if (weightedCompletion >= 15) color = "yellow";
       else color = "red";
-      console.log(
-        `[HEALTH_CALC] Moderate time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
-      );
       return color;
     }
 
@@ -559,14 +463,10 @@ export const calculateProjectHealthStatusColor = (
     else if (weightedCompletion >= 50) color = "yellow";
     else color = "red";
 
-    console.log(
-      `[HEALTH_CALC] Little time color: ${color} (completion: ${weightedCompletion}%, time remaining: ${timeRemainingPercentage}%)`,
-    );
     return color;
   }
 
   // Default to green for active projects with no milestones
-  console.log(`[HEALTH_CALC] Default color: green (active, no milestones)`);
   return "green";
 };
 
@@ -575,11 +475,6 @@ export const updateProjectComputedStatusColor = async (
   projectId: string,
 ): Promise<boolean> => {
   try {
-    console.log(
-      "[COMPUTED_STATUS] Updating computed status color for project:",
-      projectId,
-    );
-
     // Get the project with its milestones
     const { data: project, error: projectError } = await supabase
       .from("projects")
@@ -611,23 +506,6 @@ export const updateProjectComputedStatusColor = async (
       milestones || [],
     );
 
-    console.log(
-      `[COMPUTED_STATUS] Calculated color for project "${project.title}":`,
-      {
-        projectId,
-        status: project.status,
-        health_calculation_type: project.health_calculation_type,
-        manual_status_color: project.manual_status_color,
-        manual_health_percentage: project.manual_health_percentage,
-        milestones_count: (milestones || []).length,
-        weighted_completion:
-          (milestones || []).length > 0
-            ? calculateWeightedCompletion(milestones || [])
-            : 0,
-        computed_color: computedColor,
-      },
-    );
-
     // Update the project with the computed status color
     const { error: updateError } = await supabase
       .from("projects")
@@ -642,9 +520,6 @@ export const updateProjectComputedStatusColor = async (
       return false;
     }
 
-    console.log(
-      `[COMPUTED_STATUS] Successfully updated computed status color to: ${computedColor}`,
-    );
     return true;
   } catch (error) {
     console.error(
@@ -658,8 +533,6 @@ export const updateProjectComputedStatusColor = async (
 // Service function to recalculate all computed status colors
 export const recalculateAllComputedStatusColors = async (): Promise<number> => {
   try {
-    console.log("[COMPUTED_STATUS] Recalculating all computed status colors");
-
     // Get all projects
     const { data: projects, error: projectsError } = await supabase
       .from("projects")
@@ -674,7 +547,6 @@ export const recalculateAllComputedStatusColors = async (): Promise<number> => {
     }
 
     if (!projects || projects.length === 0) {
-      console.log("[COMPUTED_STATUS] No projects found");
       return 0;
     }
 
@@ -735,9 +607,6 @@ export const recalculateAllComputedStatusColors = async (): Promise<number> => {
       }
     }
 
-    console.log(
-      `[COMPUTED_STATUS] Successfully recalculated computed status colors for ${updatedCount} projects`,
-    );
     return updatedCount;
   } catch (error) {
     console.error(
@@ -752,11 +621,6 @@ export const projectService = {
   // Method to update project duration based on milestones
   async updateProjectDuration(projectId: string): Promise<boolean> {
     try {
-      console.log(
-        "[DEBUG] Updating project duration for project ID:",
-        projectId,
-      );
-
       // Fetch project milestones
       const { data: milestones, error: milestonesError } = await supabase
         .from("milestones")
@@ -770,8 +634,6 @@ export const projectService = {
 
       // Calculate duration
       const duration = calculateProjectDuration(milestones || []);
-      console.log("[DEBUG] Calculated duration:", duration);
-
       // Update project with calculated duration
       const { error: updateError } = await supabase
         .from("projects")
@@ -789,8 +651,6 @@ export const projectService = {
         console.error("[DEBUG] Error updating project duration:", updateError);
         return false;
       }
-
-      console.log("[DEBUG] Successfully updated project duration");
       return true;
     } catch (error) {
       console.error(
@@ -804,18 +664,12 @@ export const projectService = {
   // Method to recalculate duration for all projects (deprecated - use projectDurationService instead)
   async recalculateAllProjectDurations(): Promise<number> {
     try {
-      console.log(
-        "[PROJECT_SERVICE] Delegating to projectDurationService.recalculateAllProjectDurations",
-      );
-
       // Import and use the proper service
       const { projectDurationService } = await import(
         "./projectDurationService"
       );
       const result =
         await projectDurationService.recalculateAllProjectDurations();
-
-      console.log(`[PROJECT_SERVICE] Recalculation result:`, result);
       return result.updatedCount;
     } catch (error) {
       console.error(
@@ -827,8 +681,6 @@ export const projectService = {
   },
   async getAllProjects(): Promise<ProjectWithRelations[]> {
     try {
-      console.log("[DEBUG] Fetching all projects with relations");
-
       // Fetch all projects first with timeout
       const projectsPromise = supabase
         .from("projects")
@@ -844,26 +696,16 @@ export const projectService = {
         projectsPromise,
         timeoutPromise
       ]).catch((err) => {
-        console.log("[DEBUG] Error fetching projects:", {
-          message: err?.message || String(err),
-          type: err?.constructor?.name,
-        });
         return { data: null, error: err };
       });
 
       if (projectsError) {
-        console.log("[DEBUG] Error fetching projects:", projectsError);
         return [];
       }
 
       if (!projects || projects.length === 0) {
-        console.log("[DEBUG] No projects found");
         return [];
       }
-
-      console.log(
-        `[DEBUG] Found ${projects.length} projects, fetching relations`,
-      );
 
       // Get all project IDs
       const projectIds = projects.map((p) => p.id);
@@ -878,8 +720,6 @@ export const projectService = {
         
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-            console.log(`[DEBUG] Fetching ${tableName} (attempt ${attempt}/${maxRetries})`);
-            
             // Add timeout to each fetch
             const fetchPromise = supabase
               .from(tableName)
@@ -898,58 +738,37 @@ export const projectService = {
             });
 
             if (error) {
-              console.log(`[DEBUG] Error fetching ${tableName}:`, {
-                message: error.message || String(error),
-                details: error.details,
-                hint: error.hint,
-                code: error.code,
-                attempt,
-              });
               lastError = error;
               
               // If it's a network error and we have retries left, wait before retrying
               if (attempt < maxRetries) {
                 const waitTime = attempt * 500; // Shorter backoff
-                console.log(`[DEBUG] Waiting ${waitTime}ms before retry...`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 continue;
               }
               
               // Return empty array on final failure
-              console.log(`[DEBUG] Returning empty array for ${tableName} after ${maxRetries} attempts`);
               return [];
             }
-            
-            console.log(`[DEBUG] Successfully fetched ${data?.length || 0} ${tableName} records`);
             return data || [];
           } catch (err) {
-            console.log(`[DEBUG] Exception fetching ${tableName}:`, {
-              message: err instanceof Error ? err.message : String(err),
-              details: err instanceof Error ? err.stack : undefined,
-              attempt,
-            });
             lastError = err;
             
             // If we have retries left, wait before retrying
             if (attempt < maxRetries) {
               const waitTime = attempt * 500;
-              console.log(`[DEBUG] Waiting ${waitTime}ms before retry...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
               continue;
             }
             
             // Return empty array on final failure
-            console.log(`[DEBUG] Returning empty array for ${tableName} after exception`);
             return [];
           }
         }
-        
-        console.log(`[DEBUG] Failed to fetch ${tableName} after ${maxRetries} attempts:`, lastError);
         return [];
       };
 
       // Fetch all related data with retry logic
-      console.log("[DEBUG] Starting to fetch related data...");
       const [milestones, tasks, accomplishments, activities, risks, considerations, changes] = 
         await Promise.all([
           fetchWithRetry("milestones", projectIds),
@@ -961,16 +780,6 @@ export const projectService = {
           fetchWithRetry("changes", projectIds),
         ]);
 
-      console.log("[DEBUG] Finished fetching related data:", {
-        milestones: milestones.length,
-        tasks: tasks.length,
-        accomplishments: accomplishments.length,
-        activities: activities.length,
-        risks: risks.length,
-        considerations: considerations.length,
-        changes: changes.length,
-      });
-
       // Map tasks to milestones
       const milestonesWithTasks = (milestones || []).map((milestone) => ({
         ...milestone,
@@ -981,16 +790,6 @@ export const projectService = {
 
       // Build complete projects with relations
       const projectsWithRelations = projects.map((project) => {
-        console.log(
-          "[DEBUG] Project ID:",
-          project.id,
-          "manual_status_color:",
-          project.manual_status_color,
-          "health_calculation_type:",
-          project.health_calculation_type,
-          "project_id:",
-          project.project_id,
-        );
         return {
           ...project,
           // Map database field project_id to form field projectId - handle null/undefined properly
@@ -1016,12 +815,8 @@ export const projectService = {
         };
       });
 
-      console.log(
-        `[DEBUG] Successfully built ${projectsWithRelations.length} projects with relations`,
-      );
       return projectsWithRelations;
     } catch (error) {
-      console.log("[DEBUG] Unexpected error in getAllProjects:", error);
       // Return empty array instead of throwing to prevent app crashes
       return [];
     }
@@ -1032,12 +827,6 @@ export const projectService = {
     id: string,
     analysisContent: string,
   ): Promise<boolean> {
-    console.log("[DEBUG] Creating new project summary for project ID:", id);
-    console.log(
-      "[DEBUG] Analysis content length:",
-      analysisContent?.length || 0,
-    );
-
     try {
       // First, mark all existing summaries for this project as not current
       const { error: updateError } = await supabase
@@ -1052,16 +841,10 @@ export const projectService = {
           updateError,
         );
         // Continue anyway to try to insert the new summary
-      } else {
-        console.log(
-          "[DEBUG] Successfully marked existing summaries as not current",
-        );
       }
 
       // Create timestamp for the new summary
       const timestamp = new Date().toISOString();
-      console.log("[DEBUG] Creating new summary with timestamp:", timestamp);
-
       // Insert the new summary
       const { data, error } = await supabase
         .from("project_summaries")
@@ -1094,8 +877,6 @@ export const projectService = {
         );
         // Continue anyway since we've already saved to the summaries table
       }
-
-      console.log("[DEBUG] Project summary created successfully:", data?.id);
       return true;
     } catch (error) {
       console.error(
@@ -1113,8 +894,6 @@ export const projectService = {
     is_stale: boolean;
   } | null> {
     try {
-      console.log("[DEBUG] Fetching latest summary for project ID:", projectId);
-
       const { data, error } = await supabase
         .from("project_summaries")
         .select("*")
@@ -1127,7 +906,6 @@ export const projectService = {
       if (error) {
         if (error.code === "PGRST116") {
           // No rows returned - this is not an error, just no summary yet
-          console.log("[DEBUG] No current summary found for project");
           return null;
         }
         // Only log non-network errors to reduce noise from transient failures
@@ -1138,7 +916,6 @@ export const projectService = {
       }
 
       if (!data) {
-        console.log("[DEBUG] No summary found for project ID:", projectId);
         return null;
       }
 
@@ -1148,20 +925,10 @@ export const projectService = {
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const isStale = summaryDate < oneWeekAgo;
 
-      console.log(
-        "[DEBUG] Found summary, created at:",
-        data.created_at,
-        "is stale:",
-        isStale,
-      );
-      console.log("[DEBUG] Summary content length:", data.content?.length || 0);
-
       // Ensure we're returning a properly formatted timestamp
       const formattedTimestamp = data.created_at
         ? new Date(data.created_at).toISOString()
         : null;
-      console.log("[DEBUG] Formatted timestamp:", formattedTimestamp);
-
       return {
         content: data.content || "",
         created_at: formattedTimestamp || "",
@@ -1189,11 +956,6 @@ export const projectService = {
     }>
   > {
     try {
-      console.log(
-        "[DEBUG] Fetching summary history for project ID:",
-        projectId,
-      );
-
       const { data, error } = await supabase
         .from("project_summaries")
         .select("*")
@@ -1204,8 +966,6 @@ export const projectService = {
         console.error("[DEBUG] Error fetching project summary history:", error);
         return [];
       }
-
-      console.log("[DEBUG] Found", data?.length || 0, "summaries in history");
       return data || [];
     } catch (error) {
       console.error(
@@ -1266,15 +1026,6 @@ export const projectService = {
       projectAnalysis?: string;
     },
   ): Promise<ProjectWithRelations | null> {
-    // PROJECT ID DEBUG: Log Project ID being saved to database
-    console.log("[PROJECT_ID] updateProject called:", {
-      inputProjectId: data.projectId,
-      inputType: typeof data.projectId,
-      willSaveAs:
-        data.projectId && data.projectId.trim() !== ""
-          ? data.projectId.trim()
-          : null,
-    });
     try {
       const { data: project, error: projectError } = await supabase
         .from("projects")
@@ -1309,12 +1060,6 @@ export const projectService = {
         console.error("[PROJECT_ID] Error updating project:", projectError);
         return null;
       }
-
-      // PROJECT ID DEBUG: Log what was actually saved to database
-      console.log("[PROJECT_ID] Project updated in database:", {
-        savedProjectId: project.project_id,
-        savedType: typeof project.project_id,
-      });
 
       // Delete existing related records
       const { error: tasksDeleteError } = await supabase
@@ -1407,7 +1152,6 @@ export const projectService = {
         ) {
           const milestoneId = insertedMilestones[index].id;
           milestone.tasks.forEach((task) => {
-            console.log('[TASK_DEBUG] Raw task object in project.ts:', JSON.stringify(task, null, 2));
             const taskData = {
               project_id: id,
               milestone_id: milestoneId,
@@ -1417,18 +1161,12 @@ export const projectService = {
               completion: task.completion || 0,
               duration_days: task.duration_days || 1,
             };
-            console.log('[TASK_DEBUG] Task data being inserted:', {
-              description: task.description,
-              duration_days: task.duration_days,
-              taskData: taskData,
-            });
             tasksToInsert.push(taskData);
           });
         }
       });
 
       if (tasksToInsert.length > 0) {
-        console.log('[TASK_DEBUG] About to insert tasks:', tasksToInsert.length, 'tasks');
         const { data: insertedTasks, error: tasksInsertError } = await supabase
           .from("tasks")
           .insert(tasksToInsert)
@@ -1441,13 +1179,6 @@ export const projectService = {
           );
         }
         
-        console.log('[TASK_DEBUG] Tasks inserted successfully:', {
-          count: insertedTasks?.length || 0,
-          tasks: insertedTasks?.map(t => ({
-            description: t.description,
-            duration_days: t.duration_days,
-          }))
-        });
       }
 
       // Insert related data
@@ -1582,15 +1313,8 @@ export const projectService = {
 
       // Update computed status color after saving project
       try {
-        console.log(
-          "[COMPUTED_STATUS] Updating computed status color after project update",
-        );
         const success = await updateProjectComputedStatusColor(id);
-        if (success) {
-          console.log(
-            "[COMPUTED_STATUS] Successfully updated computed status color after project update",
-          );
-        } else {
+        if (!success) {
           console.error(
             "[COMPUTED_STATUS] Failed to update computed status color after project update",
           );
@@ -1610,21 +1334,12 @@ export const projectService = {
 
       // Create a version after successful project update
       try {
-        console.log(
-          "[VERSION] Creating version after project update for project:",
-          id,
-        );
         const { projectVersionsService } = await import("./projectVersions");
         const version = await projectVersionsService.createVersion(
           id,
           updatedProject,
         );
-        if (version) {
-          console.log(
-            "[VERSION] Successfully created version:",
-            version.version_number,
-          );
-        } else {
+        if (!version) {
           console.error(
             "[VERSION] Failed to create version after project update",
           );
@@ -1637,13 +1352,6 @@ export const projectService = {
         // Don't fail the entire update if version creation fails
       }
 
-      // PROJECT ID DEBUG: Log final Project ID from updated project
-      console.log("[PROJECT_ID] Final updated project:", {
-        projectId: updatedProject.projectId,
-        dbProjectId: updatedProject.project_id,
-        type: typeof updatedProject.projectId,
-      });
-
       return updatedProject;
     } catch (error) {
       console.error("[PROJECT_ID] Error in updateProject:", error);
@@ -1653,11 +1361,6 @@ export const projectService = {
 
   async deleteProject(id: string): Promise<boolean> {
     try {
-      console.log(
-        "[DELETE_PROJECT] Starting deletion process for project:",
-        id,
-      );
-
       // Validate project ID format
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1680,10 +1383,6 @@ export const projectService = {
         );
         return false;
       }
-
-      console.log(
-        `[DELETE_PROJECT] Deleting project: "${project.title}" (${id})`,
-      );
 
       // Delete all related records first (in order to avoid foreign key constraint violations)
       const deleteOperations = [
@@ -1735,19 +1434,16 @@ export const projectService = {
 
       // Execute all delete operations for related records
       for (const { table, operation } of deleteOperations) {
-        console.log(`[DELETE_PROJECT] Deleting ${table} for project ${id}`);
         const { error } = await operation;
         if (error) {
           console.error(`[DELETE_PROJECT] Error deleting ${table}:`, error);
           // Log the error but continue with other deletions
           // Some tables might not have records, which is fine
         } else {
-          console.log(`[DELETE_PROJECT] Successfully deleted ${table} records`);
         }
       }
 
       // Finally, delete the project itself
-      console.log(`[DELETE_PROJECT] Deleting main project record`);
       const { error: projectDeleteError } = await supabase
         .from("projects")
         .delete()
@@ -1761,9 +1457,6 @@ export const projectService = {
         return false;
       }
 
-      console.log(
-        `[DELETE_PROJECT] Successfully deleted project: "${project.title}" (${id})`,
-      );
       return true;
     } catch (error) {
       console.error(
@@ -1815,11 +1508,6 @@ export const projectService = {
     projectAnalysis?: string;
   }): Promise<ProjectWithRelations | null> {
     try {
-      console.log(
-        "createProject called with data:",
-        JSON.stringify(data, null, 2),
-      );
-
       // Get current user's profile to get department
       const {
         data: { user },
@@ -1838,8 +1526,6 @@ export const projectService = {
           department = profile.department;
         }
       }
-
-      console.log("Inserting project with department:", department);
       const { data: project, error: projectError } = await supabase
         .from("projects")
         .insert({
@@ -1877,9 +1563,6 @@ export const projectService = {
         console.error("No project returned after insert");
         return null;
       }
-
-      console.log("Project created successfully with ID:", project.id);
-
       // Auto-add the designated Project Manager as an editor so they can
       // edit the project even if someone else (e.g. an admin) created it.
       if (data.project_manager && user) {
@@ -1900,7 +1583,6 @@ export const projectService = {
 
       // Insert milestones if any
       if (data.milestones && data.milestones.length > 0) {
-        console.log(`Inserting ${data.milestones.length} milestones`);
         try {
           const { error: milestonesError } = await supabase
             .from("milestones")
@@ -1926,7 +1608,6 @@ export const projectService = {
 
       // Insert accomplishments if any
       if (data.accomplishments && data.accomplishments.length > 0) {
-        console.log(`Inserting ${data.accomplishments.length} accomplishments`);
         try {
           const accomplishmentRows = data.accomplishments.map((a) => {
             if (typeof a === "string") {
@@ -1970,9 +1651,6 @@ export const projectService = {
         data.next_period_activities &&
         data.next_period_activities.length > 0
       ) {
-        console.log(
-          `Inserting ${data.next_period_activities.length} activities`,
-        );
         try {
           const activityRows2 = data.next_period_activities.map((a) => ({
             project_id: project.id,
@@ -2002,7 +1680,6 @@ export const projectService = {
 
       // Insert risks if any
       if (data.risks && data.risks.length > 0) {
-        console.log(`Inserting ${data.risks.length} risks`);
         try {
           const { error: risksError } = await supabase.from("risks").insert(
             data.risks.map((r) => ({
@@ -2021,7 +1698,6 @@ export const projectService = {
 
       // Insert considerations if any
       if (data.considerations && data.considerations.length > 0) {
-        console.log(`Inserting ${data.considerations.length} considerations`);
         try {
           const { error: considerationsError } = await supabase
             .from("considerations")
@@ -2051,7 +1727,6 @@ export const projectService = {
 
       // Insert changes if any
       if (data.changes && data.changes.length > 0) {
-        console.log(`Inserting ${data.changes.length} changes`);
         try {
           const { error: changesError } = await supabase.from("changes").insert(
             data.changes.map((c) => ({
@@ -2069,16 +1744,7 @@ export const projectService = {
         }
       }
 
-      console.log(
-        "All related data inserted, fetching complete project with ID:",
-        project.id,
-      );
-
       // Update project duration after creating milestones
-      console.log(
-        "[PROJECT_SERVICE] Updating project duration after project creation for project:",
-        project.id,
-      );
       try {
         const { projectDurationService } = await import(
           "./projectDurationService"
@@ -2086,11 +1752,7 @@ export const projectService = {
         const success = await projectDurationService.updateProjectDuration(
           project.id,
         );
-        if (success) {
-          console.log(
-            "[PROJECT_SERVICE] Successfully updated project duration after project creation",
-          );
-        } else {
+        if (!success) {
           console.error(
             "[PROJECT_SERVICE] Failed to update project duration after project creation",
           );
@@ -2104,15 +1766,8 @@ export const projectService = {
 
       // Update computed status color after creating project
       try {
-        console.log(
-          "[COMPUTED_STATUS] Updating computed status color after project creation",
-        );
         const success = await updateProjectComputedStatusColor(project.id);
-        if (success) {
-          console.log(
-            "[COMPUTED_STATUS] Successfully updated computed status color after project creation",
-          );
-        } else {
+        if (!success) {
           console.error(
             "[COMPUTED_STATUS] Failed to update computed status color after project creation",
           );
@@ -2125,29 +1780,16 @@ export const projectService = {
       }
 
       const completeProject = await this.getProject(project.id);
-      console.log(
-        "Complete project fetched:",
-        completeProject ? "success" : "failed",
-      );
 
       // Create initial version after project creation
       if (completeProject) {
         try {
-          console.log(
-            "[VERSION] Creating initial version after project creation for project:",
-            project.id,
-          );
           const { projectVersionsService } = await import("./projectVersions");
           const version = await projectVersionsService.createVersion(
             project.id,
             completeProject,
           );
-          if (version) {
-            console.log(
-              "[VERSION] Successfully created initial version:",
-              version.version_number,
-            );
-          } else {
+          if (!version) {
             console.error(
               "[VERSION] Failed to create initial version after project creation",
             );
@@ -2160,27 +1802,12 @@ export const projectService = {
           // Don't fail the entire creation if version creation fails
         }
 
-        // Track project creation in usage analytics - ENHANCED DEBUG VERSION
+        // Track project creation in usage analytics
         try {
-          console.log(
-            "[USAGE_TRACKING] Starting project creation tracking for analytics",
-            {
-              projectId: project.id,
-              projectTitle: project.title,
-              department: department,
-              timestamp: new Date().toISOString(),
-            },
-          );
-
           const {
             data: { user },
             error: userError,
           } = await supabase.auth.getUser();
-
-          console.log("[USAGE_TRACKING] User authentication check:", {
-            user: user ? { id: user.id, email: user.email } : null,
-            userError,
-          });
 
           if (userError) {
             console.error(
@@ -2196,7 +1823,6 @@ export const projectService = {
           }
 
           // Try the database test function first for immediate feedback
-          console.log("[USAGE_TRACKING] Testing with database function...");
           const { data: dbTestResult, error: dbTestError } = await supabase.rpc(
             "test_project_creation_tracking",
             {
@@ -2205,33 +1831,14 @@ export const projectService = {
             },
           );
 
-          console.log("[USAGE_TRACKING] Database test result:", {
-            dbTestResult,
-            dbTestError,
-          });
-
-          if (!dbTestError && dbTestResult?.success) {
-            console.log(
-              "[USAGE_TRACKING] ✅ Database tracking test successful",
-            );
-          }
-
           // Import adminService
-          console.log("[USAGE_TRACKING] Importing adminService...");
           const { adminService } = await import("./adminService");
-          console.log("[USAGE_TRACKING] AdminService imported successfully");
-
           // Get current page URL safely
           const pageUrl =
             typeof window !== "undefined" && window.location
               ? window.location.href
               : "project-creation";
-          console.log("[USAGE_TRACKING] Page URL:", pageUrl);
-
           // Log project creation activity with the exact activity type expected by the database
-          console.log(
-            "[USAGE_TRACKING] Calling adminService.logUserActivity...",
-          );
           const trackingResult = await adminService.logUserActivity(
             user.id,
             "project-creation-session", // More descriptive session ID
@@ -2245,35 +1852,7 @@ export const projectService = {
             },
             pageUrl,
           );
-
-          console.log("[USAGE_TRACKING] Tracking result:", trackingResult);
-
-          if (trackingResult) {
-            console.log(
-              "[USAGE_TRACKING] ✅ Successfully tracked project creation",
-            );
-
-            // Verify the tracking worked by checking the count
-            setTimeout(async () => {
-              try {
-                const { data: verifyCount, error: verifyError } = await supabase
-                  .from("user_activity_logs")
-                  .select("*", { count: "exact", head: true })
-                  .eq("activity_type", "project_creation")
-                  .eq("user_id", user.id);
-
-                console.log("[USAGE_TRACKING] 🔍 Verification count:", {
-                  count: verifyCount,
-                  error: verifyError,
-                });
-              } catch (verifyError) {
-                console.warn(
-                  "[USAGE_TRACKING] Verification failed:",
-                  verifyError,
-                );
-              }
-            }, 1000);
-          } else {
+          if (!trackingResult) {
             console.error(
               "[USAGE_TRACKING] ❌ Tracking returned false - check adminService.logUserActivity",
             );
@@ -2307,7 +1886,6 @@ export const projectService = {
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
-      console.warn("Invalid project ID format:", id);
       return null;
     }
 
@@ -2319,38 +1897,22 @@ export const projectService = {
         .single();
 
       if (projectError) {
-        console.warn("Supabase error fetching project:", projectError.message);
         return null;
       }
 
       if (!project) {
-        console.warn("No project found with ID:", id);
         return null;
       }
-
-      // PROJECT ID DEBUG: Log Project ID from database
-      console.log("[PROJECT_ID] getProject fetched:", {
-        dbProjectId: project.project_id,
-        dbType: typeof project.project_id,
-        willMapTo: (project.project_id ?? "").toString(),
-      });
 
       const { data: milestones, error: milestonesError } = await supabase
         .from("milestones")
         .select("*")
         .eq("project_id", id);
 
-      if (milestonesError)
-        console.warn("Error fetching milestones:", milestonesError.message);
-
       const { data: allTasks, error: allTasksError } = await supabase
         .from("tasks")
         .select("*")
         .eq("project_id", id);
-
-      if (allTasksError) {
-        console.warn("Error fetching all tasks:", allTasksError.message);
-      }
 
       const milestonesWithTasks = (milestones || []).map((milestone) => {
         const milestoneTasks = (allTasks || []).filter(
@@ -2378,24 +1940,6 @@ export const projectService = {
         supabase.from("considerations").select("*").eq("project_id", id),
         supabase.from("changes").select("*").eq("project_id", id),
       ]);
-
-      [
-        accomplishmentsError,
-        activitiesError,
-        risksError,
-        considerationsError,
-        changesError,
-      ].forEach((error) => {
-        if (error) {
-          console.warn("Error fetching related data:", error.message);
-        }
-      });
-
-      console.log("[PROJECT_ID] Final project data:", {
-        dbProjectId: project.project_id,
-        manual_status_color: project.manual_status_color,
-        health_calculation_type: project.health_calculation_type,
-      });
 
       return {
         ...project,

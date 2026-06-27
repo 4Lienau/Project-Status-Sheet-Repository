@@ -95,11 +95,6 @@ const ProjectList = ({
   // Flag to determine if we should apply manager filtering
   // We only want to filter if we have specific managers selected
   const shouldFilterByManager = filterManagerArray.length > 0;
-
-  console.log("ProjectList received filterManager:", filterManager);
-  console.log("Converted to filterManagerArray:", filterManagerArray);
-  console.log("shouldFilterByManager:", shouldFilterByManager);
-
   const { user } = useAuth();
   const [profile, setProfile] = useState<{ full_name: string | null }>({
     full_name: null,
@@ -149,34 +144,9 @@ const ProjectList = ({
       }
     }
 
-    console.log(
-      `[STATUS_HEALTH_DEBUG] Project "${project.title}" (${project.id}):`,
-      {
-        title: project.title,
-        computed_status_color: project.computed_status_color,
-        health_calculation_type: project.health_calculation_type,
-        manual_status_color: project.manual_status_color,
-        manual_health_percentage: project.manual_health_percentage,
-        status: project.status,
-        milestones_count: project.milestones?.length || 0,
-        weighted_completion:
-          project.milestones?.length > 0
-            ? calculateWeightedCompletion(project.milestones)
-            : 0,
-        total_days: project.total_days,
-        total_days_remaining: project.total_days_remaining,
-        time_remaining_percentage: timeRemainingPercentage,
-        working_days_remaining: project.working_days_remaining,
-      },
-    );
-
     // Always use the standardized calculation to ensure consistency
     // This ensures the same logic is used everywhere in the application
     const calculatedColor = calculateProjectHealthStatusColor(project);
-
-    console.log(
-      `[STATUS_HEALTH_DEBUG] Calculated color for "${project.title}": ${calculatedColor}`,
-    );
 
     // If computed_status_color exists but doesn't match our calculation, log a warning
     // and trigger an update to fix the discrepancy
@@ -184,19 +154,12 @@ const ProjectList = ({
       project.computed_status_color &&
       project.computed_status_color !== calculatedColor
     ) {
-      console.warn(
-        `[STATUS_HEALTH_DEBUG] Mismatch detected for "${project.title}"! Computed: ${project.computed_status_color}, Calculated: ${calculatedColor}`,
-      );
-
       // Automatically fix the discrepancy by updating the computed status color
       // This is done asynchronously to not block the UI
       import("@/lib/services/project").then(
         ({ updateProjectComputedStatusColor }) => {
           updateProjectComputedStatusColor(project.id).then((success) => {
             if (success) {
-              console.log(
-                `[STATUS_HEALTH_DEBUG] Fixed computed status color for "${project.title}"`,
-              );
             } else {
               console.error(
                 `[STATUS_HEALTH_DEBUG] Failed to fix computed status color for "${project.title}"`,
@@ -229,13 +192,6 @@ const ProjectList = ({
   useEffect(() => {
     const loadProjects = async () => {
       setLoading(true);
-      console.log("Loading projects with filters:", {
-        filterManagerArray,
-        filterStatusArray,
-        filterDepartment,
-        filterStatusHealthArray,
-      });
-
       try {
         // Get user info once
         let userDepartment = "";
@@ -261,8 +217,6 @@ const ProjectList = ({
         // OPTIMIZED: Load all projects with full details in a single efficient query
         // This replaces the N+1 query pattern that was causing performance issues
         const projects = await projectService.getAllProjects();
-        console.log("Loaded projects count:", projects.length);
-
         setAllProjects(projects);
 
         // Report the total count back to parent component
@@ -272,8 +226,6 @@ const ProjectList = ({
 
         // OPTIMIZED: Apply filters efficiently without expensive calculations in the loop
         let filtered = [...projects];
-        console.log("Starting filter with", filtered.length, "projects");
-
         // Apply department filter — use alias list when available so raw AD dept
         // names (e.g. "IT Administration") match the canonical selection ("Technology")
         if (filterDepartment && filterDepartment !== "all") {
@@ -320,8 +272,6 @@ const ProjectList = ({
                 project.description.toLowerCase().includes(searchLower)),
           );
         }
-
-        console.log("Final filtered projects:", filtered.length);
         setFilteredProjects(filtered);
 
         // Report the filtered count back to parent component

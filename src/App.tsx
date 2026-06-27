@@ -89,13 +89,13 @@ const SessionTracker = () => {
 
 // Protected route component that redirects to login if not authenticated
 const ProtectedRoute = ({ children, requireAdmin = false, ...props }) => {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, profileLoading, isAdmin } = useAuth();
 
   // Only filter out specific problematic props
   const { key, testID, tempoelementid, ...safeProps } = props;
 
-  // Show loading state while checking authentication
-  if (loading) {
+  // Wait for both session AND profile/role to finish loading before enforcing guards
+  if (loading || profileLoading) {
     return (
       <div
         className="flex items-center justify-center min-h-screen"

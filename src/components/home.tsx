@@ -201,14 +201,6 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
       setSelectedStatusHealths(Array.isArray(savedStatusHealths) ? savedStatusHealths : savedStatusHealths !== "all" ? [savedStatusHealths] : []);
       setSearchQuery(savedSearchQuery);
       setFiltersLoaded(true);
-
-      console.log("Loaded persistent filters:", {
-        managers: savedManagers,
-        statuses: savedStatuses,
-        department: savedDepartment,
-        statusHealths: savedStatusHealths,
-        searchQuery: savedSearchQuery,
-      });
     }
   }, [userId, filtersLoaded]);
 
@@ -265,7 +257,6 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   // Load unique project managers and departments - optimized with proper dependencies
   const loadProjectFilters = useCallback(async () => {
     try {
-      console.log("🔄 Loading project filters...");
       const projects = await projectService.getAllProjects();
 
       // Get unique managers
@@ -303,8 +294,6 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
         aliasMap.get(canonicalName)!.add(row.ad_name);
       }
       setDepartmentAliases(aliasMap);
-      
-      console.log("✅ Project filters loaded successfully");
     } catch (error) {
       console.error("❌ Error loading project filters:", error);
     }
@@ -367,9 +356,6 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   // This check is now redundant since we have route protection in App.tsx,
   // but we'll keep it as an additional security measure with enhanced logging
   if (!user) {
-    console.log(
-      "Home component: No authenticated user detected, redirecting to login",
-    );
     // Redirect to login page
     navigate("/login");
     return null;
@@ -377,18 +363,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
 
   // Additional check to ensure we have a valid user with an ID
   if (!user.id) {
-    console.log(
-      "Home component: User object exists but has no ID, redirecting to login",
-    );
     navigate("/login");
     return null;
   }
-
-  console.log(
-    "Home component: Authenticated user confirmed, rendering home page",
-  );
-  console.log("[DEBUG] User email:", user?.email);
-  console.log("[DEBUG] User object:", user);
 
   return (
     <Layout>
@@ -1039,7 +1016,6 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
 
                   // Prevent duplicate project creation if already in progress
                   if (isCreatingProject) {
-                    console.log("[PROJECT_CREATE] Already creating project, ignoring duplicate submit");
                     return false;
                   }
                   setIsCreatingProject(true);
@@ -1119,17 +1095,8 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         })),
                     };
 
-                    console.log(
-                      "Creating project with data:",
-                      JSON.stringify(projectData, null, 2),
-                    );
-                    console.log("Calling projectService.createProject");
                     const project =
                       await projectService.createProject(projectData);
-                    console.log(
-                      "Project creation result:",
-                      project ? "success" : "failed",
-                    );
                     if (project) {
                       toast({
                         title: "Success",

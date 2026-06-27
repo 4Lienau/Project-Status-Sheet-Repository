@@ -25,6 +25,7 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  profileLoading: boolean;
   isApproved: boolean | null;
   isPendingApproval: boolean;
   canEditProject: (project: { owner_id?: string | null; id: string }) => boolean;
@@ -36,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  profileLoading: false,
   isApproved: null,
   isPendingApproval: false,
   canEditProject: () => false,
@@ -69,8 +71,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       try {
         setLoading(true);
-        console.log("AuthProvider: Checking initial authentication state...");
-
         // On the callback route, AuthCallback owns the PKCE exchange.
         // Calling getSession() here races with it and causes a 401 (code already used).
         if (window.location.pathname.includes("/auth/callback")) {
@@ -81,14 +81,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.log("AuthProvider: Session error:", error.message);
-
           if (
             error.message.includes("Invalid Refresh Token") ||
             error.message.includes("Session Expired") ||
             error.message.includes("refresh_token_not_found")
           ) {
-            console.log("AuthProvider: Session expired, clearing");
             await supabase.auth.signOut({ scope: "local" });
             setUser(null);
             setLoading(false);
@@ -118,10 +115,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const currentUser = data.session?.user ?? null;
-        console.log(
-          "AuthProvider: Initial check:",
-          currentUser ? "authenticated" : "no user",
-        );
         setUser(currentUser);
 
         if (!currentUser) {
@@ -133,7 +126,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } catch (err) {
-        console.log("AuthProvider: Unexpected error:", err);
         setUser(null);
         if (
           window.location.pathname !== "/login" &&
@@ -152,8 +144,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("AuthProvider: Auth state changed:", event);
-
       // Don't process auth changes if we're in a popup
       const isPopup = window.opener && window !== window.opener;
       if (isPopup) return;
@@ -163,7 +153,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
 
       if (event === "SIGNED_OUT") {
-        console.log("AuthProvider: User signed out");
         setUser(null);
         setProfile(null);
         setIsApproved(null);
@@ -176,7 +165,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (event === "TOKEN_REFRESHED" && !session) {
-        console.log("AuthProvider: Token refresh failed");
         await supabase.auth.signOut({ scope: "local" });
         setUser(null);
         setProfile(null);
@@ -200,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsPendingApproval(false);
         return;
       }
+      try {
 
       const { data } = await supabase
         .from("profiles")
@@ -306,6 +295,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsApproved(true);
         setIsPendingApproval(false);
       }
+      } catch (err) {
+        console.error("Error loading profile:", err);
+      }
     };
 
     loadProfile();
@@ -327,7 +319,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, loading, isApproved, isPendingApproval, canEditProject, isAdmin, isDirector }}
+      value={{ user, profile, loading, profileLoading: !!user && profile === null, isApproved, isPendingApproval, canEditProject, isAdmin, isDirector }}
     >
       {children}
     </AuthContext.Provider>

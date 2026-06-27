@@ -78,20 +78,12 @@ const StatusSheetView: React.FC = () => {
   useEffect(() => {
     const loadProject = async () => {
       if (id) {
-        console.log("Loading project with ID:", id);
         try {
           const [projectData, versionsData] = await Promise.all([
             projectService.getProject(id),
             projectVersionsService.getVersions(id),
           ]);
-          console.log(
-            "Project data received:",
-            projectData ? "success" : "null",
-          );
-          console.log("Versions data received:", versionsData.length);
-
           if (projectData) {
-            console.log("Project loaded successfully");
             setProject(projectData);
             setVersions(versionsData);
             setCurrentVersionIndex(-1);
@@ -112,7 +104,6 @@ const StatusSheetView: React.FC = () => {
           });
         }
       } else {
-        console.warn("No project ID provided");
       }
     };
 
@@ -125,15 +116,10 @@ const StatusSheetView: React.FC = () => {
 
     const loadVersions = async () => {
       if (!id || !project) {
-        console.warn(
-          "[DEBUG] No project ID or project data available for loading versions",
-        );
         return;
       }
 
       try {
-        console.log("[DEBUG] Loading versions for project ID:", id);
-
         // DEBUGGING: Let's also run a direct query to see if there's a service layer issue
         const { data: directQueryData, error: directQueryError } =
           await supabase
@@ -142,16 +128,6 @@ const StatusSheetView: React.FC = () => {
             .eq("project_id", id)
             .order("version_number", { ascending: false });
 
-        console.log(
-          `[DEBUG] DIRECT QUERY: Found ${directQueryData?.length || 0} versions`,
-        );
-        console.log(
-          `[DEBUG] DIRECT QUERY DATA:`,
-          directQueryData?.map((v) => ({
-            id: v.id,
-            version_number: v.version_number,
-          })),
-        );
         if (directQueryError) {
           console.error(`[DEBUG] DIRECT QUERY ERROR:`, directQueryError);
         }
@@ -159,13 +135,8 @@ const StatusSheetView: React.FC = () => {
         const versionsData = await projectVersionsService.getVersions(id);
 
         if (!mounted) {
-          console.log("[DEBUG] Component unmounted, skipping state update");
           return;
         }
-
-        console.log(
-          `[DEBUG] Successfully loaded ${versionsData.length} versions from database`,
-        );
 
         // Analyze version data for missing versions
         if (versionsData.length > 0) {
@@ -176,20 +147,7 @@ const StatusSheetView: React.FC = () => {
           const maxVersion = Math.max(...versionNumbers);
           const missingFromStart = minVersion - 1;
 
-          console.log(
-            `[DEBUG] STATUS SHEET VIEW - Available versions: ${versionNumbers.join(", ")}`,
-          );
-          console.log(
-            `[DEBUG] STATUS SHEET VIEW - Range: ${minVersion} to ${maxVersion}`,
-          );
-
           if (missingFromStart > 0) {
-            console.warn(
-              `[DEBUG] ⚠️  ${missingFromStart} versions (1-${minVersion - 1}) are missing from database`,
-            );
-            console.warn(
-              `[DEBUG] This may be due to data retention policies or database migration`,
-            );
           }
         }
 
@@ -197,12 +155,6 @@ const StatusSheetView: React.FC = () => {
         setVersions(versionsData);
         setCurrentVersionIndex(-1);
 
-        console.log(
-          `[DEBUG] STATE UPDATE: Set ${versionsData.length} versions in component state`,
-        );
-        console.log(
-          `[DEBUG] UI DISPLAY CHECK: Will show "Version X of ${versionNumbers.length > 0 ? Math.max(...versionNumbers) : 0}" in UI`,
-        );
       } catch (error) {
         console.error("[DEBUG] Error loading project versions:", error);
         if (mounted) {
@@ -223,24 +175,12 @@ const StatusSheetView: React.FC = () => {
   }, [id, project, toast]);
 
   const loadVersion = async (versionIndex) => {
-    console.log("[VERSION_LOAD] Loading version index:", versionIndex);
-    console.log("[VERSION_LOAD] Available versions:", versions.length);
-    console.log(
-      "[VERSION_LOAD] All version numbers:",
-      versions.map((v) => v.version_number),
-    );
-
     if (versionIndex === -1) {
       // Load current version
       setIsLoadingVersion(true);
       try {
-        console.log(
-          "[VERSION_LOAD] Loading current version for project ID:",
-          id,
-        );
         const projectData = await projectService.getProject(id);
         if (projectData) {
-          console.log("[VERSION_LOAD] Successfully loaded current version");
           setProject(projectData);
           setCurrentVersionIndex(-1);
         } else {
@@ -268,18 +208,8 @@ const StatusSheetView: React.FC = () => {
       setIsLoadingVersion(true);
       try {
         const targetVersion = versions[versionIndex];
-        console.log(
-          `[VERSION_LOAD] Loading version ${targetVersion.version_number} at index ${versionIndex}`,
-        );
-        console.log(
-          `[VERSION_LOAD] Version created at:`,
-          targetVersion.created_at,
-        );
         setProject(targetVersion.data);
         setCurrentVersionIndex(versionIndex);
-        console.log(
-          `[VERSION_LOAD] Successfully loaded version ${targetVersion.version_number}`,
-        );
       } catch (error) {
         console.error("[VERSION_LOAD] Error loading project version:", error);
         toast({
@@ -303,48 +233,25 @@ const StatusSheetView: React.FC = () => {
   };
 
   const handlePreviousVersion = () => {
-    console.log("[VERSION_NAV] Handling previous version");
-    console.log("[VERSION_NAV] Current version index:", currentVersionIndex);
-    console.log("[VERSION_NAV] Total versions available:", versions.length);
-    console.log(
-      "[VERSION_NAV] Version numbers:",
-      versions.map((v) => v.version_number),
-    );
-
     if (currentVersionIndex === -1 && versions.length > 0) {
       // Go from current to most recent version (index 0)
-      console.log(
-        "[VERSION_NAV] Going from current to most recent version (index 0)",
-      );
       loadVersion(0);
     } else if (currentVersionIndex < versions.length - 1) {
       // Go to older version (higher index = older version)
       const nextIndex = currentVersionIndex + 1;
-      console.log(`[VERSION_NAV] Going to older version (index ${nextIndex})`);
       loadVersion(nextIndex);
-    } else {
-      console.log(
-        "[VERSION_NAV] Already at oldest version, no older version available",
-      );
     }
   };
 
   const handleNextVersion = () => {
-    console.log("[VERSION_NAV] Handling next version");
-    console.log("[VERSION_NAV] Current version index:", currentVersionIndex);
-    console.log("[VERSION_NAV] Total versions available:", versions.length);
-
     if (currentVersionIndex > 0) {
       // Go to newer version (lower index = newer version)
       const nextIndex = currentVersionIndex - 1;
-      console.log(`[VERSION_NAV] Going to newer version (index ${nextIndex})`);
       loadVersion(nextIndex);
     } else if (currentVersionIndex === 0) {
       // Go from most recent version to current
-      console.log("[VERSION_NAV] Going from most recent version to current");
       loadVersion(-1);
     } else {
-      console.log("[VERSION_NAV] Already at newest version (current)");
     }
   };
 
@@ -404,13 +311,6 @@ const StatusSheetView: React.FC = () => {
       : [],
     changes: Array.isArray(project.changes) ? project.changes : [],
   };
-
-  console.log("Formatted data for StatusSheet:", {
-    title: formattedData.title,
-    status: formattedData.status,
-    milestones: formattedData.milestones?.length || 0,
-    risks: formattedData.risks?.length || 0,
-  });
 
   return (
     <Layout>

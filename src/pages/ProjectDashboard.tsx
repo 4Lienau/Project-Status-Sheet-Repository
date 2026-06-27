@@ -96,7 +96,6 @@ const ProjectDashboard: React.FC = () => {
 
   // Function to set the dragging state that can be passed down to children
   const setIsDragging = (dragging: boolean) => {
-    console.log("Setting isDragging to:", dragging);
     isDraggingRef.current = dragging;
   };
 
@@ -130,7 +129,6 @@ const ProjectDashboard: React.FC = () => {
   // Update isEditing when the route changes
   useEffect(() => {
     const shouldBeEditing = !location.pathname.endsWith('/view');
-    console.log('[DEBUG] Route changed:', location.pathname, 'Should be editing:', shouldBeEditing);
     setIsEditing(shouldBeEditing);
   }, [location.pathname]);
 
@@ -147,22 +145,15 @@ const ProjectDashboard: React.FC = () => {
       }
 
       try {
-        console.log("[DEBUG] Loading versions for project ID:", id);
         console.log(
           "[DEBUG] Current project data:",
           project ? "exists" : "null",
         );
-        console.log("[DEBUG] Retry count:", retryCount);
-
         const versionsData = await projectVersionsService.getVersions(id);
 
         if (!mounted) {
-          console.log("[DEBUG] Component unmounted, skipping state update");
           return;
         }
-
-        console.log("[DEBUG] Loaded versions:", versionsData.length);
-
         if (mounted) {
           setVersions(versionsData);
           setCurrentVersionIndex(-1);
@@ -179,14 +170,12 @@ const ProjectDashboard: React.FC = () => {
 
     // Load versions whenever project data changes or component mounts
     if (project && project.id) {
-      console.log("[DEBUG] Project data changed, reloading versions");
       retryCount = 0; // Reset retry count
       loadVersions();
     }
 
     return () => {
       mounted = false;
-      console.log("[DEBUG] Version loading effect cleanup");
     };
   }, [id, project?.id]); // Only depend on project.id, not the entire project object
 
@@ -205,18 +194,12 @@ const ProjectDashboard: React.FC = () => {
   }, [isEditing, project?.status]);
 
   const loadVersion = async (versionIndex) => {
-    console.log("Loading version index:", versionIndex);
-    console.log("Available versions:", versions.length);
-    console.log("Current versions data:", versions);
-
     if (versionIndex === -1) {
       // Load current version
       setIsLoadingVersion(true);
       try {
-        console.log("Loading current version for project ID:", id);
         const projectData = await projectService.getProject(id);
         if (projectData) {
-          console.log("Successfully loaded current version:", projectData);
           setProject(projectData);
           setCurrentVersionIndex(-1);
 
@@ -229,7 +212,6 @@ const ProjectDashboard: React.FC = () => {
                 mostRecentVersion.data,
               );
               setVersionChanges(changes);
-              console.log("Current vs most recent version changes:", changes);
             } else {
               setVersionChanges({});
             }
@@ -259,9 +241,6 @@ const ProjectDashboard: React.FC = () => {
       setIsLoadingVersion(true);
       try {
         const version = versions[versionIndex];
-        console.log("Loading version:", version.version_number);
-        console.log("Version data:", version.data);
-
         if (!version.data) {
           throw new Error("Version data is missing");
         }
@@ -294,7 +273,6 @@ const ProjectDashboard: React.FC = () => {
           if (previousVersion && previousVersion.data) {
             const changes = compareVersions(version.data, previousVersion.data);
             setVersionChanges(changes);
-            console.log("Version changes detected:", changes);
           } else {
             setVersionChanges({});
           }
@@ -323,37 +301,24 @@ const ProjectDashboard: React.FC = () => {
   };
 
   const handlePreviousVersion = () => {
-    console.log("Handling previous version");
-    console.log("Current version index:", currentVersionIndex);
-    console.log("Versions length:", versions.length);
-
     if (currentVersionIndex === -1 && versions.length > 0) {
       // Go from current to most recent version
-      console.log("Going from current to most recent version");
       loadVersion(0);
     } else if (currentVersionIndex < versions.length - 1) {
       // Go to older version
-      console.log("Going to older version");
       loadVersion(currentVersionIndex + 1);
     } else {
-      console.log("No older version available");
     }
   };
 
   const handleNextVersion = () => {
-    console.log("Handling next version");
-    console.log("Current version index:", currentVersionIndex);
-
     if (currentVersionIndex > 0) {
       // Go to newer version
-      console.log("Going to newer version");
       loadVersion(currentVersionIndex - 1);
     } else if (currentVersionIndex === 0) {
       // Go from most recent version to current
-      console.log("Going from most recent version to current");
       loadVersion(-1);
     } else {
-      console.log("Already at newest version");
     }
   };
 
@@ -372,7 +337,6 @@ const ProjectDashboard: React.FC = () => {
         formElement?.getAttribute("data-adding-milestones") === "true";
 
       if (isAddingMilestones) {
-        console.log("Skipping project data fetch while adding milestones");
         setLoading(false);
         return;
       }
@@ -394,7 +358,6 @@ const ProjectDashboard: React.FC = () => {
       const isAutoSaving =
         formElement?.getAttribute("data-auto-saving") === "true";
       if (isAutoSaving) {
-        console.log("Skipping project data fetch while auto-saving");
         setLoading(false);
         return;
       }
@@ -406,21 +369,16 @@ const ProjectDashboard: React.FC = () => {
         formElement?.getAttribute("data-just-saved") !== "true";
 
       if (hasUnsavedChanges && isEditing) {
-        console.log("Skipping project data fetch due to unsaved changes");
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        console.log("Fetching project with ID:", id);
         const [projectData, versionsData] = await Promise.all([
           projectService.getProject(id),
           projectVersionsService.getVersions(id),
         ]);
-        console.log("Project data received:", projectData ? "success" : "null");
-        console.log("Versions data received:", versionsData.length);
-
         if (projectData) {
           // Check if project has milestones but no duration data - trigger calculation
           if (
@@ -499,7 +457,6 @@ const ProjectDashboard: React.FC = () => {
             finalFormElement?.getAttribute("data-just-saved") !== "true";
 
           if (stillHasUnsavedChanges && isEditing) {
-            console.log("Canceling project data update due to unsaved changes");
             setLoading(false);
             return;
           }
@@ -526,7 +483,6 @@ const ProjectDashboard: React.FC = () => {
     if (loading) {
       const timeout = setTimeout(() => {
         if (loading) {
-          console.log("Loading timeout reached, forcing state update");
           setLoading(false);
           if (!project && !error) {
             setError("Loading timed out. Please try refreshing the page.");
@@ -541,7 +497,6 @@ const ProjectDashboard: React.FC = () => {
   // Format project data for the form
   const getFormattedData = async () => {
     if (!project) {
-      console.log("No project data available for formatting");
       return {
         projectId: "", // Add projectId field for empty state
         title: "",
@@ -600,11 +555,6 @@ const ProjectDashboard: React.FC = () => {
         // Continue with the existing project_analysis field
       }
     }
-
-    console.log("Summary data being passed to form:", summaryData);
-    console.log("Summary content length:", summaryData.content?.length || 0);
-    console.log("Summary timestamp:", summaryData.created_at);
-
     // Debug duration fields
     console.log("[DEBUG] Project duration fields:", {
       total_days: project.total_days,
@@ -1025,10 +975,7 @@ const ProjectDashboard: React.FC = () => {
             onSubmit={async (data) => {
               try {
                 setLoading(true);
-                console.log("Submitting project update with data:", data);
                 const projectId = id || (project && project.id);
-                console.log("Project ID for update:", projectId);
-
                 if (!projectId) {
                   console.error("No project ID available for update");
                   toast({

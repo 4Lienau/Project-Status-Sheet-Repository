@@ -45,21 +45,12 @@ export const adminService = {
     results?: any;
   }> {
     try {
-      console.log(
-        "[adminService.testAzureAdSync] Running Azure AD sync diagnostics...",
-      );
-
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-test-azure-sync",
         {
           body: { test: true },
         },
       );
-
-      console.log("[adminService.testAzureAdSync] Test response:", {
-        data,
-        error,
-      });
 
       if (error) {
         console.error(
@@ -98,21 +89,12 @@ export const adminService = {
     summary?: any;
   }> {
     try {
-      console.log(
-        "[adminService.triggerAzureAdSync] Invoking Azure AD sync edge function...",
-      );
-
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-azure-ad-sync",
         {
           body: { manual: true },
         },
       );
-
-      console.log("[adminService.triggerAzureAdSync] Edge function response:", {
-        data,
-        error,
-      });
 
       if (error) {
         console.error(
@@ -143,21 +125,9 @@ export const adminService = {
         };
       }
 
-      console.log(
-        "[adminService.triggerAzureAdSync] Azure AD sync completed successfully:",
-        data,
-      );
-
       // After sync completes, refresh the sync logs to see if new entries were created
       setTimeout(async () => {
-        console.log(
-          "[adminService.triggerAzureAdSync] Refreshing sync logs after sync completion...",
-        );
-        const refreshedLogs = await this.getAzureSyncLogs();
-        console.log(
-          "[adminService.triggerAzureAdSync] Refreshed sync logs:",
-          refreshedLogs,
-        );
+        await this.getAzureSyncLogs();
       }, 2000);
 
       return (
@@ -193,7 +163,6 @@ export const adminService = {
         .select("*", { count: "exact", head: true });
 
       if (countError) {
-        console.warn("Error accessing directory_users table (expected if table missing):", countError);
         return [];
       }
 
@@ -207,53 +176,26 @@ export const adminService = {
         .order("last_synced", { ascending: false, nullsFirst: false });
 
       if (error) {
-        console.warn("Error fetching directory users:", error);
         return [];
       }
 
       return data || [];
     } catch (error) {
-      console.warn("Error in getDirectoryUsers:", error);
       return [];
     }
   },
 
   async getAzureSyncLogs(): Promise<any[]> {
     try {
-      console.log(
-        "[adminService.getAzureSyncLogs] Fetching Azure sync logs...",
-      );
-
       // First, let's check if the table exists and we can access it
-      console.log("[adminService.getAzureSyncLogs] Testing table access...");
-
       // Try a simple count query first
       const { count, error: countError } = await supabase
         .from("azure_sync_logs")
         .select("*", { count: "exact", head: true });
 
-      console.log("[adminService.getAzureSyncLogs] Count query result:", {
-        count,
-        countError,
-      });
-
       if (countError) {
-        console.warn(
-          "[adminService.getAzureSyncLogs] Count query failed (expected if table missing):",
-          countError,
-        );
-        console.warn("[adminService.getAzureSyncLogs] Count error details:", {
-          message: countError.message,
-          details: countError.details,
-          hint: countError.hint,
-          code: countError.code,
-        });
         return [];
       }
-
-      console.log(
-        `[adminService.getAzureSyncLogs] Table accessible, found ${count} total records`,
-      );
 
       // Now try the actual query
       const { data, error } = await supabase
@@ -262,64 +204,12 @@ export const adminService = {
         .order("sync_started_at", { ascending: false })
         .limit(10);
 
-      console.log("[adminService.getAzureSyncLogs] Query result:", {
-        data: data,
-        error: error,
-        dataLength: data?.length || 0,
-      });
-
       if (error) {
-        console.warn(
-          "[adminService.getAzureSyncLogs] Error fetching Azure sync logs:",
-          error,
-        );
-        console.warn("[adminService.getAzureSyncLogs] Error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
-
-        // Check if it's an RLS policy issue
-        if (error.code === "42501" || error.message?.includes("policy")) {
-          console.warn(
-            "[adminService.getAzureSyncLogs] RLS Policy Issue: The azure_sync_logs table may have Row Level Security enabled but no policy allows SELECT operations for the current user.",
-          );
-        }
-
         return [];
-      }
-
-      console.log(
-        "[adminService.getAzureSyncLogs] Successfully fetched",
-        data?.length || 0,
-        "sync logs",
-      );
-
-      if (data && data.length > 0) {
-        console.log(
-          "[adminService.getAzureSyncLogs] Sample log data:",
-          data.slice(0, 2),
-        );
-        console.log("[adminService.getAzureSyncLogs] Sync statuses found:", [
-          ...new Set(data.map((log) => log.sync_status)),
-        ]);
-      } else {
-        console.log(
-          "[adminService.getAzureSyncLogs] No sync logs found in database - this could mean:",
-        );
-        console.log("  1. No syncs have been run yet");
-        console.log("  2. Logs were cleared");
-        console.log("  3. RLS policy is filtering results");
-        console.log("  4. The sync function isn't writing to the logs table");
       }
 
       return data || [];
     } catch (error) {
-      console.warn(
-        "[adminService.getAzureSyncLogs] Catch block error:",
-        error,
-      );
       return [];
     }
   },
@@ -333,20 +223,10 @@ export const adminService = {
         .maybeSingle();
 
       if (error) {
-        console.log("Error fetching sync configuration:", error);
-        console.log("Error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
         return null;
       }
-
-      console.log("Fetched sync configuration:", data);
       return data;
     } catch (error) {
-      console.log("Error fetching sync configuration:", error);
       return null;
     }
   },
@@ -373,7 +253,6 @@ export const adminService = {
         .eq("sync_type", "azure_ad_sync");
 
       if (error) {
-        console.warn("Error updating sync configuration:", error);
         return false;
       }
 
@@ -384,32 +263,22 @@ export const adminService = {
 
       return true;
     } catch (error) {
-      console.warn("Error updating sync configuration:", error);
       return false;
     }
   },
 
   async enableSyncConfiguration(): Promise<boolean> {
     try {
-      console.log("Attempting to enable sync configuration...");
-
       // First ensure the configuration exists
       await this.ensureSyncConfiguration();
 
       // Get current configuration to preserve frequency
       const currentConfig = await this.getSyncConfiguration();
-      console.log("Current config before enable:", currentConfig);
-
       const frequencyHours = currentConfig?.frequency_hours || 6;
 
       // Calculate next run time
       const nextRunTime = new Date();
       nextRunTime.setHours(nextRunTime.getHours() + frequencyHours);
-
-      console.log(
-        "Updating sync configuration to enabled with next run at:",
-        nextRunTime.toISOString(),
-      );
 
       const { data, error } = await supabase
         .from("sync_configurations")
@@ -422,28 +291,16 @@ export const adminService = {
         .select();
 
       if (error) {
-        console.warn("Error enabling sync configuration:", error);
-        console.warn("Error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
         return false;
       }
-
-      console.log("Sync configuration enabled successfully:", data);
       return true;
     } catch (error) {
-      console.warn("Error enabling sync configuration:", error);
       return false;
     }
   },
 
   async disableSyncConfiguration(): Promise<boolean> {
     try {
-      console.log("Attempting to disable sync configuration...");
-
       // First ensure the configuration exists
       await this.ensureSyncConfiguration();
 
@@ -458,38 +315,19 @@ export const adminService = {
         .select();
 
       if (error) {
-        console.warn("Error disabling sync configuration:", error);
-        console.warn("Error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
         return false;
       }
-
-      console.log("Sync configuration disabled successfully:", data);
       return true;
     } catch (error) {
-      console.warn("Error disabling sync configuration:", error);
       return false;
     }
   },
 
   async ensureSyncConfiguration(): Promise<boolean> {
     try {
-      console.log("Checking if sync configuration exists...");
-
       // Check if sync configuration exists
       const existingConfig = await this.getSyncConfiguration();
-      console.log("Existing config:", existingConfig);
-
       if (!existingConfig) {
-        console.log(
-          "No sync configuration found. This should have been created by migration.",
-        );
-        console.log("Attempting to create default sync configuration...");
-
         // Try to create default sync configuration
         const { data, error } = await supabase
           .from("sync_configurations")
@@ -504,35 +342,12 @@ export const adminService = {
           .select();
 
         if (error) {
-          console.warn("Error creating sync configuration:", error);
-          console.warn("Error details:", {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-          });
-
-          // If it's an RLS policy violation, provide specific guidance
-          if (error.code === "42501") {
-            console.warn(
-              "RLS Policy Violation: The sync_configurations table has Row Level Security enabled but no policy allows INSERT operations for the current user.",
-            );
-            console.warn(
-              "Please run the migration: supabase/migrations/20250208000001_fix_sync_configurations_rls_and_default.sql",
-            );
-          }
-
           return false;
         }
-
-        console.log("Default sync configuration created successfully:", data);
-      } else {
-        console.log("Sync configuration already exists");
       }
 
       return true;
     } catch (error) {
-      console.warn("Error ensuring sync configuration:", error);
       return false;
     }
   },
@@ -543,19 +358,10 @@ export const adminService = {
     syncTriggered?: boolean;
   }> {
     try {
-      console.log("Checking for due syncs...");
-
       // Call the database function to check if sync is due
       const { data, error } = await supabase.rpc("trigger_sync_if_due");
 
       if (error) {
-        console.log("Error checking due syncs:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
-        
         // Return success to prevent blocking the UI
         return {
           success: true,
@@ -563,12 +369,8 @@ export const adminService = {
           syncTriggered: false,
         };
       }
-
-      console.log("Sync check result:", data);
-
       // If sync was triggered, also call the Azure AD sync function
       if (data?.sync_triggered) {
-        console.log("Sync is due, triggering Azure AD sync...");
         const syncResult = await this.triggerAzureAdSync();
 
         return {
@@ -584,7 +386,6 @@ export const adminService = {
         syncTriggered: false,
       };
     } catch (error) {
-      console.log("Error in checkAndTriggerDueSyncs:", error);
       // Return success to prevent blocking the UI
       return {
         success: true,
@@ -600,17 +401,12 @@ export const adminService = {
     results?: any;
   }> {
     try {
-      console.log("Invoking sync scheduler edge function...");
-
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-sync-scheduler",
         {
           body: { manual: true },
         },
       );
-
-      console.log("Sync scheduler response:", { data, error });
-
       if (error) {
         console.error("Error triggering sync scheduler:", error);
         return {
@@ -766,18 +562,8 @@ export const adminService = {
     try {
       // Cleanup stale sessions more aggressively
       try {
-        const { data: cleanupResult } = await supabase.rpc(
-          "cleanup_stale_sessions",
-        );
-        console.log(
-          "[adminService.getActiveUsers] Cleaned up stale sessions:",
-          cleanupResult,
-        );
+        await supabase.rpc("cleanup_stale_sessions");
       } catch (cleanupError) {
-        console.warn(
-          "[adminService.getActiveUsers] Session cleanup warning:",
-          cleanupError,
-        );
       }
 
       // Use a 3-minute window for active users
@@ -930,10 +716,6 @@ export const adminService = {
     topUsers: any[];
   }> {
     try {
-      console.log(
-        "[adminService.getUsageMetrics] Calculating usage metrics...",
-      );
-
       // Get total users
       const { count: totalUsers } = await supabase
         .from("profiles")
@@ -946,18 +728,6 @@ export const adminService = {
       // Get user activity summary using the new function
       const { data: userActivityData, error: activityError } =
         await supabase.rpc("get_user_activity_summary");
-
-      if (activityError) {
-        console.warn(
-          "[adminService.getUsageMetrics] Activity summary error:",
-          activityError,
-        );
-      }
-
-      console.log(
-        "[adminService.getUsageMetrics] User activity data:",
-        userActivityData,
-      );
 
       // Calculate aggregated stats from the activity summary
       const totalSessionTime =
@@ -974,22 +744,10 @@ export const adminService = {
       // Get project creation count from projects table (source of truth)
       let totalProjectsFromMetrics = 0;
       try {
-        console.log(
-          "[adminService.getUsageMetrics] 🔍 Querying total projects count from projects table...",
-        );
-
         const { count: projectCount, error: countError } =
           await supabase
             .from("projects")
             .select("*", { count: "exact", head: true });
-
-        console.log(
-          "[adminService.getUsageMetrics] 🔍 Projects count query result:",
-          {
-            projectCount,
-            countError,
-          },
-        );
 
         if (countError) {
           console.error(
@@ -1000,15 +758,7 @@ export const adminService = {
         }
 
         totalProjectsFromMetrics = projectCount || 0;
-        console.log(
-          "[adminService.getUsageMetrics] ✅ Total projects count:",
-          totalProjectsFromMetrics,
-        );
       } catch (error) {
-        console.warn(
-          "[adminService.getUsageMetrics] ⚠️ Error getting project count:",
-          error,
-        );
         // Fallback to user activity data if available
         totalProjectsFromMetrics =
           userActivityData?.reduce(
@@ -1020,22 +770,10 @@ export const adminService = {
       // Calculate average session time using improved database function
       let avgSessionTime = 0;
 
-      console.log(
-        "[adminService.getUsageMetrics] Calculating average session time:",
-        {
-          totalSessionTime,
-          userActivityDataLength: userActivityData?.length || 0,
-        },
-      );
-
       // First cleanup inactive sessions
       try {
         await supabase.rpc("cleanup_inactive_sessions");
       } catch (cleanupError) {
-        console.warn(
-          "[adminService.getUsageMetrics] Session cleanup warning:",
-          cleanupError,
-        );
       }
 
       // Use the new session statistics function
@@ -1044,30 +782,11 @@ export const adminService = {
           "get_session_statistics",
         );
 
-        console.log("[adminService.getUsageMetrics] Session statistics:", {
-          sessionStats,
-          statsError,
-        });
-
         if (!statsError && sessionStats && sessionStats.length > 0) {
           const stats = sessionStats[0];
           avgSessionTime = Number(stats.avg_session_minutes) || 0;
-
-          console.log(
-            "[adminService.getUsageMetrics] Using database function result:",
-            {
-              avgSessionTime,
-              totalSessions: stats.total_sessions,
-              totalSessionMinutes: stats.total_session_minutes,
-              activeSessions: stats.active_sessions,
-            },
-          );
         }
       } catch (statsError) {
-        console.warn(
-          "[adminService.getUsageMetrics] Error getting session statistics:",
-          statsError,
-        );
       }
 
       // Fallback calculation if database function fails
@@ -1088,23 +807,9 @@ export const adminService = {
 
           if (totalSessions > 0 && totalSessionTime > 0) {
             avgSessionTime = Math.round(totalSessionTime / totalSessions);
-            console.log(
-              "[adminService.getUsageMetrics] Fallback calculation:",
-              {
-                avgSessionTime,
-                totalSessionTime,
-                totalSessions,
-                usersWithActivity: usersWithActivity.length,
-              },
-            );
           }
         }
       }
-
-      console.log(
-        "[adminService.getUsageMetrics] Final average session time:",
-        avgSessionTime,
-      );
 
       // Get daily active users for the last 30 days
       const thirtyDaysAgo = new Date();
@@ -1116,12 +821,6 @@ export const adminService = {
         .gte("date", thirtyDaysAgo.toISOString().split("T")[0])
         .order("date", { ascending: true });
 
-      if (dailyError) {
-        console.warn(
-          "[adminService.getUsageMetrics] Daily data error:",
-          dailyError,
-        );
-      }
 
       // Group by date for daily active users
       const dailyActiveUsers = [];
@@ -1146,30 +845,11 @@ export const adminService = {
       }
 
       // Get project creation counts per user for top users calculation
-      console.log(
-        "[adminService.getUsageMetrics] 🔍 Querying project creation data...",
-      );
       const { data: projectCreationData, error: projectCreationError } =
         await supabase
           .from("user_activity_logs")
           .select("user_id, activity_data, created_at")
           .eq("activity_type", "project_creation");
-
-      console.log(
-        "[adminService.getUsageMetrics] 🔍 Project creation query result:",
-        {
-          projectCreationData,
-          projectCreationError,
-          count: projectCreationData?.length || 0,
-        },
-      );
-
-      if (projectCreationError) {
-        console.warn(
-          "[adminService.getUsageMetrics] ⚠️ Error getting project creation data for top users:",
-          projectCreationError,
-        );
-      }
 
       // Count projects per user
       const projectCountsByUser = {};
@@ -1198,8 +878,6 @@ export const adminService = {
         dailyActiveUsers,
         topUsers,
       };
-
-      console.log("[adminService.getUsageMetrics] Calculated metrics:", result);
       return result;
     } catch (error) {
       console.error("[adminService.getUsageMetrics] Catch error:", error);
@@ -1425,11 +1103,6 @@ export const adminService = {
 
   async getCurrentUserActiveSession(userId: string): Promise<string | null> {
     try {
-      console.log(
-        "[adminService.getCurrentUserActiveSession] Getting active session for user:",
-        userId,
-      );
-
       const { data: activeSessions, error } = await supabase
         .from("user_sessions")
         .select("id")
@@ -1447,18 +1120,10 @@ export const adminService = {
       }
 
       if (!activeSessions || activeSessions.length === 0) {
-        console.log(
-          "[adminService.getCurrentUserActiveSession] No active session found for user:",
-          userId,
-        );
         return null;
       }
 
       const sessionId = activeSessions[0].id;
-      console.log(
-        "[adminService.getCurrentUserActiveSession] Found active session:",
-        sessionId,
-      );
       return sessionId;
     } catch (error) {
       console.error(
@@ -1477,10 +1142,6 @@ export const adminService = {
     mostPopularFeature: string;
   }> {
     try {
-      console.log(
-        "[adminService.getAIUsageOverview] Fetching AI usage overview...",
-      );
-
       // Get total users count
       const { count: totalUsers } = await supabase
         .from("profiles")
@@ -1530,11 +1191,6 @@ export const adminService = {
         mostPopularFeature,
       };
 
-      console.log(
-        "[adminService.getAIUsageOverview] AI usage overview:",
-        result,
-      );
-
       return result;
     } catch (error) {
       console.error("[adminService.getAIUsageOverview] Catch error:", error);
@@ -1553,10 +1209,6 @@ export const adminService = {
     details: any;
   }> {
     try {
-      console.log(
-        "[adminService.debugDatabaseAccess] Starting database access diagnostics...",
-      );
-
       const diagnostics = {
         timestamp: new Date().toISOString(),
         tests: [],
@@ -1691,12 +1343,6 @@ export const adminService = {
         ? `All ${diagnostics.summary.total} database access tests passed`
         : `${diagnostics.summary.failed}/${diagnostics.summary.total} database access tests failed`;
 
-      console.log("[adminService.debugDatabaseAccess] Diagnostics completed:", {
-        success,
-        message,
-        summary: diagnostics.summary,
-      });
-
       return {
         success,
         message,
@@ -1720,8 +1366,6 @@ export const adminService = {
     testEmail?: string; // Add test email parameter
   } = {}) {
     try {
-      console.log('[adminService.triggerReminderEmails] Invoking edge function with options:', options);
-      
       const { data, error } = await supabase.functions.invoke(
         'supabase-functions-send-reminder-emails',
         {
@@ -1734,9 +1378,6 @@ export const adminService = {
           },
         }
       );
-
-      console.log('[adminService.triggerReminderEmails] Edge function response:', { data, error });
-
       if (error) {
         console.error('[adminService.triggerReminderEmails] Edge function error:', error);
         throw new Error(error.message || 'Failed to trigger reminder emails');
@@ -1781,8 +1422,6 @@ export const adminService = {
   // Scheduler Logs Methods
   async getSchedulerLogs(limit: number = 20): Promise<any[]> {
     try {
-      console.log('[adminService.getSchedulerLogs] Fetching scheduler logs...');
-
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), 5000);
@@ -1797,16 +1436,10 @@ export const adminService = {
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
-        // Expected network or Supabase error when fetching scheduler logs
-        console.warn('[adminService.getSchedulerLogs] Error fetching scheduler logs:', error);
         return [];
       }
-
-      console.log(`[adminService.getSchedulerLogs] Fetched ${data?.length || 0} scheduler logs`);
       return data || [];
     } catch (error) {
-      // Expected catch-all error handler for scheduler logs
-      console.warn('[adminService.getSchedulerLogs] Catch error:', error);
       return [];
     }
   },
@@ -1832,8 +1465,6 @@ export const adminService = {
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
-        // Expected network or Supabase error when fetching scheduler stats
-        console.warn('[adminService.getSchedulerStats] Error:', error);
         return {
           totalRuns: 0,
           syncsTriggered: 0,
@@ -1858,8 +1489,6 @@ export const adminService = {
         avgExecutionTime,
       };
     } catch (error) {
-      // Expected catch-all error handler for scheduler stats
-      console.warn('[adminService.getSchedulerStats] Catch error:', error);
       return {
         totalRuns: 0,
         syncsTriggered: 0,

@@ -70,13 +70,6 @@ export const useProjectForm = (
       projectId: initialData?.projectId || "",
     };
 
-    // PROJECT ID DEBUG: Log initial Project ID setup
-    console.log("[PROJECT_ID] Initial setup:", {
-      initialDataProjectId: initialData?.projectId,
-      mergedDataProjectId: mergedData.projectId,
-      type: typeof mergedData.projectId,
-    });
-
     // Normalize considerations to ensure they are always strings
     if (Array.isArray(mergedData.considerations)) {
       mergedData.considerations = ensureConsiderationsAreStrings(
@@ -173,13 +166,6 @@ export const useProjectForm = (
       if (keys1.length !== keys2.length) {
         const missingInObj2 = keys1.filter(k => !keys2.includes(k));
         const missingInObj1 = keys2.filter(k => !keys1.includes(k));
-        console.log(`[CHANGE_DEBUG] Key count mismatch at ${path}:`, {
-          keys1Length: keys1.length,
-          keys2Length: keys2.length,
-          missingInObj2,
-          missingInObj1
-        });
-        
         // If the only missing keys are auto-calculated fields, ignore the mismatch
         const nonAutoCalculatedMissing = missingInObj2.filter(
           key => !autoCalculatedFields.includes(key)
@@ -201,12 +187,6 @@ export const useProjectForm = (
               const val1 = obj1[key] || "";
               const val2 = obj2[key] || "";
               if (val1 !== val2) {
-                console.log(`[CHANGE_DEBUG] projectId mismatch:`, {
-                  formData: val1,
-                  initialData: val2,
-                  formDataRaw: obj1[key],
-                  initialDataRaw: obj2[key]
-                });
                 return false;
               }
               continue;
@@ -215,10 +195,6 @@ export const useProjectForm = (
             // Handle arrays specially
             if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
               if (obj1[key].length !== obj2[key].length) {
-                console.log(`[CHANGE_DEBUG] Array length mismatch at ${currentPath}:`, {
-                  formDataLength: obj1[key].length,
-                  initialDataLength: obj2[key].length
-                });
                 return false;
               }
 
@@ -228,10 +204,6 @@ export const useProjectForm = (
                   (item: any, index: number) => item === obj2[key][index]
                 );
                 if (mismatch) {
-                  console.log(`[CHANGE_DEBUG] Primitive array mismatch at ${currentPath}:`, {
-                    formData: obj1[key],
-                    initialData: obj2[key]
-                  });
                   return false;
                 }
               } else {
@@ -245,12 +217,6 @@ export const useProjectForm = (
             } else if (typeof obj1[key] === "object" && obj1[key] !== null) {
               if (!isEqual(obj1[key], obj2[key], currentPath)) return false;
             } else if (obj1[key] !== obj2[key]) {
-              console.log(`[CHANGE_DEBUG] Value mismatch at ${currentPath}:`, {
-                formData: obj1[key],
-                initialData: obj2[key],
-                formDataType: typeof obj1[key],
-                initialDataType: typeof obj2[key]
-              });
               return false;
             }
           }
@@ -274,12 +240,6 @@ export const useProjectForm = (
           const val1 = obj1[key] || "";
           const val2 = obj2[key] || "";
           if (val1 !== val2) {
-            console.log(`[CHANGE_DEBUG] projectId mismatch:`, {
-              formData: val1,
-              initialData: val2,
-              formDataRaw: obj1[key],
-              initialDataRaw: obj2[key]
-            });
             return false;
           }
           continue;
@@ -288,10 +248,6 @@ export const useProjectForm = (
         // Handle arrays specially
         if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
           if (obj1[key].length !== obj2[key].length) {
-            console.log(`[CHANGE_DEBUG] Array length mismatch at ${currentPath}:`, {
-              formDataLength: obj1[key].length,
-              initialDataLength: obj2[key].length
-            });
             return false;
           }
 
@@ -301,10 +257,6 @@ export const useProjectForm = (
               (item: any, index: number) => item === obj2[key][index]
             );
             if (mismatch) {
-              console.log(`[CHANGE_DEBUG] Primitive array mismatch at ${currentPath}:`, {
-                formData: obj1[key],
-                initialData: obj2[key]
-              });
               return false;
             }
           } else {
@@ -318,12 +270,6 @@ export const useProjectForm = (
         } else if (typeof obj1[key] === "object" && obj1[key] !== null) {
           if (!isEqual(obj1[key], obj2[key], currentPath)) return false;
         } else if (obj1[key] !== obj2[key]) {
-          console.log(`[CHANGE_DEBUG] Value mismatch at ${currentPath}:`, {
-            formData: obj1[key],
-            initialData: obj2[key],
-            formDataType: typeof obj1[key],
-            initialDataType: typeof obj2[key]
-          });
           return false;
         }
       }
@@ -333,14 +279,6 @@ export const useProjectForm = (
 
     // Compare current form data with initial data
     const formHasChanges = !isEqual(formData, initialData);
-
-    if (formHasChanges) {
-      console.log("[CHANGE_DEBUG] Changes detected! Full comparison:", {
-        formDataKeys: Object.keys(formData).sort(),
-        initialDataKeys: Object.keys(initialData).sort(),
-        timestamp: new Date().toISOString()
-      });
-    }
 
     setHasChanges(formHasChanges);
 
@@ -376,13 +314,6 @@ export const useProjectForm = (
         projectId: initialData?.projectId || "",
       };
 
-      // PROJECT ID DEBUG: Log Project ID during form reset
-      console.log("[PROJECT_ID] Form reset:", {
-        initialDataProjectId: initialData?.projectId,
-        updatedFormDataProjectId: updatedFormData.projectId,
-        type: typeof updatedFormData.projectId,
-      });
-
       // Normalize considerations to ensure they are always strings
       if (Array.isArray(updatedFormData.considerations)) {
         updatedFormData.considerations = ensureConsiderationsAreStrings(
@@ -401,12 +332,6 @@ export const useProjectForm = (
       lastSavedMilestonesRef.current = JSON.parse(
         JSON.stringify(initialData?.milestones || []),
       );
-      console.log("[AUTO_COPY] Updated lastSavedMilestonesRef from initialData:", {
-        count: lastSavedMilestonesRef.current.length,
-        alreadyAt100: lastSavedMilestonesRef.current.filter(
-          (m: any) => (m.completion || 0) === 100,
-        ).length,
-      });
 
       // Reset form attributes
       const formElement = document.querySelector("form");
@@ -424,7 +349,6 @@ export const useProjectForm = (
   useEffect(() => {
     if (autoCopySaveNeeded) {
       setAutoCopySaveNeeded(false);
-      console.log("[AUTO_COPY] Triggering deferred save after accomplishments update");
       checkAndPromptProjectComplete();
     }
   }, [autoCopySaveNeeded]);
@@ -435,7 +359,6 @@ export const useProjectForm = (
   useEffect(() => {
     if (autoRemoveSaveNeeded) {
       setAutoRemoveSaveNeeded(false);
-      console.log("[AUTO_COPY] Triggering deferred save after auto-removal of accomplishments");
       checkAndPromptProjectComplete();
     }
   }, [autoRemoveSaveNeeded]);
@@ -445,7 +368,6 @@ export const useProjectForm = (
   useEffect(() => {
     if (projectCompleteSaveNeeded) {
       setProjectCompleteSaveNeeded(false);
-      console.log("[PROJECT_COMPLETE] Triggering deferred save after project complete dialog response");
       handleSubmitInternal(null);
     }
   }, [projectCompleteSaveNeeded]);
@@ -468,14 +390,6 @@ export const useProjectForm = (
     if (formElement && isAddingMilestones) {
       formElement.setAttribute("data-adding-milestones", "true");
     }
-
-    // PROJECT ID DEBUG: Log Project ID before submission
-    console.log("[PROJECT_ID] Before submission:", {
-      projectId: formData.projectId,
-      type: typeof formData.projectId,
-      length: formData.projectId?.length || 0,
-      isEmpty: !formData.projectId || formData.projectId.trim() === "",
-    });
 
     // Ensure considerations are simple strings before submitting
     // Also ensure milestones have all required fields
@@ -503,50 +417,9 @@ export const useProjectForm = (
           updated_at: milestone.updated_at,
         };
         
-        // DEBUG: Log task data to verify duration_days is preserved
-        if (formattedMilestone.tasks.length > 0) {
-          console.log('[TASK_DEBUG] Milestone tasks before submission:', {
-            milestone: milestone.milestone,
-            tasks: formattedMilestone.tasks.map((t: any) => {
-              console.log('[TASK_DEBUG] Full task object:', JSON.stringify(t, null, 2));
-              return {
-                description: t.description,
-                duration_days: t.duration_days,
-                durationDays: (t as any).durationDays,
-                allKeys: Object.keys(t),
-              };
-            })
-          });
-        }
-        
         return formattedMilestone;
       }),
     };
-    
-    // DEBUG: Check tasks in submissionData
-    console.log('[TASK_DEBUG] submissionData.milestones with tasks:', 
-      submissionData.milestones
-        .filter(m => m.tasks && m.tasks.length > 0)
-        .map(m => ({
-          milestone: m.milestone,
-          tasks: m.tasks.map((t: any) => ({
-            description: t.description,
-            duration_days: t.duration_days,
-            hasAllFields: Object.keys(t)
-          }))
-        }))
-    );
-
-    // PROJECT ID DEBUG: Log Project ID in submission data
-    console.log("[PROJECT_ID] In submission data:", {
-      projectId: submissionData.projectId,
-      type: typeof submissionData.projectId,
-      willBeTrimmed:
-        submissionData.projectId && submissionData.projectId.trim() !== ""
-          ? submissionData.projectId.trim()
-          : null,
-    });
-
     // Set the form as just saved before submitting to prevent navigation warnings
     if (formElement) {
       formElement.setAttribute("data-just-saved", "true");
@@ -583,7 +456,6 @@ export const useProjectForm = (
         lastSavedMilestonesRef.current = JSON.parse(
           JSON.stringify(formData.milestones || []),
         );
-        console.log("[AUTO_COPY] Updated lastSavedMilestonesRef after successful save");
 
         // Reset state flags AFTER everything else is done
         setHasChanges(false);
@@ -662,18 +534,6 @@ export const useProjectForm = (
     const previousMilestones = lastSavedMilestonesRef.current || [];
     const currentAccomplishments = normalizeAccomplishments(formData.accomplishments || []);
 
-    console.log("[AUTO_COPY] Checking for newly completed items:", {
-      previousMilestonesCount: previousMilestones.length,
-      currentMilestonesCount: currentMilestones.length,
-      existingAccomplishmentsCount: currentAccomplishments.length,
-      previousAlreadyAt100: previousMilestones.filter(
-        (m: any) => (m.completion || 0) === 100,
-      ).length,
-      currentAt100: currentMilestones.filter(
-        (m: any) => (m.completion || 0) === 100,
-      ).length,
-    });
-
     // 1. Detect items that newly reached 100% (relative to last saved DB state)
     const newlyCompleted = detectNewlyCompletedItems(
       previousMilestones,
@@ -692,20 +552,6 @@ export const useProjectForm = (
     // across saves (delete + re-insert pattern), so source_id alone may not match.
     let hasAutoRemovals = false;
     if (uncompletedItems.length > 0) {
-      console.log("[AUTO_COPY] Detected un-completed items:", uncompletedItems.map(u => ({
-        sourceId: u.sourceId,
-        compositeKey: u.compositeKey,
-        description: u.description,
-        type: u.type,
-      })));
-      console.log("[AUTO_COPY] Current accomplishments for matching:", currentAccomplishments.map(a => ({
-        description: a.description?.substring(0, 50),
-        source_id: a.source_id,
-        source_type: a.source_type,
-        auto_generated: a.auto_generated,
-        is_deleted: a.is_deleted,
-      })));
-
       // Build sets for fast lookup across multiple matching strategies
       const sourceIdSet = new Set(uncompletedItems.map(u => u.sourceId));
       const compositeKeySet = new Set(uncompletedItems.map(u => u.compositeKey));
@@ -759,10 +605,6 @@ export const useProjectForm = (
         }
 
         if (matched) {
-          console.log(`[AUTO_COPY] Marking accomplishment as deleted (${matchReason}):`, {
-            description: a.description,
-            source_id: a.source_id,
-          });
           hasAutoRemovals = true;
           return { ...a, is_deleted: true };
         }
@@ -774,14 +616,11 @@ export const useProjectForm = (
           ...prev,
           accomplishments: updatedAccomplishments,
         }));
-      } else {
-        console.log("[AUTO_COPY] No matching auto-generated accomplishments found for un-completed items");
       }
     }
 
     // 4. If there are newly completed items, show the confirmation dialog
     if (newlyCompleted.length > 0) {
-      console.log("[AUTO_COPY] Found newly completed items, showing dialog:", newlyCompleted);
       setPendingCompletedItems(newlyCompleted);
       setShowAutoCopyDialog(true);
       return false;
@@ -791,13 +630,11 @@ export const useProjectForm = (
     // to ensure the formData state update (marking items as deleted) is applied
     // before the save runs. This avoids the stale closure issue.
     if (hasAutoRemovals) {
-      console.log("[AUTO_COPY] Auto-removals detected, using deferred save to ensure state is updated");
       setAutoRemoveSaveNeeded(true);
       return false;
     }
 
     // 6. No changes needed - check if all milestones are complete before saving
-    console.log("[AUTO_COPY] No newly completed items, checking project completion");
     return checkAndPromptProjectComplete();
   };
 
@@ -829,13 +666,11 @@ export const useProjectForm = (
       !allPreviousAt100 &&
       currentStatus !== "completed"
     ) {
-      console.log("[PROJECT_COMPLETE] All milestones at 100%, showing completion prompt");
       setShowProjectCompleteDialog(true);
       return false;
     }
 
     // Otherwise, proceed with normal save
-    console.log("[PROJECT_COMPLETE] Not all milestones complete, already completed, or no transition detected - proceeding with save");
     return handleSubmitInternal(null);
   };
 
@@ -858,8 +693,6 @@ export const useProjectForm = (
         is_deleted: false,
         auto_generated: true,
       }));
-
-      console.log("[AUTO_COPY] Adding accomplishments:", newAccomplishments);
 
       const updatedAccomplishments = [...currentAccomplishments, ...newAccomplishments];
 
@@ -901,7 +734,6 @@ export const useProjectForm = (
    */
   const handleProjectCompleteConfirm = () => {
     setShowProjectCompleteDialog(false);
-    console.log("[PROJECT_COMPLETE] User confirmed - setting status to completed");
     setFormData((prev: any) => ({
       ...prev,
       status: "completed",
@@ -916,7 +748,6 @@ export const useProjectForm = (
    */
   const handleProjectCompleteCancel = () => {
     setShowProjectCompleteDialog(false);
-    console.log("[PROJECT_COMPLETE] User declined - saving with current status");
     handleSubmitInternal(null);
   };
 
@@ -1065,13 +896,6 @@ export const useProjectForm = (
                 (m.milestone.toLowerCase().includes("closeout") ||
                   m.milestone.toLowerCase().includes("closure")),
             );
-
-            console.log("🎯 Generated milestones validation:", {
-              total: parsedMilestones.length,
-              hasKickoff,
-              hasCloseout,
-              milestones: parsedMilestones.map((m) => m.milestone),
-            });
 
             setSuggestedMilestones(parsedMilestones);
             setTimeout(() => {
@@ -1226,13 +1050,7 @@ export const useProjectForm = (
         return;
       }
 
-      console.log(
-        "[DELETE_PROJECT] Attempting to delete project:",
-        safeProjectId,
-      );
-
       // Clear all state flags that might prevent navigation
-      console.log("[DELETE_PROJECT] Clearing state flags before deletion");
       setHasChanges(false);
       setHasUserInteracted(false);
       setIsAddingMilestones(false);
@@ -1250,13 +1068,8 @@ export const useProjectForm = (
       }
 
       const success = await projectService.deleteProject(safeProjectId);
-      console.log("[DELETE_PROJECT] Delete result:", success);
 
       if (success) {
-        console.log(
-          "[DELETE_PROJECT] Project deleted successfully, preparing navigation",
-        );
-
         // Close the dialog immediately
         setShowDeleteDialog(false);
 
@@ -1274,7 +1087,6 @@ export const useProjectForm = (
 
         // CRITICAL FIX: Use the onBack callback to properly navigate back to the list
         // This will reset the mode state in the parent component (home.tsx)
-        console.log("[DELETE_PROJECT] Using onBack callback to navigate");
         if (onBack) {
           // Small delay to ensure the toast is shown and dialog is closed
           setTimeout(() => {
@@ -1282,7 +1094,6 @@ export const useProjectForm = (
           }, 100);
         } else {
           // Fallback to React Router navigation if onBack is not available
-          console.log("[DELETE_PROJECT] Fallback to React Router navigation");
           setTimeout(() => {
             navigate("/", { replace: true });
           }, 100);

@@ -89,8 +89,6 @@ const Navbar = () => {
 
   const handleSignOut = async () => {
     try {
-      console.log("Starting sign out process");
-
       // First, clear any local storage items
       try {
         localStorage.removeItem("supabase.auth.token");
@@ -102,7 +100,6 @@ const Navbar = () => {
             localStorage.removeItem(key);
           }
         }
-        console.log("Cleared local storage items");
       } catch (storageError) {
         console.error("Error clearing localStorage:", storageError);
         // Continue with sign out even if localStorage clearing fails
@@ -111,13 +108,11 @@ const Navbar = () => {
       // Sign out from Supabase with a timeout to prevent hanging
       const signOutPromise = new Promise(async (resolve, reject) => {
         try {
-          console.log("Calling supabase.auth.signOut");
           const { error } = await supabase.auth.signOut({ scope: "global" });
           if (error) {
             console.error("Supabase signOut returned error:", error);
             reject(error);
           } else {
-            console.log("Supabase signOut successful");
             resolve(true);
           }
         } catch (e) {
@@ -129,7 +124,6 @@ const Navbar = () => {
       // Add a timeout to prevent hanging if signOut takes too long
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          console.log("Sign out timeout reached, continuing anyway");
           reject(new Error("Sign out timeout"));
         }, 3000); // 3 second timeout
       });
@@ -138,9 +132,6 @@ const Navbar = () => {
       await Promise.race([signOutPromise, timeoutPromise]).catch((err) => {
         console.warn("Sign out didn't complete normally, but continuing:", err);
       });
-
-      console.log("Sign out process completed, redirecting to login");
-
       // Force clear any remaining session state and redirect
       // Use a small timeout to ensure logs are visible
       setTimeout(() => {

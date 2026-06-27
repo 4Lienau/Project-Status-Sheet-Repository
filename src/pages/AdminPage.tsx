@@ -121,12 +121,9 @@ const AdminPage: React.FC = () => {
     const checkDueSyncs = async () => {
       if (user && ADMIN_EMAILS.includes(user.email)) {
         try {
-          console.log("Admin page loaded, checking for due syncs...");
           const result = await adminService.checkAndTriggerDueSyncs();
-          console.log("Sync check result:", result);
 
           if (result.syncTriggered) {
-            console.log("Automatic sync was triggered from admin page");
             toast({
               title: "Automatic Sync Triggered",
               description:
@@ -136,7 +133,6 @@ const AdminPage: React.FC = () => {
           }
         } catch (error) {
           // Silently log the error without showing it to the user
-          console.warn("Sync check skipped:", error);
         }
       }
     };
@@ -157,8 +153,6 @@ const AdminPage: React.FC = () => {
 
     const refreshLogs = async () => {
       try {
-        console.log("[AdminPage] Auto-refreshing logs...");
-        
         // Refresh scheduler logs
         const schedulerLogsData = await adminService.getSchedulerLogs(20);
         setSchedulerLogs(schedulerLogsData);
@@ -174,9 +168,7 @@ const AdminPage: React.FC = () => {
         const syncConfigData = await adminService.getSyncConfiguration();
         setSyncConfig(syncConfigData);
 
-        console.log("[AdminPage] Logs refreshed successfully");
       } catch (error) {
-        console.warn("[AdminPage] Error refreshing logs:", error);
       }
     };
 
@@ -233,42 +225,15 @@ const AdminPage: React.FC = () => {
         });
 
         // Load directory users and sync logs
-        console.log("[AdminPage] Loading directory users...");
 
         // First run database debug to understand the issue
-        console.log("[AdminPage] Running database debug...");
         const debugResult = await adminService.debugDatabaseAccess();
-        console.log("[AdminPage] Database debug result:", debugResult);
 
         const directoryUsersData = await adminService.getDirectoryUsers();
-        console.log("[AdminPage] Directory users loaded:", directoryUsersData);
-        console.log(
-          "[AdminPage] Directory users count:",
-          directoryUsersData.length,
-        );
-        console.log(
-          "[AdminPage] Directory users raw data:",
-          directoryUsersData.slice(0, 2), // Show first 2 records
-        );
-        console.log(
-          "[AdminPage] Active users count:",
-          directoryUsersData.filter((u) => u.sync_status === "active").length,
-        );
-        console.log("[AdminPage] All sync statuses found:", [
-          ...new Set(directoryUsersData.map((u) => u.sync_status)),
-        ]);
         setDirectoryUsers(directoryUsersData);
-        console.log("[AdminPage] State updated with directory users");
 
-        console.log("[AdminPage] Loading Azure sync logs...");
         const syncLogsData = await adminService.getAzureSyncLogs();
-        console.log("[AdminPage] Sync logs loaded:", syncLogsData);
-        console.log("[AdminPage] Sync logs count:", syncLogsData.length);
-        if (syncLogsData.length > 0) {
-          console.log("[AdminPage] Sample sync log:", syncLogsData[0]);
-        }
         setSyncLogs(syncLogsData);
-        console.log("[AdminPage] State updated with sync logs");
 
         // Load reminder email data
         const reminderLogsData = await adminService.getReminderEmailLogs(20);
@@ -292,7 +257,6 @@ const AdminPage: React.FC = () => {
           setNewFrequency(syncConfigData.frequency_hours);
         }
       } catch (error) {
-        console.warn("Error loading admin data:", error);
         toast({
           title: "Warning",
           description: "Some admin data could not be loaded",
@@ -400,22 +364,17 @@ const AdminPage: React.FC = () => {
   const handleToggleSync = async () => {
     setIsTogglingSync(true);
     try {
-      console.log("Toggle sync clicked. Current config:", syncConfig);
       const isCurrentlyEnabled = syncConfig?.is_enabled ?? false;
-      console.log("Is currently enabled:", isCurrentlyEnabled);
 
       const success = isCurrentlyEnabled
         ? await adminService.disableSyncConfiguration()
         : await adminService.enableSyncConfiguration();
-
-      console.log("Toggle operation success:", success);
 
       if (success) {
         // Wait a moment for the database to be updated
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Refresh sync configuration with retry logic
-        console.log("Refreshing sync configuration...");
         let syncConfigData = null;
         let retryCount = 0;
         const maxRetries = 5; // Increased retries
@@ -423,15 +382,11 @@ const AdminPage: React.FC = () => {
         while (!syncConfigData && retryCount < maxRetries) {
           syncConfigData = await adminService.getSyncConfiguration();
           if (!syncConfigData) {
-            console.log(
-              `Retry ${retryCount + 1}/${maxRetries} - sync config still null, waiting...`,
-            );
             await new Promise((resolve) => setTimeout(resolve, 1500)); // Longer wait
             retryCount++;
           }
         }
 
-        console.log("Final sync config data:", syncConfigData);
         setSyncConfig(syncConfigData);
 
         if (syncConfigData) {
@@ -516,14 +471,12 @@ const AdminPage: React.FC = () => {
     setIsDryRunning(true);
     setDryRunResults(null);
     try {
-      console.log('[AdminPage] Starting dry run...');
       const result = await adminService.triggerReminderEmails({
         dryRun: true,
         minDaysSinceUpdate: 14,
         cooldownDays: 7,
       });
 
-      console.log('[AdminPage] Dry run result:', result);
       setDryRunResults(result);
 
       toast({
@@ -598,12 +551,9 @@ const AdminPage: React.FC = () => {
 
     setIsSendingTestEmail(true);
     try {
-      console.log('[AdminPage] Sending test email to:', testEmail);
       const result = await adminService.triggerReminderEmails({
         testEmail: testEmail,
       });
-
-      console.log('[AdminPage] Test email result:', result);
 
       toast({
         title: "Test Email Sent",
