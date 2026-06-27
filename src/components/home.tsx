@@ -136,6 +136,8 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   const [statusHealthPopoverOpen, setStatusHealthPopoverOpen] = useState(false);
   const [projectManagers, setProjectManagers] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
+  // Maps canonical dept name → Set of raw AD dept names that resolve to it
+  const [departmentAliases, setDepartmentAliases] = useState<Map<string, Set<string>>>(new Map());
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
   const [filtersLoaded, setFiltersLoaded] = useState(false);
@@ -145,6 +147,14 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
 
   // Memoize user ID to prevent unnecessary re-renders
   const userId = useMemo(() => user?.id, [user?.id]);
+
+  // All department names (canonical + raw AD aliases) that match the selected filter.
+  // Passed to child components so they don't need to know about the mapping table.
+  const filterDepartmentNames = useMemo<string[]>(() => {
+    if (selectedDepartment === "all") return [];
+    const aliases = departmentAliases.get(selectedDepartment) ?? new Set<string>();
+    return [selectedDepartment, ...aliases];
+  }, [selectedDepartment, departmentAliases]);
 
   // Clear all filters function - memoized to prevent re-renders
   const clearAllFilters = useCallback(() => {
@@ -266,28 +276,28 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
         .sort();
       setProjectManagers(uniqueManagers);
 
-      // Get unique departments from projects
-      const projectDepartments = [
-        ...new Set(projects.map((p) => p.department)),
-      ].filter(Boolean);
-
       // Use canonical master departments table as the authoritative source.
-      // Avoids raw AD names (e.g. "IT Administration") bleeding into the filter
-      // from profiles that haven't been synced yet.
-      const { data: masterDepts } = await supabase
-        .from("departments")
-        .select("name")
-        .order("name");
+      // Do NOT merge raw project departments — they may contain unmapped AD names
+      // (e.g. "IT Administration") that should never appear in the dropdown.
+      const [{ data: masterDepts }, { data: mappingRows }] = await Promise.all([
+        supabase.from("departments").select("name").order("name"),
+        supabase.from("ad_department_mappings").select("ad_department_name, master_department").eq("status", "mapped"),
+      ]);
 
       const masterDepartments = masterDepts
         ? masterDepts.map((d) => d.name).filter(Boolean)
         : [];
+      setDepartments(masterDepartments);
 
-      // Combine: master list + any project departments not yet in master list
-      const allDepartments = [
-        ...new Set([...masterDepartments, ...projectDepartments]),
-      ].sort();
-      setDepartments(allDepartments);
+      // Build reverse alias map: canonical → Set<raw AD names> for filter matching.
+      // This lets "Technology" match projects whose department is "IT Administration".
+      const aliasMap = new Map<string, Set<string>>();
+      for (const row of mappingRows ?? []) {
+        if (!row.master_department || !row.ad_department_name) continue;
+        if (!aliasMap.has(row.master_department)) aliasMap.set(row.master_department, new Set());
+        aliasMap.get(row.master_department)!.add(row.ad_department_name);
+      }
+      setDepartmentAliases(aliasMap);
       
       console.log("✅ Project filters loaded successfully");
     } catch (error) {
@@ -882,8 +892,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
 
                               // Apply filters
                               if (selectedDepartment !== "all") {
+                                const aliases = departmentAliases.get(selectedDepartment) ?? new Set();
                                 filteredProjects = filteredProjects.filter(
-                                  (p) => p.department === selectedDepartment,
+                                  (p) => p.department === selectedDepartment || aliases.has(p.department),
                                 );
                               }
                               if (selectedManagers.length > 0) {
@@ -983,6 +994,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                 filterManager={selectedManagers}
                 filterStatus={selectedStatuses}
                 filterDepartment={selectedDepartment}
+                filterDepartmentNames={filterDepartmentNames}
                 filterStatusHealth={selectedStatusHealths}
                 filterSearch={searchQuery}
                 onFilteredCountChange={setFilteredProjectCount}
@@ -1148,6 +1160,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                 filterManager={selectedManagers}
                 filterStatus={selectedStatuses}
                 filterDepartment={selectedDepartment}
+                filterDepartmentNames={filterDepartmentNames}
                 filterStatusHealth={selectedStatusHealths}
               />
             </div>

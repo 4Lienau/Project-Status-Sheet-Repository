@@ -98,6 +98,7 @@ interface ProjectsOverviewProps {
   filterManager?: string | string[];
   filterStatus?: string | string[];
   filterDepartment?: string;
+  filterDepartmentNames?: string[];
   filterStatusHealth?: string | string[];
 }
 
@@ -126,6 +127,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   filterManager,
   filterStatus,
   filterDepartment,
+  filterDepartmentNames = [],
   filterStatusHealth,
 }) => {
   const [projects, setProjects] = useState<ProjectData[]>([]);
@@ -849,11 +851,11 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
         // Apply filters
         let filtered = [...allProjects];
 
-        // Apply department filter if selected
+        // Apply department filter — use alias list when available so raw AD dept
+        // names (e.g. "IT Administration") match the canonical selection ("Technology")
         if (filterDepartment && filterDepartment !== "all") {
-          filtered = filtered.filter((project) => {
-            return project.department === filterDepartment;
-          });
+          const names = filterDepartmentNames.length > 0 ? filterDepartmentNames : [filterDepartment];
+          filtered = filtered.filter((project) => names.includes(project.department));
         }
 
         // Convert filterManager to array if it's a string for backward compatibility
@@ -931,6 +933,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     filterManager,
     filterStatus,
     filterDepartment,
+    JSON.stringify(filterDepartmentNames),
     filterStatusHealth,
     toast,
   ]);

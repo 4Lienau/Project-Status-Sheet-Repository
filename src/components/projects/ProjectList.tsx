@@ -50,6 +50,7 @@ interface ProjectListProps {
   filterManager?: string | string[];
   filterStatus?: string | string[];
   filterDepartment?: string;
+  filterDepartmentNames?: string[];
   filterStatusHealth?: string | string[];
   filterSearch?: string;
   onFilteredCountChange?: (count: number) => void;
@@ -63,6 +64,7 @@ const ProjectList = ({
   filterManager = "all",
   filterStatus = "all",
   filterDepartment = "all",
+  filterDepartmentNames = [],
   filterStatusHealth = "all",
   filterSearch = "",
   onFilteredCountChange,
@@ -272,11 +274,11 @@ const ProjectList = ({
         let filtered = [...projects];
         console.log("Starting filter with", filtered.length, "projects");
 
-        // Apply department filter
+        // Apply department filter — use alias list when available so raw AD dept
+        // names (e.g. "IT Administration") match the canonical selection ("Technology")
         if (filterDepartment && filterDepartment !== "all") {
-          filtered = filtered.filter(
-            (project) => project.department === filterDepartment,
-          );
+          const names = filterDepartmentNames.length > 0 ? filterDepartmentNames : [filterDepartment];
+          filtered = filtered.filter((project) => names.includes(project.department));
         }
 
         // Apply project manager filter
@@ -339,6 +341,7 @@ const ProjectList = ({
     JSON.stringify(filterManagerArray), // Use JSON.stringify to properly compare arrays
     JSON.stringify(filterStatusArray),
     filterDepartment,
+    JSON.stringify(filterDepartmentNames),
     JSON.stringify(filterStatusHealthArray),
     filterSearch,
     user?.id,
