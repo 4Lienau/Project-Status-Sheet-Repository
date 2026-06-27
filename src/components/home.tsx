@@ -281,7 +281,11 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
       // (e.g. "IT Administration") that should never appear in the dropdown.
       const [{ data: masterDepts }, { data: mappingRows }] = await Promise.all([
         supabase.from("departments").select("name").order("name"),
-        supabase.from("ad_department_mappings").select("ad_department_name, master_department").eq("status", "mapped"),
+        supabase
+          .from("ad_department_mappings")
+          .select("ad_name, departments!master_dept_id(name)")
+          .eq("is_excluded", false)
+          .not("master_dept_id", "is", null),
       ]);
 
       const masterDepartments = masterDepts
@@ -293,9 +297,10 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
       // This lets "Technology" match projects whose department is "IT Administration".
       const aliasMap = new Map<string, Set<string>>();
       for (const row of mappingRows ?? []) {
-        if (!row.master_department || !row.ad_department_name) continue;
-        if (!aliasMap.has(row.master_department)) aliasMap.set(row.master_department, new Set());
-        aliasMap.get(row.master_department)!.add(row.ad_department_name);
+        const canonicalName = (row.departments as { name: string } | null)?.name;
+        if (!canonicalName || !row.ad_name) continue;
+        if (!aliasMap.has(canonicalName)) aliasMap.set(canonicalName, new Set());
+        aliasMap.get(canonicalName)!.add(row.ad_name);
       }
       setDepartmentAliases(aliasMap);
       
