@@ -30,6 +30,8 @@ import ChangesSection from "@/components/form/ChangesSection";
 import HealthCalculationSection from "@/components/form/HealthCalculationSection";
 import { AutoCopyAccomplishmentsDialog } from "@/components/form/AutoCopyAccomplishmentsDialog";
 import { ProjectCompleteDialog } from "@/components/form/ProjectCompleteDialog";
+import ProjectReportDialog from "@/components/report/ProjectReportDialog";
+import { FileBarChart } from "lucide-react";
 
 // Import dialog components
 import {
@@ -60,6 +62,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   // Use the custom hook for form state management
   const {
@@ -318,20 +321,30 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           {/* Form Actions - Now floating */}
           <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-lg p-4 z-10 flex justify-center items-center">
             <div className="container mx-auto flex justify-between max-w-4xl">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  if (hasChanges) {
-                    setPendingNavigationAction(() => onBack);
-                    setShowUnsavedChangesDialog(true);
-                  } else {
-                    onBack();
-                  }
-                }}
-              >
-                Cancel
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (hasChanges) {
+                      setPendingNavigationAction(() => onBack);
+                      setShowUnsavedChangesDialog(true);
+                    } else {
+                      onBack();
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowReportDialog(true)}
+                >
+                  <FileBarChart className="h-4 w-4 mr-2" />
+                  Generate Report
+                </Button>
+              </div>
 
               <div className="flex items-center gap-2">
                 {hasChanges && (
@@ -412,6 +425,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             onOpenChange={setShowProjectCompleteDialog}
             onConfirm={handleProjectCompleteConfirm}
             onCancel={handleProjectCompleteCancel}
+          />
+
+          <ProjectReportDialog
+            open={showReportDialog}
+            onOpenChange={setShowReportDialog}
+            projectId={projectId}
           />
         </form>
       </div>
