@@ -617,6 +617,61 @@ export const recalculateAllComputedStatusColors = async (): Promise<number> => {
   }
 };
 
+// Resolves a PM display name to their profiles.id via directory_users.
+// display_name (from AD) is the canonical name stored on projects.project_manager.
+// We match it to directory_users to get the email, then look up profiles by email.
+async function resolvePmProfileId(displayName: string): Promise<string | null> {
+  const { data: dirUser } = await supabase
+    .from("directory_users")
+    .select("email")
+    .ilike("display_name", displayName.trim())
+    .maybeSingle();
+  if (!dirUser?.email) return null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("email", dirUser.email)
+    .maybeSingle();
+  return profile?.id ?? null;
+}
+
+// Syncs project_editors so the designated PM is always an editor.
+// If the PM changed, the old PM is removed and the new PM is added.
+// Skips the project owner (they can always edit regardless).
+async function syncProjectManagerEditor(
+  projectId: string,
+  newPmName: string,
+  oldPmName: string | null,
+  ownerId: string | null,
+  grantedBy: string,
+): Promise<void> {
+  // Remove old PM if PM changed
+  if (oldPmName && oldPmName.trim() !== newPmName.trim()) {
+    const oldPmId = await resolvePmProfileId(oldPmName);
+    if (oldPmId && oldPmId !== ownerId) {
+      await supabase
+        .from("project_editors")
+        .delete()
+        .eq("project_id", projectId)
+        .eq("user_id", oldPmId);
+    }
+  }
+
+  // Add new PM as editor (upsert — safe even if already present)
+  if (newPmName) {
+    const newPmId = await resolvePmProfileId(newPmName);
+    if (newPmId && newPmId !== ownerId) {
+      await supabase
+        .from("project_editors")
+        .upsert(
+          { project_id: projectId, user_id: newPmId, granted_by: grantedBy },
+          { onConflict: "project_id,user_id", ignoreDuplicates: true },
+        );
+    }
+  }
+}
+
 export const projectService = {
   // Method to update project duration based on milestones
   async updateProjectDuration(projectId: string): Promise<boolean> {
@@ -1027,6 +1082,15 @@ export const projectService = {
     },
   ): Promise<ProjectWithRelations | null> {
     try {
+      // Fetch current PM and owner before update so we can detect a PM change
+      const { data: currentProject } = await supabase
+        .from("projects")
+        .select("project_manager, owner_id")
+        .eq("id", id)
+        .single();
+      const oldPmName = currentProject?.project_manager ?? null;
+      const ownerId = currentProject?.owner_id ?? null;
+
       const { data: project, error: projectError } = await supabase
         .from("projects")
         .update({
@@ -1059,6 +1123,12 @@ export const projectService = {
       if (projectError || !project) {
         console.error("[PROJECT_ID] Error updating project:", projectError);
         return null;
+      }
+
+      // Sync PM editor: remove old PM, add new PM if the PM field changed
+      const user = (await supabase.auth.getUser()).data.user;
+      if (user && data.project_manager) {
+        await syncProjectManagerEditor(id, data.project_manager, oldPmName, ownerId, user.id);
       }
 
       // Delete existing related records
@@ -1563,22 +1633,9 @@ export const projectService = {
         console.error("No project returned after insert");
         return null;
       }
-      // Auto-add the designated Project Manager as an editor so they can
-      // edit the project even if someone else (e.g. an admin) created it.
+      // Auto-add the designated Project Manager as an editor
       if (data.project_manager && user) {
-        const { data: pmProfile } = await supabase
-          .from("profiles")
-          .select("id")
-          .ilike("full_name", data.project_manager.trim())
-          .single();
-
-        if (pmProfile && pmProfile.id !== user.id) {
-          await supabase.from("project_editors").insert({
-            project_id: project.id,
-            user_id: pmProfile.id,
-            granted_by: user.id,
-          });
-        }
+        await syncProjectManagerEditor(project.id, data.project_manager, null, user.id, user.id);
       }
 
       // Insert milestones if any
