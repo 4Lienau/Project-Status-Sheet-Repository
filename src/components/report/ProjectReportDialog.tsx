@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { projectService, type ProjectWithRelations } from "@/lib/services/project";
 import { buildReportModel, defaultReportOptions } from "@/lib/services/reportModel";
 import { generatePdf } from "@/lib/services/reportPdf";
+import { generateDocx } from "@/lib/services/reportDocx";
 import { downloadBlob, reportFileName } from "@/lib/report/download";
 import ProjectReportPreview from "./ProjectReportPreview";
 import { DEFAULT_SECTION_ORDER, SECTION_LABELS, type ReportOptions, type ReportSectionKey } from "@/types/report";
@@ -53,7 +54,8 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
         const blob = await generatePdf(model);
         downloadBlob(blob, reportFileName(model.header.title, "pdf"));
       } else {
-        toast({ title: "Word export coming soon" });
+        const blob = await generateDocx(model);
+        downloadBlob(blob, reportFileName(model.header.title, "docx"));
       }
     } catch (e) {
       toast({ title: `Failed to export ${fmt.toUpperCase()}`, variant: "destructive" });
