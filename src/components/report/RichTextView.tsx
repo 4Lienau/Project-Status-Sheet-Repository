@@ -1,12 +1,14 @@
 import React from "react";
 import type { RichTextBlock, RichTextSpan } from "@/types/report";
+import { safeHref } from "@/lib/report/richText";
 
 const Span: React.FC<{ s: RichTextSpan }> = ({ s }) => {
   let node: React.ReactNode = s.text;
   if (s.bold) node = <strong>{node}</strong>;
   if (s.italic) node = <em>{node}</em>;
   if (s.underline) node = <u>{node}</u>;
-  if (s.href) node = <a href={s.href} className="text-blue-700 underline">{node}</a>;
+  const href = safeHref(s.href);
+  if (href) node = <a href={href} className="text-blue-700 underline">{node}</a>;
   return <>{node}</>;
 };
 

@@ -1,5 +1,18 @@
 import type { RichTextBlock, RichTextSpan } from "@/types/report";
 
+// Only allow safe URL schemes; reject javascript:/data:/vbscript: etc.
+export function safeHref(href: string | null | undefined): string | undefined {
+  if (!href) return undefined;
+  const trimmed = href.trim();
+  if (!trimmed) return undefined;
+  // Relative URLs, anchors, mailto, tel are safe.
+  if (/^(\/|\.|#|mailto:|tel:)/i.test(trimmed)) return trimmed;
+  // Absolute URLs: only http/https.
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // Anything else (javascript:, data:, vbscript:, unknown scheme) is rejected.
+  return undefined;
+}
+
 interface ActiveMarks {
   bold?: boolean;
   italic?: boolean;
@@ -20,7 +33,7 @@ function collectSpans(node: Node, marks: ActiveMarks, out: RichTextSpan[]): void
   if (tag === "strong" || tag === "b") next.bold = true;
   if (tag === "em" || tag === "i") next.italic = true;
   if (tag === "u") next.underline = true;
-  if (tag === "a") next.href = el.getAttribute("href") || undefined;
+  if (tag === "a") next.href = safeHref(el.getAttribute("href"));
   el.childNodes.forEach((child) => collectSpans(child, next, out));
 }
 
