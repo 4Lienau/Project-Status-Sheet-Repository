@@ -336,14 +336,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowReportDialog(true)}
-                >
-                  <FileBarChart className="h-4 w-4 mr-2" />
-                  Generate Report
-                </Button>
+                {projectId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowReportDialog(true)}
+                  >
+                    <FileBarChart className="h-4 w-4 mr-2" />
+                    Generate Report
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center gap-2">

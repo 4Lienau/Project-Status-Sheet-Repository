@@ -3,6 +3,7 @@ import { pdf, Document, Page, View, Text, Image, StyleSheet, Link } from "@react
 import type { ReportModel, RichTextBlock } from "@/types/report";
 import { BRAND, STATUS_COLOR_HEX, STATUS_COLOR_BG, milestoneStatusColor } from "@/lib/report/branding";
 import { formatCurrency, formatPercent, statusLabel } from "@/lib/report/format";
+import { listOrdinals } from "@/lib/report/richText";
 
 const s = StyleSheet.create({
   page: { paddingTop: 90, paddingBottom: 50, paddingHorizontal: 40, fontSize: 9, color: BRAND.colors.text, fontFamily: "Helvetica" },
@@ -25,13 +26,30 @@ const s = StyleSheet.create({
   none: { color: BRAND.colors.muted, fontSize: 9, fontStyle: "italic" },
 });
 
+async function fetchLogoDataUrl(): Promise<string | null> {
+  try {
+    const res = await fetch(BRAND.logoUrl);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 const Rich: React.FC<{ blocks: RichTextBlock[] }> = ({ blocks }) => {
   if (!blocks.length) return <Text style={s.none}>None recorded</Text>;
+  const ordinals = listOrdinals(blocks);
   return (
     <View>
       {blocks.map((b, i) => (
         <Text key={i} style={{ marginBottom: 1 }}>
-          {b.type === "bullet" ? "• " : b.type === "number" ? `${i + 1}. ` : ""}
+          {b.type === "bullet" ? "• " : b.type === "number" ? `${ordinals[i]}. ` : ""}
           {b.spans.map((sp, j) => {
             const style: any = {};
             if (sp.bold) style.fontFamily = "Helvetica-Bold";
@@ -47,7 +65,7 @@ const Rich: React.FC<{ blocks: RichTextBlock[] }> = ({ blocks }) => {
   );
 };
 
-const ReportDoc: React.FC<{ model: ReportModel }> = ({ model }) => {
+const ReportDoc: React.FC<{ model: ReportModel; logoData: string | null }> = ({ model, logoData }) => {
   const { header, sections, enabledOrder } = model;
   return (
     <Document>
@@ -58,7 +76,7 @@ const ReportDoc: React.FC<{ model: ReportModel }> = ({ model }) => {
             <Text style={s.bandTitle}>{header.title}</Text>
             <Text style={s.bandSub}>{header.department} · {statusLabel(header.status)}</Text>
           </View>
-          <Image style={s.logo} src={BRAND.logoUrl} />
+          {logoData ? <Image style={s.logo} src={logoData} /> : <Text style={s.bandSub}>{BRAND.name}</Text>}
         </View>
 
         <View style={{ flexDirection: "row", marginBottom: 4 }}>
@@ -79,7 +97,7 @@ const ReportDoc: React.FC<{ model: ReportModel }> = ({ model }) => {
           switch (key) {
             case "executiveSummary":
               return (
-                <View key={key} wrap={false}>
+                <View key={key}>
                   <Text style={s.sectionTitle}>Executive Summary</Text>
                   <Text style={s.muted}>Value Statement</Text>
                   <Rich blocks={sections.executiveSummary?.valueStatement || []} />
@@ -95,7 +113,7 @@ const ReportDoc: React.FC<{ model: ReportModel }> = ({ model }) => {
                   {sections.milestones?.map((m, i) => {
                     const c = milestoneStatusColor(m.status);
                     return (
-                      <View key={i} style={s.card} wrap={false}>
+                      <View key={i} style={s.card}>
                         <View style={s.rowBetween}>
                           <Text style={{ fontFamily: "Helvetica-Bold" }}>{m.milestone}</Text>
                           <Text style={[s.chip, { backgroundColor: STATUS_COLOR_BG[c], color: STATUS_COLOR_HEX[c] }]}>{m.status}</Text>
@@ -131,7 +149,7 @@ const ReportDoc: React.FC<{ model: ReportModel }> = ({ model }) => {
                   <Text style={s.sectionTitle}>Next Period Activities</Text>
                   {!sections.nextPeriodActivities?.length && <Text style={s.none}>None recorded</Text>}
                   {sections.nextPeriodActivities?.map((a, i) => (
-                    <View key={i} style={{ marginBottom: 3 }} wrap={false}>
+                    <View key={i} style={{ marginBottom: 3 }}>
                       <View style={s.rowBetween}><Text>{a.description}</Text><Text style={s.muted}>{a.assignee} · {a.date} · {a.completion}%</Text></View>
                       {a.subActivities.length > 0 && (
                         <View style={s.subTask}>
@@ -194,5 +212,6 @@ const ReportDoc: React.FC<{ model: ReportModel }> = ({ model }) => {
 };
 
 export async function generatePdf(model: ReportModel): Promise<Blob> {
-  return await pdf(<ReportDoc model={model} />).toBlob();
+  const logoData = await fetchLogoDataUrl();
+  return await pdf(<ReportDoc model={model} logoData={logoData} />).toBlob();
 }

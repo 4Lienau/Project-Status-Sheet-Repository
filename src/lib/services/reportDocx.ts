@@ -4,6 +4,7 @@ import {
 } from "docx";
 import type { ReportModel, RichTextBlock } from "@/types/report";
 import { BRAND, STATUS_COLOR_HEX, milestoneStatusColor } from "@/lib/report/branding";
+import { listOrdinals } from "@/lib/report/richText";
 import { formatCurrency, formatPercent, statusLabel } from "@/lib/report/format";
 
 const BLUE = BRAND.colors.primary.replace("#", "");
@@ -20,12 +21,14 @@ async function fetchLogo(): Promise<ArrayBuffer | null> {
 
 function richToParagraphs(blocks: RichTextBlock[], indentLeft = 0): Paragraph[] {
   if (!blocks.length) return [new Paragraph({ children: [new TextRun({ text: "None recorded", italics: true, color: "9CA3AF" })], indent: indentLeft ? { left: indentLeft } : undefined })];
-  return blocks.map((b) => {
-    const runs = b.spans.map((sp) =>
+  const ordinals = listOrdinals(blocks);
+  return blocks.map((b, i) => {
+    const marker = b.type === "number" ? [new TextRun({ text: `${ordinals[i]}. ` })] : [];
+    const runs = [...marker, ...b.spans.map((sp) =>
       sp.href
         ? new ExternalHyperlink({ link: sp.href, children: [new TextRun({ text: sp.text, style: "Hyperlink" })] })
         : new TextRun({ text: sp.text, bold: sp.bold, italics: sp.italic, underline: sp.underline ? {} : undefined }),
-    );
+    )];
     return new Paragraph({
       children: runs,
       bullet: b.type === "bullet" ? { level: 0 } : undefined,

@@ -84,3 +84,14 @@ export function richTextToPlainText(html: string | null | undefined): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   return (doc.body.textContent || "").trim();
 }
+
+// Per-list ordinal for each block: 1-based position within a run of
+// consecutive "number" blocks; 0 for non-number blocks (the run resets).
+export function listOrdinals(blocks: RichTextBlock[]): number[] {
+  let count = 0;
+  return blocks.map((b) => {
+    if (b.type === "number") return ++count;
+    count = 0;
+    return 0;
+  });
+}
