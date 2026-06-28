@@ -6,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import { projectService, type ProjectWithRelations } from "@/lib/services/project";
 import { buildReportModel, defaultReportOptions } from "@/lib/services/reportModel";
+import { generatePdf } from "@/lib/services/reportPdf";
+import { downloadBlob, reportFileName } from "@/lib/report/download";
 import ProjectReportPreview from "./ProjectReportPreview";
 import { DEFAULT_SECTION_ORDER, SECTION_LABELS, type ReportOptions, type ReportSectionKey } from "@/types/report";
 import { Loader2, FileText, FileType } from "lucide-react";
@@ -43,11 +45,21 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
   const toggle = (key: ReportSectionKey) =>
     setOptions((o) => ({ ...o, sections: { ...o.sections, [key]: !o.sections[key] } }));
 
-  // Placeholder export handlers — replaced in Tasks 7 (PDF) and 8 (Word).
-  const onExport = (fmt: "pdf" | "docx") => {
+  const onExport = async (fmt: "pdf" | "docx") => {
+    if (!model) return;
     setExporting(fmt);
-    setTimeout(() => setExporting(null), 300);
-    toast({ title: `${fmt.toUpperCase()} export coming soon` });
+    try {
+      if (fmt === "pdf") {
+        const blob = await generatePdf(model);
+        downloadBlob(blob, reportFileName(model.header.title, "pdf"));
+      } else {
+        toast({ title: "Word export coming soon" });
+      }
+    } catch (e) {
+      toast({ title: `Failed to export ${fmt.toUpperCase()}`, variant: "destructive" });
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
