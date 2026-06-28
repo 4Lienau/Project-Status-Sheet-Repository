@@ -1,6 +1,6 @@
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell,
-  WidthType, BorderStyle, AlignmentType, ImageRun, ExternalHyperlink,
+  WidthType, AlignmentType, ImageRun, ExternalHyperlink,
 } from "docx";
 import type { ReportModel, RichTextBlock } from "@/types/report";
 import { BRAND, STATUS_COLOR_HEX, milestoneStatusColor } from "@/lib/report/branding";
@@ -43,9 +43,10 @@ function heading(text: string): Paragraph {
   });
 }
 
-function cell(text: string, opts: { bold?: boolean; color?: string; width?: number } = {}): TableCell {
+function cell(text: string, opts: { bold?: boolean; color?: string; width?: number; fill?: string } = {}): TableCell {
   return new TableCell({
     width: opts.width ? { size: opts.width, type: WidthType.PERCENTAGE } : undefined,
+    shading: opts.fill ? { fill: opts.fill } : undefined,
     children: [new Paragraph({ children: [new TextRun({ text, bold: opts.bold, color: opts.color })] })],
   });
 }
@@ -126,7 +127,7 @@ export async function generateDocx(model: ReportModel): Promise<Blob> {
       children.push(new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
-          new TableRow({ children: [cell("Total", { bold: true, color: "FFFFFF" }), cell("Actuals", { bold: true, color: "FFFFFF" }), cell("Forecast", { bold: true, color: "FFFFFF" })], tableHeader: true }),
+          new TableRow({ children: [cell("Total", { bold: true, color: "FFFFFF", fill: BLUE }), cell("Actuals", { bold: true, color: "FFFFFF", fill: BLUE }), cell("Forecast", { bold: true, color: "FFFFFF", fill: BLUE })], tableHeader: true }),
           new TableRow({ children: [cell(formatCurrency(sections.budget?.total ?? null)), cell(formatCurrency(sections.budget?.actuals ?? null)), cell(formatCurrency(sections.budget?.forecast ?? null))] }),
         ],
       }));
