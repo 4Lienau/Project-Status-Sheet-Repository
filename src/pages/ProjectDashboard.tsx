@@ -21,7 +21,7 @@
  * - src/components/home.tsx
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { projectService } from "@/lib/services/project";
 import { projectVersionsService } from "@/lib/services/projectVersions";
@@ -67,6 +67,17 @@ const ProjectDashboard: React.FC = () => {
   const { toast } = useToast();
   const { canEditProject, user, isAdmin } = useAuth();
   const [showEditors, setShowEditors] = useState(false);
+  const editorsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (editorsRef.current && !editorsRef.current.contains(e.target as Node)) {
+        setShowEditors(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -895,9 +906,9 @@ const ProjectDashboard: React.FC = () => {
             )}
           </div>
 
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2 w-44">
             {project && !canEditProject(project) ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground bg-muted rounded-md border">
+              <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground bg-muted rounded-md border w-full">
                 <Eye className="h-4 w-4" />
                 View Only
               </div>
@@ -927,6 +938,7 @@ const ProjectDashboard: React.FC = () => {
                   }
                 }}
                 variant="outline"
+                className="w-full"
               >
                 {isEditing ? "View Status Sheet" : "Edit Project"}
               </Button>
@@ -935,6 +947,7 @@ const ProjectDashboard: React.FC = () => {
             {isEditing && (
               <Button
                 variant="outline"
+                className="w-full"
                 onClick={() => {
                   if (id) {
                     navigate(`/project/${id}/timeline`);
@@ -948,7 +961,7 @@ const ProjectDashboard: React.FC = () => {
             )}
 
             {isEditing && project && (project.owner_id === user?.id || isAdmin) && (
-              <div className="w-full">
+              <div ref={editorsRef} className="w-full">
                 <Button
                   variant="outline"
                   className="w-full"
@@ -957,7 +970,7 @@ const ProjectDashboard: React.FC = () => {
                   Manage Editors
                 </Button>
                 {showEditors && (
-                  <div className="mt-2 p-3 border rounded-lg bg-muted/30 w-72">
+                  <div className="mt-2 p-3 border rounded-lg bg-muted/30 w-72 self-end">
                     <ProjectEditors projectId={project.id} ownerId={project.owner_id} />
                   </div>
                 )}

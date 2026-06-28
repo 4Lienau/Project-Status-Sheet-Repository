@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,6 +33,17 @@ const ProjectEditors: React.FC<ProjectEditorsProps> = ({ projectId, ownerId }) =
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const editorIds = new Set(editors.map((e) => e.user_id));
 
@@ -119,7 +130,7 @@ const ProjectEditors: React.FC<ProjectEditorsProps> = ({ projectId, ownerId }) =
         </ul>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2" ref={searchContainerRef}>
         <Input
           placeholder="Search users to add…"
           value={search}
