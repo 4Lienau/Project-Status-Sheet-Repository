@@ -12,13 +12,13 @@ export type ReportSectionKey =
 
 export const DEFAULT_SECTION_ORDER: ReportSectionKey[] = [
   "description",
+  "budget",
   "milestones",
   "accomplishments",
   "nextPeriodActivities",
   "risks",
   "considerations",
   "changes",
-  "budget",
 ];
 
 export const SECTION_LABELS: Record<ReportSectionKey, string> = {
