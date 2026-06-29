@@ -1,6 +1,6 @@
 import React from "react";
 import { CheckCircle2 } from "lucide-react";
-import type { ReportModel, ReportSectionKey, ReportMilestone } from "@/types/report";
+import type { ReportModel, ReportSectionKey, ReportMilestone, ReportGantt } from "@/types/report";
 import {
   BRAND,
   STATUS_COLOR_HEX,
@@ -92,6 +92,83 @@ const MilestoneBlock: React.FC<{ m: ReportMilestone }> = ({ m }) => {
   );
 };
 
+// A thin, faded "today" reference line. Intentionally understated — a small
+// muted label plus a low-opacity brand hairline — so it guides the eye to
+// upcoming milestones without competing with the report's own content.
+const TodayLine: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex items-center gap-2 my-2 select-none">
+    <span className="text-[10px] uppercase tracking-wider whitespace-nowrap" style={{ color: BRAND.colors.muted, opacity: 0.7 }}>
+      {label}
+    </span>
+    <div className="flex-1" style={{ borderTop: `2px solid ${BRAND.colors.todayLine}`, opacity: 0.55 }} />
+  </div>
+);
+
+// Static "minimal bars" mini-Gantt. Two columns — milestone labels on the left,
+// a relative chart area on the right where bars are positioned by percentage and
+// a single continuous orange today line runs through all rows. All CSS, so it
+// prints to PDF identically (no canvas/SVG, unlike the dashboard's GSTC widget).
+const GanttBlock: React.FC<{ gantt: ReportGantt }> = ({ gantt }) => {
+  const { months, bars, todayPct } = gantt;
+  return (
+    <div>
+      <div className="flex text-xs">
+        {/* Milestone labels */}
+        <div className="w-40 shrink-0 pr-2">
+          <div className="h-4 mb-1" /> {/* spacer aligned with the month axis */}
+          {bars.map((b, i) => (
+            <div key={i} className="h-5 mb-1 flex items-center truncate text-gray-700" title={b.label}>
+              {b.label}
+            </div>
+          ))}
+        </div>
+        {/* Chart area */}
+        <div className="relative flex-1">
+          {/* Month axis */}
+          <div className="relative h-4 mb-1 border-b" style={{ borderColor: BRAND.colors.border }}>
+            {months.map((mo, i) =>
+              mo.show ? (
+                <span key={i} className="absolute top-0 text-[9px] whitespace-nowrap" style={{ left: `${mo.leftPct}%`, color: BRAND.colors.muted }}>
+                  {mo.label}
+                </span>
+              ) : null,
+            )}
+          </div>
+          {/* Continuous today line through the rows */}
+          {todayPct != null && (
+            <div className="absolute" style={{ left: `${todayPct}%`, top: "1.25rem", bottom: 0, width: 2, background: BRAND.colors.todayLine, opacity: 0.55 }} />
+          )}
+          {/* Bars */}
+          {bars.map((b, i) => (
+            <div key={i} className="relative h-5 mb-1">
+              <div
+                className="absolute rounded"
+                style={{ left: `${b.leftPct}%`, width: `${b.widthPct}%`, top: 3, bottom: 3, background: STATUS_COLOR_HEX[b.color] }}
+                title={`${b.startLabel} → ${b.endLabel}`}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-2 text-[10px]" style={{ color: BRAND.colors.muted }}>
+        {(["green", "yellow", "red"] as const).map((c) => (
+          <span key={c} className="flex items-center gap-1">
+            <span className="inline-block w-3 h-2 rounded-sm" style={{ background: STATUS_COLOR_HEX[c] }} />
+            {MILESTONE_STATUS_TEXT[c]}
+          </span>
+        ))}
+        {todayPct != null && (
+          <span className="flex items-center gap-1">
+            <span className="inline-block" style={{ width: 2, height: 12, background: BRAND.colors.todayLine, opacity: 0.7 }} />
+            Today
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ProjectReportPreview: React.FC<{ model: ReportModel }> = ({ model }) => {
   const { header, enabledOrder } = model;
   return (
@@ -148,14 +225,24 @@ const SectionBlock: React.FC<{
           <RichTextView blocks={s.description || []} />
         </div>
       );
-    case "milestones":
+    case "milestones": {
+      const tl = model.todayLine;
+      const ms = s.milestones || [];
       return (
         <div>
           <SectionTitle>Milestones &amp; Sub-Tasks</SectionTitle>
-          {!s.milestones?.length && <p className="text-sm text-gray-400 italic">None recorded</p>}
-          {s.milestones?.map((m, i) => <MilestoneBlock key={i} m={m} />)}
+          {!ms.length && <p className="text-sm text-gray-400 italic">None recorded</p>}
+          {ms.map((m, i) => (
+            <React.Fragment key={i}>
+              {tl && tl.beforeIndex === i && <TodayLine label={tl.label} />}
+              <MilestoneBlock m={m} />
+            </React.Fragment>
+          ))}
+          {/* All milestones are past → draw the line below the last one. */}
+          {tl && ms.length > 0 && tl.beforeIndex >= ms.length && <TodayLine label={tl.label} />}
         </div>
       );
+    }
     case "accomplishments":
       return (
         <div>
@@ -231,6 +318,14 @@ const SectionBlock: React.FC<{
             <div><div className="text-gray-500 text-xs">Actuals</div>{formatCurrency(s.budget?.actuals ?? null)}</div>
             <div><div className="text-gray-500 text-xs">Forecast</div>{formatCurrency(s.budget?.forecast ?? null)}</div>
           </div>
+        </div>
+      );
+    case "timeline":
+      return (
+        <div>
+          <SectionTitle>Timeline</SectionTitle>
+          {!s.gantt?.bars?.length && <p className="text-sm text-gray-400 italic">No dated milestones to chart.</p>}
+          {s.gantt?.bars?.length ? <GanttBlock gantt={s.gantt} /> : null}
         </div>
       );
     default:

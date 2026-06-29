@@ -8,10 +8,11 @@ import { projectService, type ProjectWithRelations } from "@/lib/services/projec
 import { createPortal } from "react-dom";
 import { buildReportModel, defaultReportOptions } from "@/lib/services/reportModel";
 import { generateDocx } from "@/lib/services/reportDocx";
+import { buildReportEmail, copyEmailToClipboard } from "@/lib/services/reportEmailHtml";
 import { downloadBlob, reportFileName } from "@/lib/report/download";
 import ProjectReportPreview from "./ProjectReportPreview";
 import { DEFAULT_SECTION_ORDER, SECTION_LABELS, type ReportOptions, type ReportSectionKey } from "@/types/report";
-import { Loader2, FileText, FileType } from "lucide-react";
+import { Loader2, FileText, FileType, Mail, Check } from "lucide-react";
 
 // Print-isolation CSS for "Save as PDF". The report preview is also rendered
 // into a body-level portal (#report-print-root); when printing we hide the rest
@@ -48,7 +49,8 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
   const [project, setProject] = useState<ProjectWithRelations | null>(null);
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<ReportOptions>(defaultReportOptions());
-  const [exporting, setExporting] = useState<null | "pdf" | "docx">(null);
+  const [exporting, setExporting] = useState<null | "pdf" | "docx" | "email">(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -70,6 +72,9 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
   const toggle = (key: ReportSectionKey) =>
     setOptions((o) => ({ ...o, sections: { ...o.sections, [key]: !o.sections[key] } }));
 
+  const toggleTodayLine = () =>
+    setOptions((o) => ({ ...o, showTodayLine: !o.showTodayLine }));
+
   const onExportDocx = async () => {
     if (!model) return;
     setExporting("docx");
@@ -78,6 +83,31 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
       downloadBlob(blob, reportFileName(model.header.title, "docx"));
     } catch (e) {
       toast({ title: "Failed to export Word", variant: "destructive" });
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  // Copy for email: put the report on the clipboard as styled HTML (Word-like,
+  // so it pastes into Outlook with full fidelity). We intentionally do NOT
+  // launch a mail client — mailto: is routed by the OS to whatever is set as the
+  // default mail app (often the wrong Outlook), so the PM pastes into the email
+  // they already have open. Must run inside the click gesture for clipboard access.
+  const onGenerateEmail = async () => {
+    if (!model) return;
+    setExporting("email");
+    try {
+      const parts = buildReportEmail(model);
+      const copied = await copyEmailToClipboard(parts);
+      if (!copied) {
+        toast({ title: "Couldn't copy the report", description: "Your browser blocked clipboard access — try again, or use Export Word.", variant: "destructive" });
+        return;
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+      toast({ title: "Report copied — ready to paste", description: "Open a new email in Outlook and press Ctrl+V to drop in the formatted report." });
+    } catch (e) {
+      toast({ title: "Failed to copy the report", variant: "destructive" });
     } finally {
       setExporting(null);
     }
@@ -107,9 +137,13 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 flex flex-col">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center justify-between border-b pl-4 pr-12 py-3">
           <h2 className="text-lg font-semibold">Project Report</h2>
           <div className="flex items-center gap-2">
+            <Button variant={copied ? "default" : "outline"} disabled={!model || exporting !== null} onClick={onGenerateEmail}>
+              {exporting === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : copied ? <Check className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+              <span className="ml-2">{copied ? "Copied!" : "Copy for email"}</span>
+            </Button>
             <Button variant="outline" disabled={!model || exporting !== null} onClick={onExportDocx}>
               {exporting === "docx" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
               <span className="ml-2">Export Word</span>
@@ -130,6 +164,16 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
                 {SECTION_LABELS[key]}
               </label>
             ))}
+
+            <div className="text-xs font-semibold text-muted-foreground uppercase mb-2 mt-5">Options</div>
+            <label className="flex items-center gap-2 py-1.5 text-sm cursor-pointer">
+              <Checkbox checked={!!options.showTodayLine} onCheckedChange={toggleTodayLine} />
+              Today line
+            </label>
+            <p className="text-xs text-muted-foreground mt-1 ml-6 leading-snug">
+              Thin marker in the milestones list showing what's due on/after today.
+            </p>
+
             <p className="text-xs text-muted-foreground mt-4">
               Showing <strong>saved</strong> data. Save your changes first to include recent edits.
             </p>

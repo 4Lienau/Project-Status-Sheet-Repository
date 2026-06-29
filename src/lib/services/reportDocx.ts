@@ -1,6 +1,6 @@
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell,
-  WidthType, AlignmentType, ImageRun, ExternalHyperlink,
+  WidthType, AlignmentType, ImageRun, ExternalHyperlink, BorderStyle,
 } from "docx";
 import type { ReportModel, RichTextBlock } from "@/types/report";
 import { BRAND, STATUS_COLOR_HEX, MILESTONE_STATUS_TEXT, milestoneStatusColor, isMilestoneComplete } from "@/lib/report/branding";
@@ -60,8 +60,21 @@ function cell(text: string, opts: { bold?: boolean; color?: string; width?: numb
 // Column widths (percent) shared by the milestone header + body rows.
 const MS_COLS = { item: 42, owner: 20, due: 16, pct: 8, status: 14 };
 
+// "Today" divider for the Word export — a small muted label over a slightly
+// thicker bottom border. Word borders can't be alpha-faded, so this hex is the
+// on-screen blend of the warm today-line orange (#F97316) at ~55% over white,
+// giving the same light-orange, translucent-looking line as the preview.
+// size:8 = 1pt.
+function todayDivider(label: string): Paragraph {
+  return new Paragraph({
+    spacing: { before: 100, after: 100 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: "FCB27F", space: 1 } },
+    children: [new TextRun({ text: label, size: 14, color: "9CA3AF", allCaps: true })],
+  });
+}
+
 export async function generateDocx(model: ReportModel): Promise<Blob> {
-  const { header, sections, enabledOrder } = model;
+  const { header, sections, enabledOrder, todayLine } = model;
   const children: (Paragraph | Table)[] = [];
 
   // Header
@@ -89,7 +102,8 @@ export async function generateDocx(model: ReportModel): Promise<Blob> {
       if (!sections.milestones?.length) {
         children.push(new Paragraph({ children: [new TextRun({ text: "None recorded", italics: true, color: "9CA3AF" })] }));
       }
-      sections.milestones?.forEach((m) => {
+      sections.milestones?.forEach((m, i) => {
+        if (todayLine && todayLine.beforeIndex === i) children.push(todayDivider(todayLine.label));
         const c = milestoneStatusColor(m.status);
         // Completed milestones collapse to one line with a green checkmark.
         if (isMilestoneComplete(m.completion)) {
@@ -137,6 +151,10 @@ export async function generateDocx(model: ReportModel): Promise<Blob> {
         }));
         children.push(new Paragraph({ spacing: { after: 80 }, children: [] }));
       });
+      // All milestones are past → draw the line below the last one.
+      if (todayLine && sections.milestones && sections.milestones.length > 0 && todayLine.beforeIndex >= sections.milestones.length) {
+        children.push(todayDivider(todayLine.label));
+      }
     } else if (key === "accomplishments") {
       children.push(heading("Accomplishments"));
       if (!sections.accomplishments?.length) children.push(new Paragraph({ children: [new TextRun({ text: "None recorded", italics: true, color: "9CA3AF" })] }));
@@ -169,6 +187,50 @@ export async function generateDocx(model: ReportModel): Promise<Blob> {
           new TableRow({ children: [cell(formatCurrency(sections.budget?.total ?? null)), cell(formatCurrency(sections.budget?.actuals ?? null)), cell(formatCurrency(sections.budget?.forecast ?? null))] }),
         ],
       }));
+    } else if (key === "timeline") {
+      children.push(heading("Timeline"));
+      const g = sections.gantt;
+      if (!g || !g.bars.length) {
+        children.push(new Paragraph({ children: [new TextRun({ text: "No dated milestones to chart.", italics: true, color: "9CA3AF" })] }));
+      } else {
+        // A static bar chart can't live in a .docx, so the Word timeline is a
+        // month grid: each milestone's span is shaded in its status color, and
+        // the column containing today gets an orange left border (the "today line").
+        const ORANGE = BRAND.colors.todayLine.replace("#", "");
+        const labelW = 26;
+        const colW = (100 - labelW) / g.months.length;
+        const todayBorders = (j: number) =>
+          g.todayMonthIdx === j ? { left: { style: BorderStyle.SINGLE, size: 12, color: ORANGE } } : undefined;
+        const headerRow = new TableRow({
+          tableHeader: true,
+          children: [
+            new TableCell({ width: { size: labelW, type: WidthType.PERCENTAGE }, shading: { fill: HEADER_BAND }, children: [new Paragraph({ children: [new TextRun({ text: "Milestone", bold: true, color: "FFFFFF", size: 16 })] })] }),
+            ...g.months.map((mo, j) => new TableCell({
+              width: { size: colW, type: WidthType.PERCENTAGE },
+              shading: { fill: HEADER_BAND },
+              borders: todayBorders(j),
+              children: [new Paragraph({ children: [new TextRun({ text: mo.show ? mo.label.replace(/ '\d+$/, "") : "", bold: true, color: "FFFFFF", size: 12 })] })],
+            })),
+          ],
+        });
+        const bodyRows = g.bars.map((b) => new TableRow({
+          children: [
+            new TableCell({ width: { size: labelW, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: b.label, size: 16 })] })] }),
+            ...g.months.map((_, j) => new TableCell({
+              width: { size: colW, type: WidthType.PERCENTAGE },
+              shading: j >= b.startMonthIdx && j <= b.endMonthIdx ? { fill: STATUS_COLOR_HEX[b.color].replace("#", "") } : undefined,
+              borders: todayBorders(j),
+              children: [new Paragraph({ children: [] })],
+            })),
+          ],
+        }));
+        children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...bodyRows] }));
+        children.push(new Paragraph({ spacing: { before: 80 }, children: [
+          new TextRun({ text: "■ ", color: STATUS_COLOR_HEX.green.replace("#", "") }), new TextRun({ text: `${MILESTONE_STATUS_TEXT.green}    `, size: 16, color: "6B7280" }),
+          new TextRun({ text: "■ ", color: STATUS_COLOR_HEX.yellow.replace("#", "") }), new TextRun({ text: `${MILESTONE_STATUS_TEXT.yellow}    `, size: 16, color: "6B7280" }),
+          new TextRun({ text: "■ ", color: STATUS_COLOR_HEX.red.replace("#", "") }), new TextRun({ text: `${MILESTONE_STATUS_TEXT.red}`, size: 16, color: "6B7280" }),
+        ] }));
+      }
     }
   }
 

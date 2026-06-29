@@ -23,6 +23,10 @@ export const BRAND = {
     statusGreenBg: "#DCFCE7",
     statusYellowBg: "#FEF9C3",
     statusRedBg: "#FEE2E2",
+    // Warm accent for the "today" reference line — deliberately NOT blue (the
+    // brand/table color) nor status green/amber/red, so it reads as a distinct
+    // time marker rather than a project status. Rendered semi-transparent.
+    todayLine: "#F97316",
   },
 } as const;
 
