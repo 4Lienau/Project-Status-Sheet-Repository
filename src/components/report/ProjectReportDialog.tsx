@@ -5,13 +5,37 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import { projectService, type ProjectWithRelations } from "@/lib/services/project";
+import { createPortal } from "react-dom";
 import { buildReportModel, defaultReportOptions } from "@/lib/services/reportModel";
-import { generatePdf } from "@/lib/services/reportPdf";
 import { generateDocx } from "@/lib/services/reportDocx";
 import { downloadBlob, reportFileName } from "@/lib/report/download";
 import ProjectReportPreview from "./ProjectReportPreview";
 import { DEFAULT_SECTION_ORDER, SECTION_LABELS, type ReportOptions, type ReportSectionKey } from "@/types/report";
 import { Loader2, FileText, FileType } from "lucide-react";
+
+// Print-isolation CSS for "Save as PDF". The report preview is also rendered
+// into a body-level portal (#report-print-root); when printing we hide the rest
+// of the app and show only that, so the PDF matches the on-screen preview. The
+// color-adjust rules force the brand bands/table headers to print (browsers
+// drop background colors otherwise).
+const PRINT_CSS = `
+@media screen {
+  #report-print-root { display: none; }
+}
+@media print {
+  body * { visibility: hidden !important; }
+  #report-print-root, #report-print-root * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  #report-print-root { position: absolute; left: 0; top: 0; width: 100%; }
+  #report-print-root > div { width: auto !important; box-shadow: none !important; margin: 0 !important; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  @page { size: A4; margin: 14mm; }
+}
+`;
 
 interface Props {
   open: boolean;
@@ -46,22 +70,26 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
   const toggle = (key: ReportSectionKey) =>
     setOptions((o) => ({ ...o, sections: { ...o.sections, [key]: !o.sections[key] } }));
 
-  const onExport = async (fmt: "pdf" | "docx") => {
+  const onExportDocx = async () => {
     if (!model) return;
-    setExporting(fmt);
+    setExporting("docx");
     try {
-      if (fmt === "pdf") {
-        const blob = await generatePdf(model);
-        downloadBlob(blob, reportFileName(model.header.title, "pdf"));
-      } else {
-        const blob = await generateDocx(model);
-        downloadBlob(blob, reportFileName(model.header.title, "docx"));
-      }
+      const blob = await generateDocx(model);
+      downloadBlob(blob, reportFileName(model.header.title, "docx"));
     } catch (e) {
-      toast({ title: `Failed to export ${fmt.toUpperCase()}`, variant: "destructive" });
+      toast({ title: "Failed to export Word", variant: "destructive" });
     } finally {
       setExporting(null);
     }
+  };
+
+  // PDF export prints the on-screen preview via the browser's native engine
+  // (Save as PDF). It renders the exact same component the user sees, so the
+  // output matches the page — and it needs no WASM/worker/Buffer, so it works
+  // under the app's strict Content-Security-Policy (unlike @react-pdf/renderer).
+  const onPrintPdf = () => {
+    if (!model) return;
+    window.print();
   };
 
   return (
@@ -70,13 +98,13 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-lg font-semibold">Project Report</h2>
           <div className="flex items-center gap-2">
-            <Button variant="outline" disabled={!model || exporting !== null} onClick={() => onExport("docx")}>
+            <Button variant="outline" disabled={!model || exporting !== null} onClick={onExportDocx}>
               {exporting === "docx" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
               <span className="ml-2">Export Word</span>
             </Button>
-            <Button disabled={!model || exporting !== null} onClick={() => onExport("pdf")}>
-              {exporting === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileType className="h-4 w-4" />}
-              <span className="ml-2">Export PDF</span>
+            <Button disabled={!model} onClick={onPrintPdf}>
+              <FileType className="h-4 w-4" />
+              <span className="ml-2">Save as PDF</span>
             </Button>
           </div>
         </div>
@@ -104,6 +132,15 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
           </ScrollArea>
         </div>
       </DialogContent>
+      {model && createPortal(
+        <>
+          <style>{PRINT_CSS}</style>
+          <div id="report-print-root">
+            <ProjectReportPreview model={model} />
+          </div>
+        </>,
+        document.body,
+      )}
     </Dialog>
   );
 };

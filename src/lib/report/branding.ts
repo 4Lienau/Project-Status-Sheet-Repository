@@ -8,6 +8,9 @@ export const BRAND = {
   colors: {
     primary: "#1D4ED8",
     primaryLight: "#3B82F6",
+    // Darker blue used for the report header band so the ReWa logo (now placed
+    // outside the band, on white) and status chips don't wash out against it.
+    headerBand: "#172554",
     text: "#1F2937",
     muted: "#6B7280",
     border: "#E5E7EB",
@@ -41,17 +44,40 @@ export const STATUS_COLOR_LABEL: Record<StatusColor, string> = {
   red: "Critical",
 };
 
-// Maps a milestone.status string to a status color for chips.
+// Maps a milestone.status value to a status color for chips.
+// The edit component stores status as the literal color words
+// "green" | "yellow" | "red" (labeled On Track / At Risk / Behind). Older
+// semantic strings are also accepted for backward compatibility.
 export function milestoneStatusColor(status: string): StatusColor {
   switch ((status || "").toLowerCase()) {
+    case "green":
     case "completed":
+    case "complete":
     case "on-schedule":
+    case "on-track":
       return "green";
+    case "red":
+    case "high-risk":
+    case "off-track":
+    case "behind":
+      return "red";
+    case "yellow":
     case "at-risk":
       return "yellow";
-    case "high-risk":
-      return "red";
     default:
       return "yellow";
   }
+}
+
+// Human-friendly health label for a milestone, matching the edit component's
+// status dropdown (green = On Track, yellow = At Risk, red = Behind).
+export const MILESTONE_STATUS_TEXT: Record<StatusColor, string> = {
+  green: "On Track",
+  yellow: "At Risk",
+  red: "Behind",
+};
+
+// A milestone is considered complete once its completion reaches 100%.
+export function isMilestoneComplete(completion: number | null | undefined): boolean {
+  return (completion ?? 0) >= 100;
 }

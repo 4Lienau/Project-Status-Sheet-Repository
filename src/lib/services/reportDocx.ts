@@ -3,11 +3,13 @@ import {
   WidthType, AlignmentType, ImageRun, ExternalHyperlink,
 } from "docx";
 import type { ReportModel, RichTextBlock } from "@/types/report";
-import { BRAND, STATUS_COLOR_HEX, milestoneStatusColor } from "@/lib/report/branding";
+import { BRAND, STATUS_COLOR_HEX, MILESTONE_STATUS_TEXT, milestoneStatusColor, isMilestoneComplete } from "@/lib/report/branding";
 import { listOrdinals } from "@/lib/report/richText";
 import { formatCurrency, formatPercent, statusLabel } from "@/lib/report/format";
 
 const BLUE = BRAND.colors.primary.replace("#", "");
+const HEADER_BAND = BRAND.colors.headerBand.replace("#", "");
+const GREEN = BRAND.colors.statusGreen.replace("#", "");
 
 async function fetchLogo(): Promise<ArrayBuffer | null> {
   try {
@@ -46,13 +48,16 @@ function heading(text: string): Paragraph {
   });
 }
 
-function cell(text: string, opts: { bold?: boolean; color?: string; width?: number; fill?: string } = {}): TableCell {
+function cell(text: string, opts: { bold?: boolean; color?: string; width?: number; fill?: string; indent?: number } = {}): TableCell {
   return new TableCell({
     width: opts.width ? { size: opts.width, type: WidthType.PERCENTAGE } : undefined,
     shading: opts.fill ? { fill: opts.fill } : undefined,
-    children: [new Paragraph({ children: [new TextRun({ text, bold: opts.bold, color: opts.color })] })],
+    children: [new Paragraph({ indent: opts.indent ? { left: opts.indent } : undefined, children: [new TextRun({ text, bold: opts.bold, color: opts.color, size: 18 })] })],
   });
 }
+
+// Column widths (percent) shared by the milestone header + body rows.
+const MS_COLS = { item: 42, owner: 20, due: 16, pct: 8, status: 14 };
 
 export async function generateDocx(model: ReportModel): Promise<Blob> {
   const { header, sections, enabledOrder } = model;
@@ -75,12 +80,9 @@ export async function generateDocx(model: ReportModel): Promise<Blob> {
   children.push(new Paragraph({ children: [new TextRun({ text: `Dates: ${header.startDate || "—"} → ${header.endDate || "—"}  ·  Budget: ${formatCurrency(header.budgetTotal)}  ·  Generated: ${header.generatedOn}`, color: "6B7280" })] }));
 
   for (const key of enabledOrder) {
-    if (key === "executiveSummary") {
-      children.push(heading("Executive Summary"));
-      children.push(new Paragraph({ children: [new TextRun({ text: "Value Statement", bold: true, color: "6B7280" })] }));
-      children.push(...richToParagraphs(sections.executiveSummary?.valueStatement || []));
-      children.push(new Paragraph({ children: [new TextRun({ text: "Description", bold: true, color: "6B7280" })] }));
-      children.push(...richToParagraphs(sections.executiveSummary?.description || []));
+    if (key === "description") {
+      children.push(heading("Project Description"));
+      children.push(...richToParagraphs(sections.description || []));
     } else if (key === "milestones") {
       children.push(heading("Milestones & Sub-Tasks"));
       if (!sections.milestones?.length) {
@@ -88,19 +90,51 @@ export async function generateDocx(model: ReportModel): Promise<Blob> {
       }
       sections.milestones?.forEach((m) => {
         const c = milestoneStatusColor(m.status);
-        children.push(new Paragraph({ spacing: { before: 120 }, children: [
-          new TextRun({ text: m.milestone, bold: true }),
-          new TextRun({ text: `   [${m.status}]`, color: STATUS_COLOR_HEX[c].replace("#", "") }),
-        ] }));
-        children.push(new Paragraph({ children: [new TextRun({ text: `Owner: ${m.owner}  ·  Due: ${m.endDate || m.date}  ·  Weight: ${m.weight}  ·  ${m.completion}%`, color: "6B7280", size: 18 })] }));
-        // Indented sub-tasks
-        m.tasks.forEach((t) => {
-          children.push(new Paragraph({
-            indent: { left: 720 },
-            bullet: { level: 0 },
-            children: [new TextRun({ text: `${t.description}  —  ${t.assignee} · ${t.date} · ${t.completion}%`, size: 18 })],
-          }));
+        // Completed milestones collapse to one line with a green checkmark.
+        if (isMilestoneComplete(m.completion)) {
+          children.push(new Paragraph({ spacing: { before: 120 }, children: [
+            new TextRun({ text: m.milestone, bold: true }),
+            new TextRun({ text: "   ✓ Complete", bold: true, color: GREEN }),
+          ] }));
+          return;
+        }
+        const headerRow = new TableRow({
+          tableHeader: true,
+          children: [
+            cell("Milestone / Task", { bold: true, color: "FFFFFF", fill: HEADER_BAND, width: MS_COLS.item }),
+            cell("Owner", { bold: true, color: "FFFFFF", fill: HEADER_BAND, width: MS_COLS.owner }),
+            cell("Due", { bold: true, color: "FFFFFF", fill: HEADER_BAND, width: MS_COLS.due }),
+            cell("%", { bold: true, color: "FFFFFF", fill: HEADER_BAND, width: MS_COLS.pct }),
+            cell("Status", { bold: true, color: "FFFFFF", fill: HEADER_BAND, width: MS_COLS.status }),
+          ],
         });
+        const milestoneRow = new TableRow({
+          children: [
+            cell(m.milestone, { bold: true }),
+            cell(m.owner),
+            cell(m.endDate || m.date),
+            cell(`${m.completion}%`),
+            cell(MILESTONE_STATUS_TEXT[c], { bold: true, color: STATUS_COLOR_HEX[c].replace("#", "") }),
+          ],
+        });
+        const taskRows = m.tasks.map((t) => {
+          const done = t.completion >= 100;
+          const status = done ? "Done" : t.completion > 0 ? "In progress" : "Not started";
+          return new TableRow({
+            children: [
+              cell(t.description, { indent: 360 }),
+              cell(t.assignee),
+              cell(t.date),
+              cell(`${t.completion}%`),
+              cell(status, { color: done ? GREEN : "6B7280" }),
+            ],
+          });
+        });
+        children.push(new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [headerRow, milestoneRow, ...taskRows],
+        }));
+        children.push(new Paragraph({ spacing: { after: 80 }, children: [] }));
       });
     } else if (key === "accomplishments") {
       children.push(heading("Accomplishments"));
@@ -130,7 +164,7 @@ export async function generateDocx(model: ReportModel): Promise<Blob> {
       children.push(new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
-          new TableRow({ children: [cell("Total", { bold: true, color: "FFFFFF", fill: BLUE }), cell("Actuals", { bold: true, color: "FFFFFF", fill: BLUE }), cell("Forecast", { bold: true, color: "FFFFFF", fill: BLUE })], tableHeader: true }),
+          new TableRow({ children: [cell("Total", { bold: true, color: "FFFFFF", fill: HEADER_BAND }), cell("Actuals", { bold: true, color: "FFFFFF", fill: HEADER_BAND }), cell("Forecast", { bold: true, color: "FFFFFF", fill: HEADER_BAND })], tableHeader: true }),
           new TableRow({ children: [cell(formatCurrency(sections.budget?.total ?? null)), cell(formatCurrency(sections.budget?.actuals ?? null)), cell(formatCurrency(sections.budget?.forecast ?? null))] }),
         ],
       }));

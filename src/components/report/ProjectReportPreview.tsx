@@ -1,6 +1,15 @@
 import React from "react";
-import type { ReportModel, ReportSectionKey } from "@/types/report";
-import { BRAND, STATUS_COLOR_HEX, STATUS_COLOR_BG, STATUS_COLOR_LABEL, milestoneStatusColor } from "@/lib/report/branding";
+import { CheckCircle2 } from "lucide-react";
+import type { ReportModel, ReportSectionKey, ReportMilestone } from "@/types/report";
+import {
+  BRAND,
+  STATUS_COLOR_HEX,
+  STATUS_COLOR_BG,
+  STATUS_COLOR_LABEL,
+  MILESTONE_STATUS_TEXT,
+  milestoneStatusColor,
+  isMilestoneComplete,
+} from "@/lib/report/branding";
 import { formatCurrency, formatPercent, statusLabel } from "@/lib/report/format";
 import RichTextView from "./RichTextView";
 
@@ -10,24 +19,90 @@ const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   </h2>
 );
 
-const Bar: React.FC<{ value: number }> = ({ value }) => (
-  <div className="w-full h-2 rounded bg-gray-200 overflow-hidden">
-    <div className="h-full rounded" style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: BRAND.colors.primaryLight }} />
-  </div>
-);
+// Sub-task status is derived from completion — tasks carry no status field.
+function taskStatusText(completion: number): { text: string; color: string } {
+  if (completion >= 100) return { text: "Done", color: BRAND.colors.statusGreen };
+  if (completion > 0) return { text: "In progress", color: BRAND.colors.muted };
+  return { text: "Not started", color: BRAND.colors.muted };
+}
+
+const th = "text-left font-semibold px-2 py-1";
+const td = "px-2 py-1 align-top";
+
+const MilestoneBlock: React.FC<{ m: ReportMilestone }> = ({ m }) => {
+  const color = milestoneStatusColor(m.status);
+
+  // Completed milestones collapse to a single line with a green checkmark and
+  // hide their sub-tasks — the detail no longer matters once they're done.
+  if (isMilestoneComplete(m.completion)) {
+    return (
+      <div className="flex items-center justify-between mb-2 rounded-md border px-3 py-2" style={{ borderColor: BRAND.colors.border }}>
+        <div className="font-semibold">{m.milestone}</div>
+        <div className="flex items-center gap-1 text-sm font-semibold" style={{ color: BRAND.colors.statusGreen }}>
+          <CheckCircle2 className="h-4 w-4" /> Complete
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <table className="w-full text-xs border-collapse mb-3" style={{ border: `1px solid ${BRAND.colors.border}` }}>
+      <thead>
+        <tr style={{ background: BRAND.colors.headerBand, color: "#fff" }}>
+          <th className={th}>Milestone / Task</th>
+          <th className={th}>Owner</th>
+          <th className={`${th} whitespace-nowrap`}>Due</th>
+          <th className="text-right font-semibold px-2 py-1">%</th>
+          <th className={th}>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style={{ borderTop: `1px solid ${BRAND.colors.border}` }}>
+          <td className={`${td} font-semibold`}>{m.milestone}</td>
+          <td className={td}>{m.owner}</td>
+          <td className={`${td} whitespace-nowrap`}>{m.endDate || m.date}</td>
+          <td className="px-2 py-1 align-top text-right">{m.completion}%</td>
+          <td className={td}>
+            <span className="px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: STATUS_COLOR_BG[color], color: STATUS_COLOR_HEX[color] }}>
+              {MILESTONE_STATUS_TEXT[color]}
+            </span>
+          </td>
+        </tr>
+        {m.tasks.map((t, j) => {
+          const ts = taskStatusText(t.completion);
+          return (
+            <tr key={j} style={{ borderTop: `1px solid ${BRAND.colors.border}` }}>
+              <td className="px-2 py-1 align-top text-gray-700">
+                <span className="inline-block pl-4" style={{ borderLeft: `3px solid ${BRAND.colors.primaryLight}` }}>{t.description}</span>
+              </td>
+              <td className={td}>{t.assignee}</td>
+              <td className={`${td} whitespace-nowrap`}>{t.date}</td>
+              <td className="px-2 py-1 align-top text-right">{t.completion}%</td>
+              <td className={td}><span style={{ color: ts.color }}>{ts.text}</span></td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+};
 
 const ProjectReportPreview: React.FC<{ model: ReportModel }> = ({ model }) => {
-  const { header, sections, enabledOrder } = model;
+  const { header, enabledOrder } = model;
   return (
     <div className="bg-white text-gray-900 mx-auto" style={{ width: "8.27in", padding: "0.6in", boxShadow: "0 1px 8px rgba(0,0,0,0.12)" }}>
-      {/* Header band */}
-      <div className="flex items-center justify-between rounded-md px-5 py-4 mb-4" style={{ background: BRAND.colors.primary, color: BRAND.colors.headerBandText }}>
-        <div>
-          <div className="text-xs uppercase tracking-wide opacity-80">{BRAND.name} {BRAND.reportTitle}</div>
-          <div className="text-2xl font-bold">{header.title}</div>
-          <div className="text-sm opacity-90">{header.department} · {statusLabel(header.status)}</div>
+      {/* Brand kicker + logo on white (logo sits OUTSIDE the colored band) */}
+      <div className="flex items-end justify-between mb-3">
+        <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: BRAND.colors.muted }}>
+          {BRAND.name} {BRAND.reportTitle}
         </div>
-        <img src={BRAND.logoUrl} alt="ReWa" style={{ height: 44 }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+        <img src={BRAND.logoUrl} alt="ReWa" style={{ height: 40 }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+      </div>
+
+      {/* Header band (darker blue) — title + department + status only */}
+      <div className="rounded-md px-5 py-4 mb-4" style={{ background: BRAND.colors.headerBand, color: "#fff" }}>
+        <div className="text-2xl font-bold">{header.title}</div>
+        <div className="text-sm opacity-90">{header.department} · {statusLabel(header.status)}</div>
       </div>
 
       {/* Health + meta */}
@@ -47,7 +122,7 @@ const ProjectReportPreview: React.FC<{ model: ReportModel }> = ({ model }) => {
       </div>
 
       {enabledOrder.map((key) => (
-        <SectionBlock key={key} sectionKey={key} model={model} Bar={Bar} SectionTitle={SectionTitle} />
+        <SectionBlock key={key} sectionKey={key} model={model} SectionTitle={SectionTitle} />
       ))}
     </div>
   );
@@ -56,19 +131,16 @@ const ProjectReportPreview: React.FC<{ model: ReportModel }> = ({ model }) => {
 const SectionBlock: React.FC<{
   sectionKey: ReportSectionKey;
   model: ReportModel;
-  Bar: React.FC<{ value: number }>;
   SectionTitle: React.FC<{ children: React.ReactNode }>;
-}> = ({ sectionKey, model, Bar, SectionTitle }) => {
+}> = ({ sectionKey, model, SectionTitle }) => {
   const s = model.sections;
   switch (sectionKey) {
-    case "executiveSummary":
+    case "description":
       return (
         <div>
-          <SectionTitle>Executive Summary</SectionTitle>
-          <div className="text-xs font-semibold text-gray-500 mt-2">Value Statement</div>
-          <RichTextView blocks={s.executiveSummary?.valueStatement || []} />
-          <div className="text-xs font-semibold text-gray-500 mt-3">Description</div>
-          <RichTextView blocks={s.executiveSummary?.description || []} />
+          <SectionTitle>Project Description</SectionTitle>
+          {!s.description?.length && <p className="text-sm text-gray-400 italic">None recorded</p>}
+          <RichTextView blocks={s.description || []} />
         </div>
       );
     case "milestones":
@@ -76,32 +148,7 @@ const SectionBlock: React.FC<{
         <div>
           <SectionTitle>Milestones &amp; Sub-Tasks</SectionTitle>
           {!s.milestones?.length && <p className="text-sm text-gray-400 italic">None recorded</p>}
-          {s.milestones?.map((m, i) => {
-            const color = milestoneStatusColor(m.status);
-            return (
-              <div key={i} className="mb-3 rounded-md border p-3" style={{ borderColor: BRAND.colors.border }}>
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold">{m.milestone}</div>
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: STATUS_COLOR_BG[color], color: STATUS_COLOR_HEX[color] }}>{m.status}</span>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                  <span>Owner: {m.owner}</span><span>Due: {m.endDate || m.date}</span><span>Weight: {m.weight}</span><span>{m.completion}%</span>
-                </div>
-                <div className="mt-1"><Bar value={m.completion} /></div>
-                {/* Indented sub-tasks */}
-                {m.tasks.length > 0 && (
-                  <div className="mt-2 ml-6 border-l-2 pl-3" style={{ borderColor: BRAND.colors.primaryLight }}>
-                    {m.tasks.map((t, j) => (
-                      <div key={j} className="flex items-center justify-between text-xs py-0.5">
-                        <span className="text-gray-700">{t.description}</span>
-                        <span className="text-gray-500">{t.assignee} · {t.date} · {t.completion}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {s.milestones?.map((m, i) => <MilestoneBlock key={i} m={m} />)}
         </div>
       );
     case "accomplishments":

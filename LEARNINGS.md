@@ -7,6 +7,37 @@ Log new entries with `/learn`. Newest entries go at the top.
 
 <!-- Entries below — newest first -->
 
+## `@react-pdf/renderer` is incompatible with this app's CSP — use browser print-to-PDF
+
+**Date**: 2026-06-28
+
+Client-side PDF generation with `@react-pdf/renderer` **cannot work** in this app. Its
+runtime needs three things the hardened CSP in `netlify.toml` forbids:
+1. a `data:` WebAssembly module (yoga layout engine) — blocked by `connect-src`
+2. a `blob:` web worker — blocked by `worker-src`/`script-src`
+3. the Node `Buffer` global (used by its image pipeline) — absent in browsers
+
+Symptoms seen, in order, as each layer was worked around: PDF export **hangs forever**
+(swallowed error in the async image loader leaves `toBlob()` pending), then
+`Buffer is not defined`, then `fs.readFileSync is not a function` (the `{ data, format }`
+image source is a **Node-only** path), then the CSP console errors that revealed the
+real cause. This applies in **production too** — the CSP is the same in `netlify dev`
+and on the deployed site, so "try it on the live server" does not help.
+
+**Critical debugging gotcha**: do NOT validate react-pdf in Node. `@react-pdf/renderer`'s
+Node renderer (`renderToBuffer`) has `Buffer`/`fs` and no CSP, so a Node repro **passes
+while the browser fails**. Verify browser-only rendering in an actual browser (e.g. a
+throwaway `vite` page driven by the Playwright MCP, or `page.pdf()`).
+
+**What to do instead** — generate the PDF from the existing branded HTML preview via the
+browser's native print engine: render the preview into a body-level portal, isolate it
+with `@media print` (`visibility` toggling + `print-color-adjust: exact` so brand
+bands/table headers actually print), and call `window.print()`. The user picks
+"Save as PDF". This is CSP-safe (no WASM/worker/Buffer), needs no deps, produces
+selectable/paginated output, and looks **exactly** like the on-screen preview because it
+*is* the preview. See `src/components/report/ProjectReportDialog.tsx` (`PRINT_CSS`).
+
+
 ## `npm run build` is not a reliable pass/fail gate — use `npx vite build` + scoped `tsc`
 
 **Date**: 2026-06-28

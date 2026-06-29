@@ -28,6 +28,27 @@ function fmtDate(d: string | null | undefined): string | null {
   });
 }
 
+// Ordering helpers that reproduce the project edit component's display order so
+// the report lists milestones and sub-tasks exactly as the PM arranged them.
+// Both sort on the RAW (YYYY-MM-DD) date, so they must run before fmtDate().
+function byMilestoneDate(a: { date: string }, b: { date: string }): number {
+  // Mirrors MilestoneList.tsx — start date ascending (earliest first).
+  return new Date(a.date).getTime() - new Date(b.date).getTime();
+}
+
+function byTaskDate(
+  a: { date?: string | null },
+  b: { date?: string | null },
+): number {
+  // Mirrors TaskList.tsx — start date ascending, empty/missing dates last.
+  const ad = a.date;
+  const bd = b.date;
+  if (!ad && !bd) return 0;
+  if (!ad) return 1;
+  if (!bd) return -1;
+  return ad.localeCompare(bd);
+}
+
 export function buildReportModel(
   project: ProjectWithRelations,
   options: ReportOptions,
@@ -63,22 +84,19 @@ export function buildReportModel(
 
   const sections: ReportModel["sections"] = {};
 
-  if (options.sections.executiveSummary) {
-    sections.executiveSummary = {
-      valueStatement: parseRichText(project.value_statement),
-      description: parseRichText(project.description),
-    };
+  if (options.sections.description) {
+    sections.description = parseRichText(project.description);
   }
   if (options.sections.milestones) {
-    sections.milestones = milestones.map((m) => ({
+    sections.milestones = [...milestones].sort(byMilestoneDate).map((m) => ({
       milestone: richTextToPlainText(m.milestone) || "Untitled milestone",
       owner: m.owner || "—",
       date: fmtDate(m.date) || "—",
       endDate: fmtDate(m.end_date),
       weight: m.weight ?? 3,
       completion: m.completion ?? 0,
-      status: m.status || "on-schedule",
-      tasks: (m.tasks || []).map((t) => ({
+      status: m.status || "green",
+      tasks: [...(m.tasks || [])].sort(byTaskDate).map((t) => ({
         description: richTextToPlainText(t.description) || "—",
         assignee: t.assignee || "—",
         date: fmtDate(t.date) || "—",

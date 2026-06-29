@@ -1,7 +1,7 @@
 export type StatusColor = "red" | "yellow" | "green";
 
 export type ReportSectionKey =
-  | "executiveSummary"
+  | "description"
   | "milestones"
   | "accomplishments"
   | "nextPeriodActivities"
@@ -11,7 +11,7 @@ export type ReportSectionKey =
   | "budget";
 
 export const DEFAULT_SECTION_ORDER: ReportSectionKey[] = [
-  "executiveSummary",
+  "description",
   "milestones",
   "accomplishments",
   "nextPeriodActivities",
@@ -22,7 +22,7 @@ export const DEFAULT_SECTION_ORDER: ReportSectionKey[] = [
 ];
 
 export const SECTION_LABELS: Record<ReportSectionKey, string> = {
-  executiveSummary: "Executive Summary",
+  description: "Project Description",
   milestones: "Milestones & Sub-Tasks",
   accomplishments: "Accomplishments",
   nextPeriodActivities: "Next Period Activities",
@@ -110,7 +110,7 @@ export interface ReportModel {
   header: ReportHeader;
   enabledOrder: ReportSectionKey[];
   sections: {
-    executiveSummary?: { valueStatement: RichTextBlock[]; description: RichTextBlock[] };
+    description?: RichTextBlock[];
     milestones?: ReportMilestone[];
     accomplishments?: RichTextBlock[][];
     nextPeriodActivities?: ReportActivity[];
