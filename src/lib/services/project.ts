@@ -2084,19 +2084,75 @@ export const projectService = {
     return true;
   },
 
+  // Pending (deferred) editors: pre-authorize an AD user who hasn't logged in yet.
+  // Keyed by email; the resolve_pending_project_editors trigger converts these into
+  // real project_editors rows on the user's first login.
+  async getPendingProjectEditors(projectId: string): Promise<Array<{ email: string; granted_by: string | null; created_at: string }>> {
+    const { data, error } = await supabase
+      .from("pending_project_editors")
+      .select("email, granted_by, created_at")
+      .eq("project_id", projectId);
+
+    if (error) {
+      console.error("Error fetching pending project editors:", error);
+      return [];
+    }
+    return data ?? [];
+  },
+
+  async addPendingProjectEditor(projectId: string, email: string): Promise<boolean> {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return false;
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("pending_project_editors")
+      .upsert(
+        { project_id: projectId, email: normalizedEmail, granted_by: user?.id ?? null },
+        { onConflict: "project_id,email", ignoreDuplicates: true },
+      );
+
+    if (error) {
+      console.error("Error adding pending project editor:", error);
+      return false;
+    }
+    return true;
+  },
+
+  async removePendingProjectEditor(projectId: string, email: string): Promise<boolean> {
+    const { error } = await supabase
+      .from("pending_project_editors")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("email", email.trim().toLowerCase());
+
+    if (error) {
+      console.error("Error removing pending project editor:", error);
+      return false;
+    }
+    return true;
+  },
+
   async getApprovedUsers(): Promise<Array<{ id: string | null; full_name: string | null; email: string | null; department: string | null; hasAccount: boolean }>> {
-    // Search all active AD users, then join to profiles by email for the auth UUID.
+    // Search all directory AD users, then join to profiles by email for the auth UUID.
     // Users without a profile haven't logged in yet — hasAccount will be false.
-    const [{ data: dirUsers }, { data: profiles }] = await Promise.all([
-      supabase
-        .from("directory_users")
-        .select("display_name, email, department")
-        .eq("sync_status", "active")
-        .order("display_name"),
-      supabase
-        .from("profiles")
-        .select("id, email"),
-    ]);
+    // NOTE: include both "active" and "inactive" sync_status. The Azure AD sync
+    // flags any user missing from its latest fetch as "inactive", so filtering to
+    // "active" only would silently hide valid editors. This matches the behavior
+    // of UserSelectionPopup, the app's other directory picker.
+    const [{ data: dirUsers, error: dirError }, { data: profiles, error: profilesError }] =
+      await Promise.all([
+        supabase
+          .from("directory_users")
+          .select("display_name, email, department")
+          .in("sync_status", ["active", "inactive"])
+          .order("display_name"),
+        supabase
+          .from("profiles")
+          .select("id, email"),
+      ]);
+
+    if (dirError) console.error("[getApprovedUsers] directory_users query failed:", dirError);
+    if (profilesError) console.error("[getApprovedUsers] profiles query failed:", profilesError);
 
     const profileMap = new Map(
       (profiles ?? []).map((p) => [p.email?.toLowerCase(), p.id])

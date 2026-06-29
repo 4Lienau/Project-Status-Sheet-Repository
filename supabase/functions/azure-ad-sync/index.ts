@@ -526,6 +526,13 @@ serve(async (req) => {
       );
       allUsers = activeUsers;
 
+      // Capture the azure_user_ids of ALL enabled users present in Azure AD, BEFORE
+      // the department filter below narrows `allUsers`. Deactivation must key off
+      // "still present & enabled in Azure AD" — NOT "passed our department filter" —
+      // otherwise an enabled user who merely lacks a valid department gets re-flagged
+      // inactive on every sync. The department filter governs only what we UPSERT.
+      const enabledAzureIdSet = new Set(activeUsers.map((u) => u.id));
+
       // Enhanced validation function to check for invalid department values
       const isValidDepartment = (department: any): boolean => {
         if (department === null || department === undefined) return false;
@@ -735,18 +742,29 @@ serve(async (req) => {
       }
 
       // Two-step deactivation: avoids URL length limits when there are many users.
-      // Step 1: fetch currently active records, Step 2: deactivate those not in the synced list.
-      const azureUserIds = allUsers.map((u) => u.id);
-      const azureUserIdSet = new Set(azureUserIds);
-
+      // Step 1: fetch currently active records. Step 2: deactivate those whose azure
+      // user is no longer present/enabled in Azure AD. We diff against
+      // `enabledAzureIdSet` (all enabled AD users) rather than the department-filtered
+      // `allUsers`, so a user still present in AD but lacking a valid department stays
+      // active instead of being churned inactive on every sync.
       const { data: currentlyActive } = await supabase
         .from("directory_users")
         .select("id, azure_user_id")
         .eq("sync_status", "active");
 
-      const toDeactivate = (currentlyActive ?? [])
-        .filter((u) => !azureUserIdSet.has(u.azure_user_id))
-        .map((u) => u.id);
+      // Safety guard: if Azure returned zero enabled users (e.g. an auth/scope failure
+      // that did not throw), do NOT deactivate anyone — that would wipe the directory.
+      if (enabledAzureIdSet.size === 0) {
+        console.warn(
+          "⚠️ Skipping deactivation: zero enabled users returned from Azure AD (possible auth/scope issue).",
+        );
+      }
+      const toDeactivate =
+        enabledAzureIdSet.size === 0
+          ? []
+          : (currentlyActive ?? [])
+              .filter((u) => !enabledAzureIdSet.has(u.azure_user_id))
+              .map((u) => u.id);
 
       if (toDeactivate.length > 0) {
         const batchSize = 100;

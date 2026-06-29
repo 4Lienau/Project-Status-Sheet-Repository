@@ -506,6 +506,35 @@ export type Database = {
           },
         ]
       }
+      pending_project_editors: {
+        Row: {
+          created_at: string
+          email: string
+          granted_by: string | null
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          granted_by?: string | null
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          granted_by?: string | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_project_editors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_knowledge: {
         Row: {
           category: string

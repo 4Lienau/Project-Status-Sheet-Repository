@@ -52,19 +52,35 @@ if (result.error) {
   process.exit(1);
 }
 
-if (result.status !== 0) {
-  console.error(`Command failed with exit code ${result.status}`);
-  if (result.stdout?.length) {
-    console.error('stdout:', result.stdout.toString().substring(0, 500));
+const rawOutput = result.stdout?.toString() ?? '';
+
+// The CLI may append a telemetry error line (PostHog shutdown timeout) to stdout
+// AFTER the generated types. The generated module always ends with `} as const`,
+// so truncate anything past it to keep the emitted .ts file valid.
+const marker = '} as const';
+const markerIdx = rawOutput.lastIndexOf(marker);
+const output = markerIdx === -1 ? rawOutput : rawOutput.slice(0, markerIdx + marker.length) + '\n';
+
+// Trust the OUTPUT, not the exit code. The Supabase CLI sometimes exits non-zero
+// purely because its telemetry (PostHog) flush times out on shutdown — AFTER the
+// types have already been printed to stdout. Only treat the run as failed when the
+// output isn't valid TypeScript (a real auth/network error produces no types).
+const looksLikeTypes =
+  !!output.trim() && !output.trim().startsWith('{') && output.includes('export type Database');
+
+if (!looksLikeTypes) {
+  console.error(`Type generation failed (exit code ${result.status}).`);
+  if (output.length) {
+    console.error('stdout:', output.substring(0, 500));
   }
-  process.exit(result.status ?? 1);
+  process.exit(result.status || 1);
 }
 
-const output = result.stdout?.toString() ?? '';
-if (!output.trim() || output.trim().startsWith('{')) {
-  console.error('Unexpected output — expected TypeScript types, got:');
-  console.error(output.substring(0, 500));
-  process.exit(1);
+if (result.status !== 0) {
+  console.warn(
+    `Note: supabase CLI exited ${result.status} (likely a telemetry-flush timeout), ` +
+      `but valid types were generated — writing them anyway.`,
+  );
 }
 
 writeFileSync(join(root, 'src', 'types', 'supabase.ts'), output);
