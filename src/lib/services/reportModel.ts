@@ -19,7 +19,14 @@ export function defaultReportOptions(): ReportOptions {
 
 function fmtDate(d: string | null | undefined): string | null {
   if (!d) return null;
-  const parsed = new Date(d);
+  // Plain YYYY-MM-DD strings must be parsed as LOCAL dates, not UTC — otherwise
+  // `new Date("2026-07-10")` is UTC midnight and toLocaleDateString shifts it a
+  // day earlier in negative-offset timezones. Mirrors the edit component's
+  // local-date parsing (MilestoneItem/TaskList).
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  const parsed = ymd
+    ? new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]))
+    : new Date(d);
   if (isNaN(parsed.getTime())) return d;
   return parsed.toLocaleDateString("en-US", {
     year: "numeric",
