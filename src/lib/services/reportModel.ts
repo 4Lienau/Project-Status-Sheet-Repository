@@ -106,6 +106,9 @@ export function buildReportModel(
   }
   if (options.sections.accomplishments) {
     sections.accomplishments = (project.accomplishments || [])
+      // Match the edit component (AccomplishmentsSection): only accomplishments
+      // visible there — excluding hidden and deleted — belong in the report.
+      .filter((a: any) => typeof a === "string" || (!a?.is_hidden && !a?.is_deleted))
       .map((a: any) => parseRichText(a?.description ?? (typeof a === "string" ? a : "")))
       .filter((blocks) => blocks.length > 0);
   }

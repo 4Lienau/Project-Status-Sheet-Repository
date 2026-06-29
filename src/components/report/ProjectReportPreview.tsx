@@ -161,7 +161,12 @@ const SectionBlock: React.FC<{
         <div>
           <SectionTitle>Accomplishments</SectionTitle>
           {!s.accomplishments?.length && <p className="text-sm text-gray-400 italic">None recorded</p>}
-          {s.accomplishments?.map((blocks, i) => <div key={i} className="mb-1"><RichTextView blocks={blocks} /></div>)}
+          {s.accomplishments?.map((blocks, i) => (
+            <div key={i} className="flex gap-2 items-start mb-1">
+              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" style={{ color: BRAND.colors.statusGreen }} />
+              <div className="flex-1 min-w-0"><RichTextView blocks={blocks} /></div>
+            </div>
+          ))}
         </div>
       );
     case "nextPeriodActivities":

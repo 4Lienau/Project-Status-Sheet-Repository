@@ -21,12 +21,13 @@ async function fetchLogo(): Promise<ArrayBuffer | null> {
   }
 }
 
-function richToParagraphs(blocks: RichTextBlock[], indentLeft = 0): Paragraph[] {
+function richToParagraphs(blocks: RichTextBlock[], indentLeft = 0, leadRuns: TextRun[] = []): Paragraph[] {
   if (!blocks.length) return [new Paragraph({ children: [new TextRun({ text: "None recorded", italics: true, color: "9CA3AF" })], indent: indentLeft ? { left: indentLeft } : undefined })];
   const ordinals = listOrdinals(blocks);
   return blocks.map((b, i) => {
     const marker = b.type === "number" ? [new TextRun({ text: `${ordinals[i]}. ` })] : [];
-    const runs = [...marker, ...b.spans.map((sp) =>
+    const lead = i === 0 ? leadRuns : [];
+    const runs = [...lead, ...marker, ...b.spans.map((sp) =>
       sp.href
         ? new ExternalHyperlink({ link: sp.href, children: [new TextRun({ text: sp.text, style: "Hyperlink" })] })
         : new TextRun({ text: sp.text, bold: sp.bold, italics: sp.italic, underline: sp.underline ? {} : undefined }),
@@ -139,7 +140,7 @@ export async function generateDocx(model: ReportModel): Promise<Blob> {
     } else if (key === "accomplishments") {
       children.push(heading("Accomplishments"));
       if (!sections.accomplishments?.length) children.push(new Paragraph({ children: [new TextRun({ text: "None recorded", italics: true, color: "9CA3AF" })] }));
-      sections.accomplishments?.forEach((b) => children.push(...richToParagraphs(b)));
+      sections.accomplishments?.forEach((b) => children.push(...richToParagraphs(b, 0, [new TextRun({ text: "✓ ", bold: true, color: GREEN })])));
     } else if (key === "nextPeriodActivities") {
       children.push(heading("Next Period Activities"));
       if (!sections.nextPeriodActivities?.length) children.push(new Paragraph({ children: [new TextRun({ text: "None recorded", italics: true, color: "9CA3AF" })] }));
