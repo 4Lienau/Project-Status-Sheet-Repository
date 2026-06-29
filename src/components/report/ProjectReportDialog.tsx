@@ -89,6 +89,18 @@ const ProjectReportDialog: React.FC<Props> = ({ open, onOpenChange, projectId })
   // under the app's strict Content-Security-Policy (unlike @react-pdf/renderer).
   const onPrintPdf = () => {
     if (!model) return;
+    // Chromium uses document.title as the default "Save as PDF" filename, so
+    // set it to "<Project> - <Generated date>" before printing (and restore it
+    // afterward) to pre-populate the Save dialog instead of a blank slate.
+    const clean = (sv: string) => (sv || "").replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim();
+    const name = `${clean(model.header.title) || "Project Report"} - ${clean(model.header.generatedOn)}`.replace(/\s-\s*$/, "");
+    const original = document.title;
+    const restore = () => {
+      document.title = original;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    document.title = name;
     window.print();
   };
 
