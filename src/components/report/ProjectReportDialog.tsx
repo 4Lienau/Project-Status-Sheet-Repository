@@ -30,10 +30,10 @@ const PRINT_CSS = `
     print-color-adjust: exact !important;
   }
   #report-print-root { position: absolute; left: 0; top: 0; width: 100%; }
-  #report-print-root > div { width: auto !important; box-shadow: none !important; margin: 0 !important; }
+  #report-print-root > div { width: auto !important; min-height: 0 !important; padding: 0 !important; box-shadow: none !important; margin: 0 !important; }
   thead { display: table-header-group; }
   tr { break-inside: avoid; }
-  @page { size: A4; margin: 14mm; }
+  @page { size: letter; margin: 0.6in; }
 }
 `;
 

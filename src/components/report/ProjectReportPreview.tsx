@@ -37,8 +37,8 @@ const MilestoneBlock: React.FC<{ m: ReportMilestone }> = ({ m }) => {
   if (isMilestoneComplete(m.completion)) {
     return (
       <div className="flex items-center justify-between mb-2 rounded-md border px-3 py-2" style={{ borderColor: BRAND.colors.border }}>
-        <div className="font-semibold">{m.milestone}</div>
-        <div className="flex items-center gap-1 text-sm font-semibold" style={{ color: BRAND.colors.statusGreen }}>
+        <div className="font-semibold flex-1 min-w-0 break-words pr-3">{m.milestone}</div>
+        <div className="flex items-center gap-1 text-sm font-semibold shrink-0 whitespace-nowrap" style={{ color: BRAND.colors.statusGreen }}>
           <CheckCircle2 className="h-4 w-4" /> Complete
         </div>
       </div>
@@ -46,7 +46,14 @@ const MilestoneBlock: React.FC<{ m: ReportMilestone }> = ({ m }) => {
   }
 
   return (
-    <table className="w-full text-xs border-collapse mb-3" style={{ border: `1px solid ${BRAND.colors.border}` }}>
+    <table className="w-full table-fixed text-xs border-collapse mb-3" style={{ border: `1px solid ${BRAND.colors.border}` }}>
+      <colgroup>
+        <col style={{ width: "40%" }} />
+        <col style={{ width: "18%" }} />
+        <col style={{ width: "17%" }} />
+        <col style={{ width: "9%" }} />
+        <col style={{ width: "16%" }} />
+      </colgroup>
       <thead>
         <tr style={{ background: BRAND.colors.headerBand, color: "#fff" }}>
           <th className={th}>Milestone / Task</th>
@@ -58,12 +65,12 @@ const MilestoneBlock: React.FC<{ m: ReportMilestone }> = ({ m }) => {
       </thead>
       <tbody>
         <tr style={{ borderTop: `1px solid ${BRAND.colors.border}` }}>
-          <td className={`${td} font-semibold`}>{m.milestone}</td>
-          <td className={td}>{m.owner}</td>
+          <td className={`${td} font-semibold break-words`}>{m.milestone}</td>
+          <td className={`${td} break-words`}>{m.owner}</td>
           <td className={`${td} whitespace-nowrap`}>{m.endDate || m.date}</td>
           <td className="px-2 py-1 align-top text-right">{m.completion}%</td>
           <td className={td}>
-            <span className="px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: STATUS_COLOR_BG[color], color: STATUS_COLOR_HEX[color] }}>
+            <span className="inline-block px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: STATUS_COLOR_BG[color], color: STATUS_COLOR_HEX[color] }}>
               {MILESTONE_STATUS_TEXT[color]}
             </span>
           </td>
@@ -72,13 +79,11 @@ const MilestoneBlock: React.FC<{ m: ReportMilestone }> = ({ m }) => {
           const ts = taskStatusText(t.completion);
           return (
             <tr key={j} style={{ borderTop: `1px solid ${BRAND.colors.border}` }}>
-              <td className="px-2 py-1 align-top text-gray-700">
-                <span className="inline-block pl-4" style={{ borderLeft: `3px solid ${BRAND.colors.primaryLight}` }}>{t.description}</span>
-              </td>
-              <td className={td}>{t.assignee}</td>
+              <td className="px-2 py-1 align-top text-gray-700 break-words" style={{ borderLeft: `3px solid ${BRAND.colors.primaryLight}`, paddingLeft: "1rem" }}>{t.description}</td>
+              <td className={`${td} break-words`}>{t.assignee}</td>
               <td className={`${td} whitespace-nowrap`}>{t.date}</td>
               <td className="px-2 py-1 align-top text-right">{t.completion}%</td>
-              <td className={td}><span style={{ color: ts.color }}>{ts.text}</span></td>
+              <td className={`${td} break-words`}><span style={{ color: ts.color }}>{ts.text}</span></td>
             </tr>
           );
         })}
@@ -90,7 +95,7 @@ const MilestoneBlock: React.FC<{ m: ReportMilestone }> = ({ m }) => {
 const ProjectReportPreview: React.FC<{ model: ReportModel }> = ({ model }) => {
   const { header, enabledOrder } = model;
   return (
-    <div className="bg-white text-gray-900 mx-auto" style={{ width: "8.27in", padding: "0.6in", boxShadow: "0 1px 8px rgba(0,0,0,0.12)" }}>
+    <div className="bg-white text-gray-900 mx-auto" style={{ width: "8.5in", minHeight: "11in", padding: "0.6in", boxShadow: "0 1px 8px rgba(0,0,0,0.12)" }}>
       {/* Brand kicker + logo on white (logo sits OUTSIDE the colored band) */}
       <div className="flex items-end justify-between mb-3">
         <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: BRAND.colors.muted }}>
