@@ -7,6 +7,52 @@ Log new entries with `/learn`. Newest entries go at the top.
 
 <!-- Entries below — newest first -->
 
+## `REVOKE EXECUTE … FROM anon/authenticated` is a no-op when the grant is held by `PUBLIC`
+
+**Date**: 2026-07-01
+
+Postgres `CREATE FUNCTION` grants `EXECUTE` to the pseudo-role `PUBLIC` by default,
+and `anon` / `authenticated` / `service_role` all inherit from it. Supabase's advisor
+(`*_security_definer_function_executable`) checks `has_function_privilege(role, fn, 'EXECUTE')`,
+which returns true via that inherited `PUBLIC` grant — so `REVOKE EXECUTE … FROM anon`
+(or `FROM authenticated`) changes nothing and the finding persists.
+
+**Symptom seen**: a migration that revoked function EXECUTE `FROM anon`/`FROM authenticated`
+cleared **zero** function findings (only the table-SELECT and search_path fixes landed).
+Table SELECT is granted to `anon` **directly**, so revoking it works; function EXECUTE comes
+via `PUBLIC`, so revoking from a specific role does not. The arithmetic gave it away — the
+advisor count barely moved where it should have dropped ~30.
+
+**Fix**: `REVOKE EXECUTE … FROM PUBLIC` (plus `anon`, `authenticated`), then allow-list
+re-grant — `GRANT EXECUTE … TO service_role` (backend/edge/cron) and `TO authenticated` only
+for functions the app actually calls. Build the allow-list from a **multi-line-aware** scan of
+`supabase.rpc(` calls; a single-line grep misses calls where `.rpc(` and the function name are
+on separate lines (this bit us — `test_project_creation_tracking`). See
+`supabase/migrations/20260629000003_security_hardening_phase1b.sql`.
+
+
+## A leftover permissive `USING(true)` RLS policy silently overrides a stricter one
+
+**Date**: 2026-07-01
+
+RLS **permissive** policies combine with **OR**. If a table has both an old
+`"Enable all operations for all users"` policy (`FOR ALL USING(true)`) and a newer
+`FOR UPDATE USING(can_edit_project(...))`, the effective rule is
+`true OR can_edit_project(...)` = **always true**. The strict policy is dead weight and
+writes stay wide open — even though the table *looks* locked down.
+
+**Gotcha within the gotcha**: the migration that added the strict policies
+(`20260627000008`) only dropped policies with `cmd IN ('UPDATE','DELETE')`, so the
+`cmd = ALL` blanket policy survived and kept overriding them. Supabase's
+`rls_policy_always_true` advisor was pointing at the live hole.
+
+**Fix**: enumerate `pg_policies` and drop **every** permissive write/`ALL`-command `true`
+policy, then install one canonical set. Remember to backfill `SELECT` and `INSERT` policies
+you didn't previously have as standalone policies — the blanket `ALL` policy was silently
+providing them, so dropping it breaks child-row reads and inserts otherwise. See
+`supabase/migrations/20260701000001_security_hardening_phase2_write_rls.sql`.
+
+
 ## `@react-pdf/renderer` is incompatible with this app's CSP — use browser print-to-PDF
 
 **Date**: 2026-06-28
