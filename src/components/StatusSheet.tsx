@@ -20,7 +20,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { calculateWeightedCompletion } from "@/lib/services/project";
+import { getDisplayCompletion } from "@/lib/services/project";
 import { FileText, Download, FileOutput } from "lucide-react";
 import { exportToPowerPoint } from "@/lib/services/pptExport";
 import { useToast } from "./ui/use-toast";
@@ -167,9 +167,8 @@ const StatusSheet: React.FC<StatusSheetProps> = ({
     );
   }
 
-  // Always show actual weighted milestone completion regardless of health_calculation_type.
-  // manual_health_percentage only affects the status color, not the completion display.
-  const overallCompletion = calculateWeightedCompletion(data.milestones || []);
+  // Manual % when Calculation Method is Manual, otherwise weighted milestone completion
+  const overallCompletion = getDisplayCompletion(data as any);
 
   // Determine overall status color using computed_status_color from database
   const getStatusColor = () => {

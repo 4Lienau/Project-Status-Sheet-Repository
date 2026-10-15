@@ -34,7 +34,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useNavigate } from "react-router-dom";
 import {
   projectService,
-  calculateWeightedCompletion,
+  getDisplayCompletion,
   calculateProjectHealthStatusColor,
   calculateTimeRemainingPercentage,
   getTimeRemainingTooltipText,
@@ -506,9 +506,8 @@ const ProjectList = ({
 
                 {/* Health Indicator */}
                 {(() => {
-                  // Always show actual weighted milestone completion regardless of health_calculation_type.
-                  // manual_health_percentage only affects the status color, not the completion display.
-                  const overallCompletion = calculateWeightedCompletion(project.milestones);
+                  // Manual % when Calculation Method is Manual, otherwise weighted milestone completion
+                  const overallCompletion = getDisplayCompletion(project);
 
                   // Calculate time remaining percentage for tooltip
                   const timeRemainingPercentage =

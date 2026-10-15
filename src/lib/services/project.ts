@@ -104,6 +104,23 @@ export const calculateWeightedCompletion = (milestones: Milestone[]) => {
   return Math.round((weightedSum / totalPossibleWeighted) * 100);
 };
 
+// Completion % to display: the manual percentage when the project uses Manual
+// calculation, otherwise weighted milestone completion. A manual project with no
+// stored percentage falls back to milestones (same rule as kpiService).
+export const getDisplayCompletion = (project: {
+  health_calculation_type?: string | null;
+  manual_health_percentage?: number | null;
+  milestones?: Milestone[] | null;
+}): number => {
+  if (
+    project.health_calculation_type === "manual" &&
+    project.manual_health_percentage != null
+  ) {
+    return project.manual_health_percentage;
+  }
+  return calculateWeightedCompletion(project.milestones || []);
+};
+
 // Calculate project duration based on milestone dates
 // Note: This function calculates duration data but doesn't consider project status
 // The status-aware logic is handled in the helper functions that use this data

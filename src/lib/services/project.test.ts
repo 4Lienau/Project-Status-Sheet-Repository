@@ -1,5 +1,31 @@
 import { describe, it, expect } from "vitest";
-import { calculateWeightedCompletion, calculateProjectDuration } from "./project";
+import {
+  calculateWeightedCompletion,
+  calculateProjectDuration,
+  getDisplayCompletion,
+} from "./project";
+
+describe("getDisplayCompletion", () => {
+  const milestones = [{ date: "2026-01-01", completion: 40, weight: 3 }] as any;
+
+  it("uses the manual percentage when calculation is manual", () => {
+    expect(
+      getDisplayCompletion({ health_calculation_type: "manual", manual_health_percentage: 85, milestones }),
+    ).toBe(85);
+  });
+
+  it("uses weighted milestones when calculation is automatic", () => {
+    expect(
+      getDisplayCompletion({ health_calculation_type: "automatic", manual_health_percentage: 85, milestones }),
+    ).toBe(40);
+  });
+
+  it("falls back to milestones when manual has no stored percentage", () => {
+    expect(
+      getDisplayCompletion({ health_calculation_type: "manual", manual_health_percentage: null, milestones }),
+    ).toBe(40);
+  });
+});
 
 type TestMilestone = {
   date: string;

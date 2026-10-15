@@ -1,5 +1,5 @@
 import {
-  calculateWeightedCompletion,
+  getDisplayCompletion,
   calculateProjectHealthStatusColor,
   type ProjectWithRelations,
 } from "@/lib/services/project";
@@ -167,7 +167,7 @@ export function buildReportModel(
   options: ReportOptions,
 ): ReportModel {
   const milestones = project.milestones || [];
-  const healthPercentage = calculateWeightedCompletion(milestones);
+  const healthPercentage = getDisplayCompletion(project);
   const statusColor = calculateProjectHealthStatusColor(project, milestones);
 
   const header: ReportModel["header"] = {

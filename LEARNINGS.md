@@ -7,6 +7,24 @@ Log new entries with `/learn`. Newest entries go at the top.
 
 <!-- Entries below — newest first -->
 
+## Displayed completion % must go through `getDisplayCompletion()` — screens drifted apart
+
+**Date**: 2026-10-15
+
+The "% complete" number was calculated separately on each screen, so screens disagreed about
+Manual mode. Commit `109f6ae` made `ProjectForm`/`StatusSheet`/`ProjectList`/`reportModel` always
+show weighted milestone %, while `HealthCalculationSection`, `ProjectKPIsPage` and `kpiService`
+used `manual_health_percentage`. Result: the edit page showed two different percentages at once.
+
+**Rule**: when `health_calculation_type === "manual"`, the manual % overrides the displayed
+completion everywhere. Use `getDisplayCompletion(project)` in `src/lib/services/project.ts` —
+don't call `calculateWeightedCompletion()` directly for a project's displayed completion
+(it is still correct for raw milestone math).
+
+**Side gotcha**: `createProject` saves `manual_health_percentage || null`, so a manual **0%**
+is stored as `null` and falls back to milestone %. Use `??` there if 0% overrides are needed.
+
+
 ## `REVOKE EXECUTE … FROM anon/authenticated` is a no-op when the grant is held by `PUBLIC`
 
 **Date**: 2026-07-01

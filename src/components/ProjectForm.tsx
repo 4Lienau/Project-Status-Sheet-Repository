@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import ProjectPilot from "@/components/chat/ProjectPilot";
 import { Badge } from "@/components/ui/badge";
-import { calculateProjectHealthStatusColor, calculateWeightedCompletion } from "@/lib/services/project";
+import { calculateProjectHealthStatusColor, getDisplayCompletion } from "@/lib/services/project";
 
 // Import refactored form components
 import ProjectDetailsSection from "@/components/form/ProjectDetailsSection";
@@ -124,8 +124,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     formData.milestones || []
   );
 
-  // Calculate weighted completion percentage
-  const completionPercentage = calculateWeightedCompletion(formData.milestones || []);
+  // Manual % when Calculation Method is Manual, otherwise weighted milestone completion
+  const completionPercentage = getDisplayCompletion(formData);
 
   // Get health status label
   const getHealthStatusLabel = (color: "red" | "yellow" | "green") => {
