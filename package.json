@@ -19,7 +19,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.6.0",
-    "@netlify/functions": "^3.0.0",
+    "@netlify/functions": "^6.0.2",
     "@popperjs/core": "^2.11.8",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.0.5",
@@ -101,14 +101,14 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.2.0",
     "@vitejs/plugin-react-swc": "^3.5.0",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.12",
     "autoprefixer": "^10.4.20",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.2",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.7.3",
     "vite": "^5.4.21",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "glob": "^10.5.0",
