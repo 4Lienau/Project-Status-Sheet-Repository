@@ -35,6 +35,7 @@ import { useNavigate } from "react-router-dom";
 import {
   projectService,
   getDisplayCompletion,
+  getProjectStartYear,
   calculateProjectHealthStatusColor,
   calculateTimeRemainingPercentage,
   getTimeRemainingTooltipText,
@@ -53,8 +54,10 @@ interface ProjectListProps {
   filterDepartmentNames?: string[];
   filterStatusHealth?: string | string[];
   filterSearch?: string;
+  filterYear?: string;
   onFilteredCountChange?: (count: number) => void;
   onTotalCountChange?: (count: number) => void;
+  onAvailableYearsChange?: (years: string[]) => void;
   totalProjectCount?: number;
 }
 
@@ -67,8 +70,10 @@ const ProjectList = ({
   filterDepartmentNames = [],
   filterStatusHealth = "all",
   filterSearch = "",
+  filterYear = "all",
   onFilteredCountChange,
   onTotalCountChange,
+  onAvailableYearsChange,
   totalProjectCount = 0,
 }: ProjectListProps) => {
   // Convert filterManager to array if it's a string for backward compatibility
@@ -224,6 +229,12 @@ const ProjectList = ({
           onTotalCountChange(projects.length);
         }
 
+        // Report the start years present so the Year filter only offers real options (newest first)
+        if (onAvailableYearsChange) {
+          const years = new Set(projects.map(getProjectStartYear).filter(Boolean));
+          onAvailableYearsChange([...years].sort().reverse());
+        }
+
         // OPTIMIZED: Apply filters efficiently without expensive calculations in the loop
         let filtered = [...projects];
         // Apply department filter — use alias list when available so raw AD dept
@@ -262,6 +273,11 @@ const ProjectList = ({
           });
         }
 
+        // Apply start year filter
+        if (filterYear && filterYear !== "all") {
+          filtered = filtered.filter((p) => getProjectStartYear(p) === filterYear);
+        }
+
         // Apply search filter
         if (filterSearch && filterSearch.trim() !== "") {
           const searchLower = filterSearch.toLowerCase();
@@ -294,6 +310,7 @@ const ProjectList = ({
     JSON.stringify(filterDepartmentNames),
     JSON.stringify(filterStatusHealthArray),
     filterSearch,
+    filterYear,
     user?.id,
   ]);
 

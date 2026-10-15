@@ -3,7 +3,18 @@ import {
   calculateWeightedCompletion,
   calculateProjectDuration,
   getDisplayCompletion,
+  getProjectStartYear,
 } from "./project";
+
+describe("getProjectStartYear", () => {
+  it("takes the year from the date string without a time-zone shift", () => {
+    expect(getProjectStartYear({ calculated_start_date: "2026-01-01" })).toBe("2026");
+  });
+
+  it("returns null when there is no start date", () => {
+    expect(getProjectStartYear({ calculated_start_date: null })).toBeNull();
+  });
+});
 
 describe("getDisplayCompletion", () => {
   const milestones = [{ date: "2026-01-01", completion: 40, weight: 3 }] as any;

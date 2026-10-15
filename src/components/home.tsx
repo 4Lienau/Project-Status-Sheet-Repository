@@ -28,7 +28,7 @@ import ProjectList from "./projects/ProjectList";
 import ProjectsOverview from "./projects/ProjectsOverview";
 import ProjectForm from "./ProjectForm";
 import ProjectDashboard from "@/pages/ProjectDashboard";
-import { projectService, type Project } from "@/lib/services/project";
+import { projectService, getProjectStartYear, type Project } from "@/lib/services/project";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
@@ -131,6 +131,8 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [selectedStatusHealths, setSelectedStatusHealths] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [statusHealthPopoverOpen, setStatusHealthPopoverOpen] = useState(false);
@@ -163,6 +165,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
     setSelectedDepartment("all");
     setSelectedStatusHealths([]);
     setSearchQuery("");
+    setSelectedYear("all");
 
     // Save cleared filters to localStorage
     if (userId) {
@@ -171,6 +174,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
       saveFilterToStorage(userId, "department", "all");
       saveFilterToStorage(userId, "statusHealths", []);
       saveFilterToStorage(userId, "searchQuery", "");
+      saveFilterToStorage(userId, "year", "all");
     }
   }, [userId]);
 
@@ -200,6 +204,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
       setSelectedDepartment(savedDepartment);
       setSelectedStatusHealths(Array.isArray(savedStatusHealths) ? savedStatusHealths : savedStatusHealths !== "all" ? [savedStatusHealths] : []);
       setSearchQuery(savedSearchQuery);
+      setSelectedYear(loadFilterFromStorage(userId, "year", "all"));
       setFiltersLoaded(true);
     }
   }, [userId, filtersLoaded]);
@@ -412,27 +417,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                 <div className="flex items-start gap-4 flex-wrap">
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-muted-foreground mb-2">
-                      Search
-                    </label>
-                    <div className="relative w-[280px]">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search projects..."
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          if (user?.id) {
-                            saveFilterToStorage(user.id, "searchQuery", e.target.value);
-                          }
-                        }}
-                        className="pl-8 bg-card/50 border-border"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col">
-                    <label className="text-sm font-medium text-muted-foreground mb-2">
-                      Filter by Department
+                      Department
                     </label>
                     <Select
                       value={selectedDepartment}
@@ -443,7 +428,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                         }
                       }}
                     >
-                      <SelectTrigger className="w-[280px] text-foreground border-border bg-card/50 hover:bg-card">
+                      <SelectTrigger className="w-[210px] text-foreground border-border bg-card/50 hover:bg-card">
                         <SelectValue
                           placeholder="All Departments"
                           className="text-foreground"
@@ -460,9 +445,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                     </Select>
                   </div>
 
-                  <div className="w-[280px] flex flex-col">
+                  <div className="w-[210px] flex flex-col">
                     <label className="text-sm font-medium text-muted-foreground mb-2">
-                      Filter by Project Manager
+                      Project Manager
                     </label>
                     <Popover
                       open={managerPopoverOpen}
@@ -590,9 +575,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                     )}
                   </div>
 
-                  <div className="w-[200px] flex flex-col">
+                  <div className="w-[170px] flex flex-col">
                     <label className="text-sm font-medium text-muted-foreground mb-2">
-                      Filter by Status
+                      Status
                     </label>
                     <Popover
                       open={statusPopoverOpen}
@@ -705,9 +690,9 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                     )}
                   </div>
 
-                  <div className="w-[200px] flex flex-col">
+                  <div className="w-[170px] flex flex-col">
                     <label className="text-sm font-medium text-muted-foreground mb-2">
-                      Filter by Status Health
+                      Health
                     </label>
                     <Popover
                       open={statusHealthPopoverOpen}
@@ -721,7 +706,7 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                           className="w-full justify-between text-foreground border-border bg-card/50 hover:bg-card h-10"
                         >
                           {selectedStatusHealths.length > 0
-                            ? `${selectedStatusHealths.length} health${selectedStatusHealths.length > 1 ? " statuses" : ""} selected`
+                            ? `${selectedStatusHealths.length} selected`
                             : "All Health Status"}
                         </Button>
                       </PopoverTrigger>
@@ -829,6 +814,37 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                       </div>
                     )}
                   </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-muted-foreground mb-2">
+                      Start Year
+                    </label>
+                    <Select
+                      value={selectedYear}
+                      onValueChange={(value) => {
+                        setSelectedYear(value);
+                        if (user?.id) {
+                          saveFilterToStorage(user.id, "year", value);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[120px] text-foreground border-border bg-card/50 hover:bg-card">
+                        <SelectValue placeholder="All Years" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Years</SelectItem>
+                        {/* Keep a saved year selectable before the project list has reported its years */}
+                        {(selectedYear === "all" || availableYears.includes(selectedYear)
+                          ? availableYears
+                          : [selectedYear, ...availableYears]
+                        ).map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="flex flex-col">
                   {/* Invisible label to match the spacing of filter dropdowns */}
@@ -890,6 +906,11 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                               if (selectedStatuses.length > 0) {
                                 filteredProjects = filteredProjects.filter(
                                   (p) => selectedStatuses.includes(p.status),
+                                );
+                              }
+                              if (selectedYear !== "all") {
+                                filteredProjects = filteredProjects.filter(
+                                  (p) => getProjectStartYear(p) === selectedYear,
                                 );
                               }
                               if (selectedStatusHealths.length > 0) {
@@ -970,6 +991,25 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                   </div>
                 </div>
               </div>
+
+              {/* Search sits outside ProjectList: the list re-renders as a skeleton on every
+                  filter change, which would unmount the input and drop focus mid-typing. */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Search projects by title or description..."
+                  aria-label="Search projects"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (user?.id) {
+                      saveFilterToStorage(user.id, "searchQuery", e.target.value);
+                    }
+                  }}
+                  className="h-12 pl-12 text-base bg-card border-border shadow-sm"
+                />
+              </div>
+
               <ProjectList
                 onSelectProject={handleSelectProject}
                 onCreateNew={handleCreateNew}
@@ -979,8 +1019,10 @@ const Home: React.FC<HomeProps> = ({ mode: propMode }) => {
                 filterDepartmentNames={filterDepartmentNames}
                 filterStatusHealth={selectedStatusHealths}
                 filterSearch={searchQuery}
+                filterYear={selectedYear}
                 onFilteredCountChange={setFilteredProjectCount}
                 onTotalCountChange={setTotalProjectCount}
+                onAvailableYearsChange={setAvailableYears}
                 totalProjectCount={totalProjectCount}
               />
             </div>

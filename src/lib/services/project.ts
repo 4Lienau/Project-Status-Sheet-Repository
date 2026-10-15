@@ -121,6 +121,12 @@ export const getDisplayCompletion = (project: {
   return calculateWeightedCompletion(project.milestones || []);
 };
 
+// Start year ("2026") from calculated_start_date. Sliced from the ISO string rather
+// than new Date(), which parses "2026-01-01" as UTC and shifts it to 2025 in US time zones.
+export const getProjectStartYear = (project: {
+  calculated_start_date?: string | null;
+}): string | null => project.calculated_start_date?.slice(0, 4) || null;
+
 // Calculate project duration based on milestone dates
 // Note: This function calculates duration data but doesn't consider project status
 // The status-aware logic is handled in the helper functions that use this data
