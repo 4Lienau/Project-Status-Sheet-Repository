@@ -95,6 +95,9 @@ export function RichTextEditor({
         bold: false,
         italic: false,
         heading: false,
+        // StarterKit v3 bundles these; the standalone ones below are configured instead
+        link: false,
+        underline: false,
       }),
       Bold,
       Italic,
@@ -113,6 +116,9 @@ export function RichTextEditor({
     content: localValue,
     editable: true,
     injectCSS: true,
+    // Tiptap v3 defaults this to false; the toolbar's isActive() states and the
+    // isEmpty placeholder below are read during render and need it.
+    shouldRerenderOnTransaction: true,
     parseOptions: {
       preserveWhitespace: "full",
     },
@@ -154,7 +160,8 @@ export function RichTextEditor({
   useEffect(() => {
     if (editor && !editor.isDestroyed) {
       if (value !== localValue) {
-        editor.commands.setContent(value || "");
+        // emitUpdate defaults to true in v3; syncing an external value must not fire onChange
+        editor.commands.setContent(value || "", { emitUpdate: false });
         setLocalValue(value || "");
       }
     }
