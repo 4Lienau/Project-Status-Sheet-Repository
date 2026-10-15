@@ -13,6 +13,7 @@ import { SectionHeader } from "./SectionHeader";
 import { useToast } from "@/components/ui/use-toast";
 
 import { AIContextDialog } from "./AIContextDialog";
+import { getTaskEndDate } from "@/lib/services/taskSchedule";
 
 interface MilestonesSectionProps {
   formData: any;
@@ -54,14 +55,8 @@ const MilestonesSection: React.FC<MilestonesSectionProps> = ({
     const durationDays = task.duration_days || 1;
     const startDate = task.date;
 
-    // Calculate end date from start date + duration
-    let endDate = startDate;
-    if (startDate) {
-      const start = new Date(startDate);
-      const end = new Date(start);
-      end.setDate(end.getDate() + durationDays);
-      endDate = end.toISOString().split("T")[0];
-    }
+    // Inclusive calendar days: a 1-day task ends on its start date
+    const endDate = getTaskEndDate(startDate, durationDays);
 
     const newMilestone = {
       date: startDate,
