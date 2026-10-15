@@ -7,6 +7,42 @@ Log new entries with `/learn`. Newest entries go at the top.
 
 <!-- Entries below — newest first -->
 
+## Dependency security upgrades — order, traps, and what was dismissed
+
+**Date**: 2026-10-15
+
+Dependabot went 43 → 0 open (`npm audit` 64 → 11) in separately deployed commits:
+`npm audit fix` + `@netlify/functions` 6 → react-router 7 → Tiptap 3 → Vite 7.
+
+**Order that worked**: `npm audit fix` (no `--force`) first — it clears every transitive
+issue that needs no major bump. Then one major upgrade per commit, smallest first, each
+build-checked, tested and deployed before the next. Never `npm audit fix --force`: its
+"fixes" here included *downgrades* (exceljs 3.4.0, @tailwindcss/typography 0.5.4).
+
+**Traps**:
+- **`npm run build` fails locally on Windows** — npm runs scripts via `cmd.exe`, which
+  doesn't split `tsc ; vite build` on `;`, so tsc gets `;`/`vite`/`build` as file names
+  and Vite never runs (exit 2). Netlify (Linux) is fine. To reproduce Netlify locally:
+  `npm run build --script-shell "$(cygpath -w "$(which bash)")"`.
+- **Tiptap must move as a family**: bumping packages one at a time hits `ERESOLVE`
+  (StarterKit's nested v2 sub-packages pin `@tiptap/core` v2). Set every `@tiptap/*`
+  to the new range in package.json, delete the `node_modules/@tiptap/*` entries from
+  package-lock.json, then `npm install`.
+- **Tiptap v3 silently changes defaults** that `rich-text-editor.tsx` depends on:
+  StarterKit now bundles Link/Underline (disable them there), `useEditor`'s
+  `shouldRerenderOnTransaction` defaults to `false` (toolbar `isActive()` and the
+  placeholder stop updating), and `setContent` emits updates by default (external
+  value sync fires `onChange`). Guarded by `rich-text-editor.test.tsx`.
+- **react-router 7** was behaviour-neutral because `main.tsx` already opted into
+  `v7_startTransition` / `v7_relativeSplatPath`; only the `future` prop was removed.
+
+**Dismissed (not fixable / not reachable)**: `braces`, `postcss-selector-parser` —
+build-time only via Tailwind 3 (no patch, or fix needs v7 which Tailwind 3 can't use);
+`image-size` — pptxgenjs maps it to `false` in its browser build (absent from bundle);
+`uuid` — exceljs only calls `v4`. The real fix for the Tailwind group is a Tailwind 4
+migration; revisit only if a Tailwind-3 advisory ever reaches runtime.
+
+
 ## Displayed completion % must go through `getDisplayCompletion()` — screens drifted apart
 
 **Date**: 2026-10-15
